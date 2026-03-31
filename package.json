@@ -1,0 +1,19 @@
+{
+  "name": "tradeflow",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter @tradeflow/shared build && pnpm --filter @tradeflow/db build && pnpm --filter api dev",
+    "dev:desktop": "pnpm --filter desktop dev",
+    "build": "pnpm -r run build --filter '@tradeflow/*'",
+    "db:migrate": "pnpm --filter @tradeflow/db migrate",
+    "db:migrate:revert": "pnpm --filter @tradeflow/db migrate:revert",
+    "db:seed": "pnpm --filter @tradeflow/db seed"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron", "esbuild"]
+  }
+}

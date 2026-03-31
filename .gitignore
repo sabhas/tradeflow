@@ -1,0 +1,13 @@
+node_modules
+dist
+apps/desktop/dist-react
+apps/desktop/dist-electron
+build
+.env
+.env.local
+*.log
+.DS_Store
+coverage
+.nyc_output
+*.tsbuildinfo
+notes.md
