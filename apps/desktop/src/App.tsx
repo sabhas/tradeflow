@@ -3,6 +3,16 @@ import { LoginPage } from './pages/LoginPage';
 import { ProtectedLayout } from './layouts/ProtectedLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
+import { ProductCategoriesPage } from './pages/masters/ProductCategoriesPage';
+import { ProductsPage } from './pages/masters/ProductsPage';
+import { UnitsPage } from './pages/masters/UnitsPage';
+import { PriceLevelsPage } from './pages/masters/PriceLevelsPage';
+import { CustomersPage } from './pages/masters/CustomersPage';
+import { SuppliersPage } from './pages/masters/SuppliersPage';
+import { WarehousesPage } from './pages/masters/WarehousesPage';
+import { SalespersonsPage } from './pages/masters/SalespersonsPage';
+import { TaxProfilesPage } from './pages/masters/TaxProfilesPage';
+import { PaymentTermsPage } from './pages/masters/PaymentTermsPage';
 import { useAppSelector } from './hooks/useAppSelector';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -32,6 +42,16 @@ export default function App() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
+          <Route path="masters/product-categories" element={<ProductCategoriesPage />} />
+          <Route path="masters/products" element={<ProductsPage />} />
+          <Route path="masters/units" element={<UnitsPage />} />
+          <Route path="masters/price-levels" element={<PriceLevelsPage />} />
+          <Route path="masters/customers" element={<CustomersPage />} />
+          <Route path="masters/suppliers" element={<SuppliersPage />} />
+          <Route path="masters/warehouses" element={<WarehousesPage />} />
+          <Route path="masters/salespersons" element={<SalespersonsPage />} />
+          <Route path="masters/tax-profiles" element={<TaxProfilesPage />} />
+          <Route path="masters/payment-terms" element={<PaymentTermsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

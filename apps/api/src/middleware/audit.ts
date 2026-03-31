@@ -7,8 +7,19 @@ export type AuditAction = 'create' | 'update' | 'delete';
 export interface AuditConfig {
   entity: string;
   getEntityId?: (req: Request, res: Response) => string | undefined;
-  getOldValue?: (req: Request) => unknown;
+  getOldValue?: (req: Request) => unknown | Promise<unknown>;
   getNewValue?: (req: Request) => unknown;
+}
+
+function extractIdFromResponseBody(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+  const o = body as Record<string, unknown>;
+  if ('data' in o && o.data && typeof o.data === 'object') {
+    const d = o.data as Record<string, unknown>;
+    if (typeof d.id === 'string') return d.id;
+  }
+  if (typeof o.id === 'string') return o.id;
+  return undefined;
 }
 
 const auditQueue: Array<{
@@ -21,8 +32,8 @@ const auditQueue: Array<{
 }> = [];
 
 export function auditMiddleware(config: AuditConfig) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const oldValueSnapshot = config.getOldValue?.(req);
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const oldValueSnapshot = await Promise.resolve(config.getOldValue?.(req));
     const originalJson = res.json.bind(res);
     let action: AuditAction = 'create';
 
@@ -31,7 +42,8 @@ export function auditMiddleware(config: AuditConfig) {
         if (req.method === 'PUT' || req.method === 'PATCH') action = 'update';
         else if (req.method === 'DELETE') action = 'delete';
 
-        const entityId = config.getEntityId?.(req, res);
+        const entityId =
+          config.getEntityId?.(req, res) ?? extractIdFromResponseBody(body);
         const newValue =
           config.getNewValue?.(req) ??
           (typeof body === 'object' && body && 'data' in body

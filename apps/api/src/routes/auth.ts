@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { dataSource } from '@tradeflow/db';
 import { User } from '@tradeflow/db';
 import { loginSchema } from '@tradeflow/shared';
@@ -36,11 +36,10 @@ authRouter.post('/login', async (req, res) => {
   ];
 
   const secret = process.env.JWT_SECRET || 'dev-secret-change-in-production';
-  const accessToken = jwt.sign(
-    { userId: user.id, email: user.email, permissions },
-    secret,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-  );
+  const signOptions: SignOptions = {
+    expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn'],
+  };
+  const accessToken = jwt.sign({ userId: user.id, email: user.email, permissions }, secret, signOptions);
 
   res.json({
     accessToken,

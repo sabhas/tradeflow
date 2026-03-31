@@ -18,3 +18,9 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
   return res.json();
 }
+
+/** Unwrap `{ data: T }` responses from master APIs */
+export async function apiFetchData<T>(path: string, init?: RequestInit): Promise<T> {
+  const json = await apiFetch<{ data: T }>(path, init);
+  return json.data;
+}

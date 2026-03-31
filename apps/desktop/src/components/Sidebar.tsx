@@ -2,11 +2,26 @@ import { NavLink } from 'react-router-dom';
 import { useAppSelector } from '../hooks/useAppSelector';
 import { toggleSidebar } from '../store/slices/appSlice';
 import { useAppDispatch } from '../hooks/useAppDispatch';
+import { hasPermission } from '../lib/permissions';
 
-
-const menuItems = [
+const menuItems: Array<{
+  path: string;
+  label: string;
+  icon: string;
+  permission: string | null;
+}> = [
   { path: '/', label: 'Dashboard', icon: '📊', permission: null },
   { path: '/audit-logs', label: 'Audit Logs', icon: '📋', permission: 'audit:read' },
+  { path: '/masters/product-categories', label: 'Categories', icon: '🌳', permission: 'masters.products:read' },
+  { path: '/masters/products', label: 'Products', icon: '📦', permission: 'masters.products:read' },
+  { path: '/masters/units', label: 'Units', icon: '📏', permission: 'masters.products:read' },
+  { path: '/masters/price-levels', label: 'Price levels', icon: '💰', permission: 'masters.products:read' },
+  { path: '/masters/customers', label: 'Customers', icon: '👤', permission: 'masters.customers:read' },
+  { path: '/masters/suppliers', label: 'Suppliers', icon: '🏭', permission: 'masters.suppliers:read' },
+  { path: '/masters/warehouses', label: 'Warehouses', icon: '🏢', permission: 'masters.warehouses:read' },
+  { path: '/masters/salespersons', label: 'Salespersons', icon: '🧑‍💼', permission: 'masters.salespersons:read' },
+  { path: '/masters/tax-profiles', label: 'Tax profiles', icon: '🧾', permission: 'masters.tax:read' },
+  { path: '/masters/payment-terms', label: 'Payment terms', icon: '📅', permission: 'masters.payment_terms:read' },
 ];
 
 export function Sidebar() {
@@ -16,7 +31,7 @@ export function Sidebar() {
 
   const filtered = menuItems.filter((item) => {
     if (!item.permission) return true;
-    return permissions.includes(item.permission);
+    return hasPermission(permissions, item.permission);
   });
 
   return (
@@ -35,7 +50,7 @@ export function Sidebar() {
           ☰
         </button>
       </div>
-      <nav className="mt-4 space-y-1 px-2">
+      <nav className="mt-4 space-y-1 overflow-y-auto px-2 pb-8" style={{ maxHeight: 'calc(100vh - 3.5rem)' }}>
         {filtered.map((item) => (
           <NavLink
             key={item.path}
@@ -48,7 +63,7 @@ export function Sidebar() {
             }
           >
             <span className="text-lg">{item.icon}</span>
-            {open && <span>{item.label}</span>}
+            {open && <span className="text-sm">{item.label}</span>}
           </NavLink>
         ))}
       </nav>
