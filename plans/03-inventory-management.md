@@ -10,6 +10,8 @@
 
 Manage stock levels in real time: movements (opening, purchase, sale, adjustment, transfer), current balances per product and warehouse, and basic inventory reports. Phase 2 adds multi-warehouse transfers, reorder alerts, and costing (FIFO/LIFO).
 
+Prioritize pharma-safe inventory behavior (batch/expiry accuracy and FEFO readiness), while keeping these controls optional for non-pharma deployments.
+
 ---
 
 ## 2. Scope
@@ -20,12 +22,14 @@ Manage stock levels in real time: movements (opening, purchase, sale, adjustment
 - **Movement types:** opening_balance, purchase, sale, adjustment, transfer_out, transfer_in (Phase 2).
 - **Opening balances** – Post opening balance movements for a given date; used for go-live or trial balance.
 - **Adjustments** – Increase or decrease stock with reason (damage, loss, expiry, count correction); optional approval in Phase 2.
+- **Batch and expiry discipline** – For expiry-tracked products, movement capture should preserve batch-level and expiry-level quantities; enforce expiry date for inbound batches.
 - **Transfers** (Phase 2) – Move stock between warehouses; one transaction creates transfer_out at source and transfer_in at destination.
 
 ### 2.2 Advanced (Phase 2)
 
 - **Minimum stock and reorder level** – Stored on Product; report or dashboard widget for items below min/reorder.
 - **FIFO/LIFO costing** – Store unit cost on movements; on sale/issue compute COGS from FIFO or LIFO; batch-wise valuation if batch tracked.
+- **FEFO allocation (pharma mode)** – Allocate near-expiry stock first for eligible products; allow override with audit reason when policy permits.
 - **Reports** – Dead stock (no movement in X days), slow-moving; current stock valuation.
 
 ---

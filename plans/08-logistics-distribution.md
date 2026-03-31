@@ -10,6 +10,8 @@
 
 Support delivery management: routes, delivery runs, delivery notes linked to orders/invoices, and proof of delivery (POD). Salesperson tracking: performance and route-wise sales; optional commission calculation.
 
+For pharmaceutical distribution, include safeguards for temperature-sensitive and controlled products, while keeping route and POD flows reusable for generic distribution.
+
 ---
 
 ## 2. Scope
@@ -20,6 +22,7 @@ Support delivery management: routes, delivery runs, delivery notes linked to ord
 - **Delivery runs** – Date, vehicle, driver (or salesperson), route; list of delivery notes (orders/invoices) assigned.
 - **Delivery notes** – Link to invoice or sales order; status (pending, dispatched, delivered); optional printed DN for customer.
 - **Proof of delivery (POD)** – Signature or photo reference; link to delivery note; timestamp.
+- **Cold-chain and controlled handling (optional)** – Mark runs/delivery notes requiring temperature compliance or controlled-substance controls; capture checks at dispatch/delivery.
 
 ### 2.2 Salesperson tracking
 
@@ -83,6 +86,7 @@ Support delivery management: routes, delivery runs, delivery notes linked to ord
 
 - [ ] Routes can be created and assigned to delivery runs; delivery notes can be assigned to a run.
 - [ ] Delivery note created from invoice; status can be set to dispatched and delivered; POD can be attached when delivered.
+- [ ] Where enabled, cold-chain/controlled-delivery checks are captured without impacting standard distribution workflows.
 - [ ] Sales by salesperson and by route reports show correct totals for the period.
 - [ ] (Optional) Commission report reflects configured rule and invoice data.
 

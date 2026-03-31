@@ -10,6 +10,8 @@
 
 Provide all master data that other modules depend on: product categories and products (with SKU, barcode, UoM, batch/expiry, pricing), customers, suppliers, warehouses, salespersons, and tax profiles.
 
+Primary focus is pharmaceutical distribution (regulated inventory, expiry discipline, and traceability) with optional fields/toggles so the same model supports generic distribution sectors.
+
 ---
 
 ## 2. Scope
@@ -18,6 +20,7 @@ Provide all master data that other modules depend on: product categories and pro
 
 - **Product categories** – Tree (parent_id); name, code.
 - **Products** – categoryId, sku, barcode, name, unitId, costPrice, sellingPrice, batchTracked, expiryTracked, minStock?, reorderLevel?; optional branchId.
+- **Pharma profile (optional but first-class)** – genericName?, brandName?, dosageForm?, strength?, manufacturer?, requiresPrescription?, controlledSubstanceClass?, coldChainRequired?.
 - **Units of measure** – code, name (e.g. pcs, cartons, kg).
 - **Price levels** – e.g. Retail, Wholesale.
 - **Product prices** – productId, priceLevelId, price (for multiple price levels per product).
@@ -36,6 +39,7 @@ Provide all master data that other modules depend on: product categories and pro
 
 - **ProductCategory** – id, parentId?, name, code, branchId?, createdAt, updatedAt, deletedAt?
 - **Product** – id, categoryId, sku, barcode, name, unitId, costPrice, sellingPrice, batchTracked, expiryTracked, minStock, reorderLevel, branchId?, createdAt, updatedAt, deletedAt?
+- **ProductPharmaMeta** (or columns on Product) – productId, genericName?, brandName?, dosageForm?, strength?, manufacturer?, requiresPrescription?, controlledSubstanceClass?, coldChainRequired?
 - **UnitOfMeasure** – id, code, name, branchId?
 - **PriceLevel** – id, name, branchId?
 - **ProductPrice** – id, productId, priceLevelId, price
@@ -54,6 +58,7 @@ Indexes: Product(sku), Product(barcode), Product(categoryId), Customer(branchId)
 
 - **Categories:** `GET /product-categories` (tree or flat), `POST /product-categories`, `PATCH /product-categories/:id`, `DELETE /product-categories/:id` (soft delete).
 - **Products:** `GET /products` (list with filters: category, search by name/sku/barcode), `GET /products/:id`, `POST /products`, `PATCH /products/:id`, `DELETE /products/:id`.
+- **Products (optional pharma filters):** add support for `requiresPrescription`, `coldChainRequired`, and `expiryTracked` filters.
 - **UoM:** `GET /units`, `POST /units`, `PATCH /units/:id`, `DELETE /units/:id`.
 - **Price levels:** `GET /price-levels`, `POST /price-levels`, `PATCH /price-levels/:id`. Product prices: `GET /products/:id/prices`, `PUT /products/:id/prices` (replace set).
 - **Customers:** `GET /customers`, `GET /customers/:id`, `POST /customers`, `PATCH /customers/:id`, `DELETE /customers/:id`. Optional: `GET /customers/:id/balance` (outstanding).
@@ -109,6 +114,7 @@ Use TanStack Query for all GET (cache, invalidate on mutation); mutations (creat
 
 - [ ] All master entities can be created, updated, and soft-deleted via API with correct branch scoping.
 - [ ] Product list supports filter by category and search by name/SKU/barcode; product form saves base data and multiple price levels.
+- [ ] Pharma-focused attributes (when enabled) are captured and queryable without breaking generic product flows.
 - [ ] Customer form includes credit limit, payment terms, and tax profile; supplier and warehouse CRUD work.
 - [ ] Tax profile and payment terms are available for use in Sales and Purchase modules.
 - [ ] UI respects permissions; audit log records changes to master data.

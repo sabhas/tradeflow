@@ -1,6 +1,6 @@
 # TradeFlow – Feature Plans
 
-This folder contains **detailed plans for each feature** of the TradeFlow distribution business application. The main high-level plan (tech stack, architecture, phased delivery) is in the project’s plan file (e.g. `.cursor/plans/tradeflow_distribution_app_*.plan.md`).
+This folder contains **detailed plans for each feature** of the TradeFlow distribution business application. The product is designed **pharmaceutical-distribution first** (batch, expiry, traceability, and compliant operations), while keeping workflows configurable for broader wholesale/distribution use-cases. The main high-level plan (tech stack, architecture, phased delivery) is in the project’s plan file (e.g. `.cursor/plans/tradeflow_distribution_app_*.plan.md`).
 
 ## Tech stack (summary)
 
