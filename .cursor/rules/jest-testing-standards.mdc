@@ -1,0 +1,57 @@
+---
+description: Testing standards for Jest/Vitest-style unit and integration tests.
+globs: **/*.{test,spec}.{ts,tsx,js,jsx}
+alwaysApply: false
+---
+
+# Testing Standards (Jest / Vitest Compatible)
+
+## 1. Follow Arrange-Act-Assert
+
+- Arrange: setup mocks, fixtures, and initial state.
+- Act: perform the action (user event, function call, request).
+- Assert: verify outputs/visible behavior.
+
+## 2. Prefer user-observable behavior
+
+- In React tests, use `@testing-library/react` and assert on:
+  - rendered text
+  - role-based selectors
+  - accessibility attributes
+  - network calls (mocked) and resulting UI
+
+## 3. Avoid brittle implementation assertions
+
+- Do not assert internal function calls unless the behavior depends on them.
+- Do not snapshot complex dynamic UIs by default.
+
+## 4. Make mocks explicit and reset safely
+
+- Use `jest.mock(...)` (or vitest equivalent) at module scope when possible.
+- Prefer `beforeEach` + `mockClear()` / `mockReset()` over scattered resets.
+
+## 5. Control time deterministically
+
+- Use fake timers for time-based logic.
+- Always restore real timers after the test.
+
+```ts
+beforeEach(() => {
+  jest.useFakeTimers();
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+```
+
+## 6. Cleanup async tests
+
+- Ensure you `await` promises and user events when testing async flows.
+- If using fake timers, advance timers until assertions can run.
+
+## 7. Integration tests for APIs
+
+- For Express APIs, use `supertest`-style requests.
+- Assert on status code + error envelope shape, not stack traces.
+

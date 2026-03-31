@@ -1,0 +1,41 @@
+---
+description: TypeORM + Postgres conventions for entities, migrations, and data access.
+globs: packages/db/src/**/*.{ts,js}
+alwaysApply: false
+---
+
+# TypeORM (Postgres) Conventions
+
+## 1. Never use `synchronize` in production
+
+- Keep `synchronize: false` (migrations are the source of truth).
+
+## 2. Migrations are immutable history
+
+- Prefer generating migrations via TypeORM CLI/scripts.
+- Do not "fix" old migrations; create a new one that reverses/adjusts.
+
+## 3. DataSource + env configuration
+
+- Ensure `DataSource` reads `process.env.DATABASE_URL` (or a clearly named env var).
+- Do not hardcode credentials or use test-only URLs outside tests/scripts.
+
+## 4. Entities should be focused and stable
+
+- Keep entity classes small and stable.
+- Put business logic in services/helpers, not inside entity methods.
+
+## 5. Prefer safe query patterns
+
+- Avoid N+1 queries when loading lists with relations:
+  - use explicit joins / `leftJoinAndSelect` where appropriate
+  - be deliberate about relation loading
+
+## 6. Always use transactions for multi-step writes
+
+- When you need atomicity across multiple writes, wrap in a transaction.
+
+## 7. Use migrations globs that work in dev and prod
+
+- If migrations can run in both TS-node dev and compiled JS prod, ensure your `DataSource` includes both `*.ts` and `*.js` migration discovery.
+

@@ -1,0 +1,42 @@
+---
+description: Secure separation of Electron main vs renderer logic (Vite + React).
+globs: apps/desktop/**/*.{ts,tsx,js,jsx}
+alwaysApply: false
+---
+
+# Vite + Electron Boundaries (Secure by Default)
+
+## 1. Treat the renderer like untrusted web
+
+- Keep `nodeIntegration: false` in BrowserWindow.
+- Keep `contextIsolation: true` in BrowserWindow.
+- Do not enable the deprecated `remote` module.
+
+## 2. Only Electron main process does privileged work
+
+- Main process (`apps/desktop/electron/*`) should be the only place that:
+  - accesses filesystem using `fs`
+  - touches OS/network at a privileged level
+  - manages secrets or credentials
+  - uses privileged environment variables
+
+## 3. Renderer should not import from `electron`
+
+- Renderer code should not do `import { ipcRenderer } from "electron"` directly.
+- Instead, route renderer <-> main via a narrow IPC contract (typically using a preload/context-bridge pattern).
+
+## 4. IPC contracts must be typed and validated
+
+- Define IPC message shapes as TypeScript types.
+- Validate inputs in the main process (use `zod` or equivalent).
+- Prefer an explicit allowlist of channels and payload shapes.
+
+## 5. Never send secrets to the renderer
+
+- If main must use secrets (JWT signing keys, DB passwords), keep signing/verification in main/backend.
+- Renderer should receive only the minimum data required to render UI.
+
+## 6. Disable devtools in production
+
+- If you open devtools when `NODE_ENV === "development"`, ensure it is not enabled in production builds.
+

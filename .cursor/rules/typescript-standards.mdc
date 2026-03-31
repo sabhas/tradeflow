@@ -1,0 +1,58 @@
+---
+description: TypeScript best practices for safety, clarity, and maintainability.
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# TypeScript Standards
+
+## 1. No `any` in application code
+
+- Avoid `any` unless you have a documented, temporary interop boundary.
+- Prefer `unknown` + type narrowing.
+
+## 2. `catch` must be safe
+
+- Use `unknown` in `catch (e)` and narrow to `Error` (or your error shape) before reading fields.
+
+```ts
+function isError(value: unknown): value is Error {
+  return value instanceof Error;
+}
+
+try {
+  // ...
+} catch (e: unknown) {
+  if (!isError(e)) throw e;
+  console.error(e.message);
+}
+```
+
+## 3. Avoid non-null assertions
+
+- Avoid `x!` unless you can justify it in a comment right above.
+- Prefer guards (if checks), early returns, and type narrowing.
+
+## 4. Prefer explicit types on public APIs
+
+- Add explicit return types for exported functions/components/hooks where helpful.
+- Use `satisfies` for validating literal objects without widening.
+
+```ts
+type ApiConfig = { baseUrl: string; timeoutMs: number };
+
+const config = {
+  baseUrl: "https://example.com",
+  timeoutMs: 5000,
+} satisfies ApiConfig;
+```
+
+## 5. Prefer discriminated unions
+
+- For action/status/error flows, use discriminated unions instead of boolean soup.
+
+## 6. Keep imports stable
+
+- Use relative paths within a feature.
+- Avoid deep relative imports like `../../../..` when feature boundaries are unclear; introduce a barrel file if needed.
+

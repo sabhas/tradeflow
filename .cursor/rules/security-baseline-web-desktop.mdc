@@ -1,0 +1,48 @@
+---
+description: Security baseline for web-like React renderer and Express API, including Electron desktop.
+globs: apps/**/*.{ts,tsx,js,jsx}
+alwaysApply: false
+---
+
+# Security Baseline (Web + Desktop)
+
+## 1. Secrets and configuration
+
+- Never hardcode secrets in code (JWT signing keys, DB passwords, API keys).
+- Use environment variables and load them via the appropriate config mechanism.
+
+## 2. Validate and sanitize all inputs at trust boundaries
+
+- Treat client input as untrusted.
+- For Express routes, validate request bodies/params using `zod` (or your schema library) before use.
+
+## 3. Centralize error responses
+
+- Do not leak stack traces in production responses.
+- Ensure error responses have a consistent shape (message + optional error code).
+
+## 4. XSS and HTML injection
+
+- Avoid `dangerouslySetInnerHTML`.
+- If you must render HTML, sanitize it server-side or with a trusted sanitizer.
+
+## 5. Electron hardening defaults
+
+- Keep `contextIsolation: true`.
+- Keep `nodeIntegration: false`.
+- Do not expose broad globals from main to renderer.
+- Use a narrow IPC contract and validate payloads.
+
+## 6. Safer CORS and cookies (API)
+
+- Configure CORS with an allowlist (avoid `*` with credentials).
+- If you use cookies/auth tokens, set:
+  - `httpOnly: true`
+  - `secure: true` in production
+  - `sameSite` appropriate to your auth flow
+
+## 7. Logging
+
+- Avoid logging secrets and PII.
+- Prefer structured logs and redact sensitive fields.
+

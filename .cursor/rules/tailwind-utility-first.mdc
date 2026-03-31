@@ -1,0 +1,41 @@
+---
+description: Enforce Tailwind utility-first styling and flexbox-first layouts (no custom CSS).
+globs: **/*.tsx
+alwaysApply: false
+---
+
+# Tailwind utility-first (no custom CSS)
+
+- Use **Tailwind utility classes** for all styling in React components.
+- Do **not** create or edit custom CSS files for component styling (e.g. `*.css`, `*.scss`, `*.module.css`).
+- If styling feels repetitive, extract a **component** or a **small TS helper** (e.g. `cn()`), not a new CSS class.
+
+## Layouts: prefer Flexbox first
+
+- Default to **Flexbox** for layout (`flex`, `flex-col`, `items-*`, `justify-*`, `gap-*`, `flex-wrap`).
+- Use CSS Grid only when Flexbox becomes awkward (two-dimensional alignment, masonry-like grids, complex responsive grids).
+
+## Examples
+
+```tsx
+// ✅ GOOD: utility-first + flexbox
+export function Toolbar() {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-2">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-slate-900">Orders</span>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">12</span>
+      </div>
+      <button className="inline-flex items-center rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+        New
+      </button>
+    </div>
+  );
+}
+```
+
+```tsx
+// ❌ BAD: custom CSS dependency
+// import './Toolbar.css'
+// <div className="toolbar" />
+```
