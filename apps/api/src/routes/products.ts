@@ -5,6 +5,7 @@ import {
   Product,
   ProductPrice,
   ProductCategory,
+  Supplier,
   UnitOfMeasure,
   PriceLevel,
 } from '@tradeflow/db';
@@ -21,6 +22,8 @@ productsRouter.use(authMiddleware, loadUser);
 function serializeProduct(p: Product, prices?: ProductPrice[]) {
   return {
     id: p.id,
+    supplierId: p.supplierId,
+    supplier: p.supplier ? { id: p.supplier.id, name: p.supplier.name } : undefined,
     categoryId: p.categoryId,
     sku: p.sku,
     barcode: p.barcode,
@@ -62,6 +65,7 @@ productsRouter.get('/', requirePermission('masters.products', 'read'), async (re
   const qb = dataSource
     .getRepository(Product)
     .createQueryBuilder('p')
+    .leftJoinAndSelect('p.supplier', 'supplier')
     .where('p.deleted_at IS NULL');
 
   if (branchId) {
@@ -117,6 +121,7 @@ productsRouter.get(
     const qb = dataSource
       .getRepository(Product)
       .createQueryBuilder('p')
+      .leftJoinAndSelect('p.supplier', 'supplier')
       .where('p.deleted_at IS NULL AND p.barcode = :code', { code });
     if (branchId) qb.andWhere('(p.branch_id IS NULL OR p.branch_id = :bid)', { bid: branchId });
     const p = await qb.getOne();
@@ -194,7 +199,7 @@ productsRouter.put(
 productsRouter.get('/:id', requirePermission('masters.products', 'read'), async (req, res) => {
   const p = await dataSource.getRepository(Product).findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
-    relations: ['category', 'unit'],
+    relations: ['category', 'unit', 'supplier'],
   });
   if (!p) {
     res.status(404).json({ error: 'Not found' });
@@ -230,6 +235,13 @@ productsRouter.post(
       res.status(400).json({ error: 'Invalid unit' });
       return;
     }
+    const supplier = await dataSource.getRepository(Supplier).findOne({
+      where: { id: b.supplierId, deletedAt: IsNull() },
+    });
+    if (!supplier) {
+      res.status(400).json({ error: 'Invalid supplier' });
+      return;
+    }
 
     const branchId = b.branchId ?? req.user?.branchId;
 
@@ -238,6 +250,7 @@ productsRouter.post(
     await dataSource.transaction(async (em) => {
       const repo = em.getRepository(Product);
       row = repo.create({
+        supplierId: b.supplierId,
         categoryId: b.categoryId,
         sku: b.sku.trim(),
         barcode: b.barcode?.trim() || undefined,
@@ -271,7 +284,11 @@ productsRouter.post(
 
       prices = await em.getRepository(ProductPrice).find({ where: { productId: row.id } });
     });
-    res.status(201).json({ data: serializeProduct(row!, prices!) });
+    const created = await dataSource.getRepository(Product).findOneOrFail({
+      where: { id: row!.id },
+      relations: ['supplier'],
+    });
+    res.status(201).json({ data: serializeProduct(created, prices!) });
   }
 );
 
@@ -320,6 +337,16 @@ productsRouter.patch(
       }
       row.unitId = b.unitId;
     }
+    if (b.supplierId) {
+      const s = await dataSource.getRepository(Supplier).findOne({
+        where: { id: b.supplierId, deletedAt: IsNull() },
+      });
+      if (!s) {
+        res.status(400).json({ error: 'Invalid supplier' });
+        return;
+      }
+      row.supplierId = b.supplierId;
+    }
     if (b.sku !== undefined) row.sku = b.sku.trim();
     if (b.barcode !== undefined) row.barcode = b.barcode?.trim() || undefined;
     if (b.name !== undefined) row.name = b.name;
@@ -349,8 +376,12 @@ productsRouter.patch(
       });
     }
 
+    const withSupplier = await repo.findOne({
+      where: { id: row.id },
+      relations: ['supplier'],
+    });
     const prices = await loadProductPrices(row.id);
-    res.json({ data: serializeProduct(row, prices) });
+    res.json({ data: serializeProduct(withSupplier ?? row, prices) });
   }
 );
 

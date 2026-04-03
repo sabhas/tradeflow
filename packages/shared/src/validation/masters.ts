@@ -46,6 +46,7 @@ const productPriceRowSchema = z.object({
 export const costingMethodSchema = z.enum(['fifo', 'lifo']).nullable().optional();
 
 export const createProductSchema = z.object({
+  supplierId: z.string().uuid(),
   categoryId: z.string().uuid(),
   sku: z.string().min(1),
   barcode: z.string().optional().nullable(),

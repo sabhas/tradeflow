@@ -4,6 +4,7 @@ export async function productImportTemplateBuffer(): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Products');
   ws.addRow([
+    'supplier',
     'category',
     'sku',
     'barcode',
@@ -14,7 +15,7 @@ export async function productImportTemplateBuffer(): Promise<Buffer> {
     'batchTracked',
     'expiryTracked',
   ]);
-  ws.addRow(['BEV', 'SKU-001', '', 'Sample cola 500ml', 'EA', '0.50', '1.20', 'false', 'false']);
+  ws.addRow(['Acme Pharma', 'BEV', 'SKU-001', '', 'Sample cola 500ml', 'EA', '0.50', '1.20', 'false', 'false']);
   const buf = await wb.xlsx.writeBuffer();
   return Buffer.from(buf);
 }
@@ -63,8 +64,8 @@ export async function openingBalanceTemplateBuffer(): Promise<Buffer> {
 
 export function productImportTemplateCsv(): string {
   return [
-    'category,sku,barcode,name,unit,costPrice,sellingPrice,batchTracked,expiryTracked',
-    'BEV,SKU-001,,Sample cola 500ml,EA,0.50,1.20,false,false',
+    'supplier,category,sku,barcode,name,unit,costPrice,sellingPrice,batchTracked,expiryTracked',
+    'Acme Pharma,BEV,SKU-001,,Sample cola 500ml,EA,0.50,1.20,false,false',
   ].join('\n');
 }
 

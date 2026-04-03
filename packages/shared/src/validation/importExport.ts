@@ -21,6 +21,7 @@ const looseDecimal = z.preprocess((v) => {
 
 /** One row after header mapping (string-ish cells). */
 export const productImportRowSchema = z.object({
+  supplier: z.string().min(1),
   category: z.string().min(1),
   sku: z.string().min(1),
   name: z.string().min(1),

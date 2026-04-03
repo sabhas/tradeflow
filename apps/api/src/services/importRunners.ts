@@ -8,6 +8,7 @@ import {
   PaymentTerms,
   Product,
   ProductCategory,
+  Supplier,
   TaxProfile,
   UnitOfMeasure,
   Warehouse,
@@ -90,6 +91,20 @@ async function findUnit(em: EntityManager, code: string): Promise<UnitOfMeasure 
     .createQueryBuilder('u')
     .where('LOWER(TRIM(u.code)) = LOWER(TRIM(:t))', { t: term })
     .getOne();
+}
+
+async function findSupplierByName(em: EntityManager, name: string, branchId: string | undefined): Promise<Supplier | null> {
+  const term = name.trim();
+  if (!term) return null;
+  const qb = em
+    .getRepository(Supplier)
+    .createQueryBuilder('s')
+    .where('s.deleted_at IS NULL')
+    .andWhere('LOWER(TRIM(s.name)) = LOWER(TRIM(:t))', { t: term });
+  if (branchId) {
+    qb.andWhere('(s.branch_id IS NULL OR s.branch_id = :bid)', { bid: branchId });
+  }
+  return qb.getOne();
 }
 
 async function skuExists(em: EntityManager, sku: string, branchId: string | undefined): Promise<boolean> {
@@ -179,6 +194,10 @@ export async function importProductsFromSheets(
 
     try {
       await runInTransaction(async (em) => {
+        const supplier = await findSupplierByName(em, row.supplier, effectiveBranch);
+        if (!supplier) {
+          throw new Error(`Unknown supplier: ${row.supplier}`);
+        }
         const cat = await findCategory(em, row.category, effectiveBranch);
         if (!cat) {
           throw new Error(`Unknown category: ${row.category}`);
@@ -192,6 +211,7 @@ export async function importProductsFromSheets(
         }
 
         const payload = {
+          supplierId: supplier.id,
           categoryId: cat.id,
           sku: row.sku.trim(),
           barcode: row.barcode?.trim() || null,
@@ -210,6 +230,7 @@ export async function importProductsFromSheets(
 
         const repo = em.getRepository(Product);
         const p = repo.create({
+          supplierId: valid.data.supplierId,
           categoryId: valid.data.categoryId,
           sku: valid.data.sku,
           barcode: valid.data.barcode ?? undefined,

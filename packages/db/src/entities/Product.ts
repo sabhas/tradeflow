@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
+import { Supplier } from './Supplier';
 import { ProductCategory } from './ProductCategory';
 import { UnitOfMeasure } from './UnitOfMeasure';
 import { ProductPrice } from './ProductPrice';
@@ -17,6 +18,13 @@ import { ProductPrice } from './ProductPrice';
 export class Product {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'supplier_id' })
+  supplierId!: string;
+
+  @ManyToOne(() => Supplier)
+  @JoinColumn({ name: 'supplier_id' })
+  supplier!: Supplier;
 
   @Column({ name: 'category_id' })
   categoryId!: string;

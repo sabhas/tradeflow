@@ -14,6 +14,7 @@ export async function buildProductsXlsx(branchId: string | undefined, categoryId
     .createQueryBuilder('p')
     .leftJoinAndSelect('p.category', 'cat')
     .leftJoinAndSelect('p.unit', 'u')
+    .leftJoinAndSelect('p.supplier', 'supplier')
     .where('p.deleted_at IS NULL');
 
   if (branchId) {
@@ -53,6 +54,7 @@ export async function buildProductsXlsx(branchId: string | undefined, categoryId
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Products');
   ws.addRow([
+    'supplierName',
     'categoryCode',
     'categoryName',
     'sku',
@@ -70,6 +72,7 @@ export async function buildProductsXlsx(branchId: string | undefined, categoryId
     const prices = byProduct.get(p.id) ?? [];
     const priceLevels = prices.map((x) => `${x.priceLevelId}:${x.price}`).join('; ');
     ws.addRow([
+      p.supplier?.name ?? '',
       p.category?.code ?? '',
       p.category?.name ?? '',
       p.sku,

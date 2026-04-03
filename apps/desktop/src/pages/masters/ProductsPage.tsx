@@ -7,6 +7,8 @@ import { hasPermission } from '../../lib/permissions';
 
 interface ProductRow {
   id: string;
+  supplierId: string;
+  supplier?: { id: string; name: string };
   sku: string;
   barcode?: string | null;
   name: string;
@@ -51,6 +53,7 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<ProductRow | null>(null);
 
   const [form, setForm] = useState({
+    supplierId: '',
     categoryId: '',
     sku: '',
     barcode: '',
@@ -84,6 +87,13 @@ export function ProductsPage() {
     queryFn: () => apiFetchData<PriceLevelOpt[]>('/price-levels'),
   });
 
+  const suppliers = useQuery({
+    queryKey: ['suppliers', 'products-dd'],
+    enabled: canRead && canWrite,
+    queryFn: () =>
+      apiFetch<{ data: Array<{ id: string; name: string }> }>('/suppliers?limit=500').then((r) => r.data),
+  });
+
   const listParams = useMemo(() => {
     const q = new URLSearchParams();
     if (categoryId) q.set('categoryId', categoryId);
@@ -112,6 +122,7 @@ export function ProductsPage() {
 
   const openCreate = () => {
     setEditing(null);
+    const firstSupplier = suppliers.data?.[0]?.id ?? '';
     const firstCat = categories.data?.[0]?.id ?? '';
     const firstUnit = units.data?.[0]?.id ?? '';
     const pl = (priceLevels.data || []).map((p) => ({
@@ -119,6 +130,7 @@ export function ProductsPage() {
       price: '0',
     }));
     setForm({
+      supplierId: firstSupplier,
       categoryId: firstCat,
       sku: '',
       barcode: '',
@@ -145,6 +157,7 @@ export function ProductsPage() {
       price: existing.get(pl.id) ?? '0',
     }));
     setForm({
+      supplierId: full.supplierId,
       categoryId: full.categoryId,
       sku: full.sku,
       barcode: full.barcode || '',
@@ -165,6 +178,7 @@ export function ProductsPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
+        supplierId: form.supplierId,
         categoryId: form.categoryId,
         sku: form.sku,
         barcode: form.barcode || null,
@@ -216,7 +230,9 @@ export function ProductsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800">Products</h1>
-          <p className="mt-1 text-slate-600">SKU, pricing, and optional batch or expiry tracking</p>
+          <p className="mt-1 text-slate-600">
+            SKU, manufacturer/supplier, pricing, and optional batch or expiry tracking
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canRead && (
@@ -277,6 +293,7 @@ export function ProductsPage() {
           <thead className="bg-slate-50">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-slate-700">SKU</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-700">Supplier</th>
               <th className="px-4 py-3 text-left font-medium text-slate-700">Name</th>
               <th className="px-4 py-3 text-left font-medium text-slate-700">Selling</th>
               <th className="px-4 py-3 text-left font-medium text-slate-700">Batch</th>
@@ -287,7 +304,7 @@ export function ProductsPage() {
           <tbody className="divide-y divide-slate-200">
             {products.isLoading && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   Loading...
                 </td>
               </tr>
@@ -296,6 +313,7 @@ export function ProductsPage() {
               rows.map((p) => (
                 <tr key={p.id}>
                   <td className="px-4 py-3 font-mono text-slate-800">{p.sku}</td>
+                  <td className="px-4 py-3 text-slate-700">{p.supplier?.name ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-900">{p.name}</td>
                   <td className="px-4 py-3 text-slate-700">{p.sellingPrice}</td>
                   <td className="px-4 py-3">{p.batchTracked ? 'Yes' : 'No'}</td>
@@ -352,6 +370,25 @@ export function ProductsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 required
               />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-slate-700">Supplier / manufacturer</label>
+              <select
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={form.supplierId}
+                onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))}
+                required
+              >
+                {(suppliers.data ?? []).length === 0 ? (
+                  <option value="">No suppliers — create one under Masters first</option>
+                ) : (
+                  (suppliers.data ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))
+                )}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">SKU</label>

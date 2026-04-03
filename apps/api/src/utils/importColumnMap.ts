@@ -2,6 +2,9 @@ import { normalizeHeaderKey } from './tabularFile';
 
 /** Map normalized CSV/XLSX header key -> canonical field name for Zod row schemas. */
 const PRODUCT_ALIASES: Record<string, string> = {
+  supplier: 'supplier',
+  manufacturer: 'supplier',
+  suppliername: 'supplier',
   category: 'category',
   categorycode: 'category',
   categoryname: 'category',
