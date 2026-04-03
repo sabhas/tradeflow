@@ -1,8 +1,9 @@
 import { EntityManager } from 'typeorm';
 import { Account, JournalEntry, JournalLine } from '@tradeflow/db';
+import { resolveLiquidAccountId } from './companySettings';
+
 const ACC = {
   AR: '1200',
-  CASH: '1000',
   SALES: '4000',
   TAX: '2200',
   INVENTORY: '1300',
@@ -49,14 +50,14 @@ export async function postSalesInvoiceJournal(
   });
   if (existing) throw new Error('Invoice already has accounting entry');
 
-  const [arId, cashId, salesId, taxId] = await Promise.all([
+  const [arId, salesId, taxId] = await Promise.all([
     accountIdByCode(manager, ACC.AR),
-    accountIdByCode(manager, ACC.CASH),
     accountIdByCode(manager, ACC.SALES),
     accountIdByCode(manager, ACC.TAX),
   ]);
 
-  const debitAccountId = params.paymentType === 'cash' ? cashId : arId;
+  const debitAccountId =
+    params.paymentType === 'cash' ? await resolveLiquidAccountId(manager, 'cash') : arId;
   const lines: Array<{ accountId: string; debit: string; credit: string }> = [
     { accountId: debitAccountId, debit: params.total, credit: '0.0000' },
     { accountId: salesId, debit: '0.0000', credit: params.revenueExTax },
@@ -101,6 +102,7 @@ export async function postReceiptJournal(
     userId?: string;
     receiptId: string;
     amount: string;
+    paymentMethod: string;
   }
 ): Promise<JournalEntry> {
   const existing = await manager.findOne(JournalEntry, {
@@ -108,13 +110,13 @@ export async function postReceiptJournal(
   });
   if (existing) throw new Error('Receipt already has accounting entry');
 
-  const [arId, cashId] = await Promise.all([
+  const [arId, liquidId] = await Promise.all([
     accountIdByCode(manager, ACC.AR),
-    accountIdByCode(manager, ACC.CASH),
+    resolveLiquidAccountId(manager, params.paymentMethod),
   ]);
 
   const lines = [
-    { accountId: cashId, debit: params.amount, credit: '0.0000' },
+    { accountId: liquidId, debit: params.amount, credit: '0.0000' },
     { accountId: arId, debit: '0.0000', credit: params.amount },
   ];
   assertBalanced(lines);
@@ -215,6 +217,7 @@ export async function postSupplierPaymentJournal(
     userId?: string;
     supplierPaymentId: string;
     amount: string;
+    paymentMethod: string;
   }
 ): Promise<JournalEntry> {
   const existing = await manager.findOne(JournalEntry, {
@@ -222,14 +225,14 @@ export async function postSupplierPaymentJournal(
   });
   if (existing) throw new Error('Supplier payment already has accounting entry');
 
-  const [apId, cashId] = await Promise.all([
+  const [apId, liquidId] = await Promise.all([
     accountIdByCode(manager, ACC.AP),
-    accountIdByCode(manager, ACC.CASH),
+    resolveLiquidAccountId(manager, params.paymentMethod),
   ]);
 
   const payLines = [
     { accountId: apId, debit: params.amount, credit: '0.0000' },
-    { accountId: cashId, debit: '0.0000', credit: params.amount },
+    { accountId: liquidId, debit: '0.0000', credit: params.amount },
   ];
   assertBalanced(payLines);
 

@@ -23,6 +23,9 @@ import { purchaseOrdersRouter } from './routes/purchaseOrders';
 import { grnsRouter } from './routes/grns';
 import { supplierInvoicesRouter } from './routes/supplierInvoices';
 import { supplierPaymentsRouter } from './routes/supplierPayments';
+import { accountsRouter } from './routes/accounts';
+import { journalEntriesRouter } from './routes/journalEntries';
+import { companySettingsRouter } from './routes/companySettings';
 
 export const app = express();
 
@@ -52,3 +55,6 @@ app.use('/purchase-orders', purchaseOrdersRouter);
 app.use('/grns', grnsRouter);
 app.use('/supplier-invoices', supplierInvoicesRouter);
 app.use('/supplier-payments', supplierPaymentsRouter);
+app.use('/accounts', accountsRouter);
+app.use('/journal-entries', journalEntriesRouter);
+app.use('/settings', companySettingsRouter);

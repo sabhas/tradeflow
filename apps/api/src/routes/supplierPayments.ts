@@ -113,6 +113,7 @@ supplierPaymentsRouter.post(
           userId,
           supplierPaymentId: p.id,
           amount: p.amount,
+          paymentMethod: p.paymentMethod,
         });
 
         return manager.findOneOrFail(SupplierPayment, {

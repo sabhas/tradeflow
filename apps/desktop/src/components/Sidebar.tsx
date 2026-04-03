@@ -38,6 +38,7 @@ const menuItems: Array<{
       'purchases.reports:read',
     ],
   },
+  { path: '/accounting/coa', label: 'Accounting', icon: '📒', permission: 'accounting:read' },
 ];
 
 export function Sidebar() {

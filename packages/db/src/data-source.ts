@@ -39,6 +39,7 @@ import { SupplierInvoice } from './entities/SupplierInvoice';
 import { SupplierInvoiceLine } from './entities/SupplierInvoiceLine';
 import { SupplierPayment } from './entities/SupplierPayment';
 import { SupplierPaymentAllocation } from './entities/SupplierPaymentAllocation';
+import { CompanySettings } from './entities/CompanySettings';
 
 export const dataSource = new DataSource({
   type: 'postgres',
@@ -83,6 +84,7 @@ export const dataSource = new DataSource({
     SupplierInvoiceLine,
     SupplierPayment,
     SupplierPaymentAllocation,
+    CompanySettings,
   ],
   // Use globs so TypeORM can discover migrations both in dev (ts-node) and in prod (compiled js).
   migrations: [

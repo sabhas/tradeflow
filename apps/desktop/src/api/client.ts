@@ -20,7 +20,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.message || err.error || `Request failed: ${res.status}`);
   }
-  return res.json();
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  const text = await res.text();
+  if (!text) {
+    return undefined as T;
+  }
+  return JSON.parse(text) as T;
 }
 
 /** Unwrap `{ data: T }` responses from master APIs */

@@ -108,6 +108,7 @@ receiptsRouter.post(
           userId: req.auth?.userId,
           receiptId: rec.id,
           amount: rec.amount,
+          paymentMethod: rec.paymentMethod,
         });
         return manager.findOneOrFail(Receipt, { where: { id: rec.id }, relations: ['allocations'] });
       });

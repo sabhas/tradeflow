@@ -6,3 +6,4 @@ export * from './validation/masters';
 export * from './validation/inventory';
 export * from './validation/sales';
 export * from './validation/purchases';
+export * from './validation/accounting';
