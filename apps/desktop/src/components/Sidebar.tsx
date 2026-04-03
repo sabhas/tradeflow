@@ -12,27 +12,6 @@ const menuItems: Array<{
   anyOf?: string[];
 }> = [
   { path: '/', label: 'Dashboard', icon: '📊', permission: null },
-  { path: '/settings', label: 'Settings', icon: '⚙️', permission: 'settings:read' },
-  { path: '/audit-logs', label: 'Audit Logs', icon: '📋', permission: 'audit:read' },
-  { path: '/recycle-bin', label: 'Recycle bin', icon: '♻️', permission: 'recycle_bin:read' },
-  { path: '/masters/product-categories', label: 'Categories', icon: '🌳', permission: 'masters.products:read' },
-  { path: '/masters/products', label: 'Products', icon: '📦', permission: 'masters.products:read' },
-  { path: '/masters/units', label: 'Units', icon: '📏', permission: 'masters.products:read' },
-  { path: '/masters/price-levels', label: 'Price levels', icon: '💰', permission: 'masters.products:read' },
-  { path: '/masters/customers', label: 'Customers', icon: '👤', permission: 'masters.customers:read' },
-  { path: '/masters/suppliers', label: 'Suppliers', icon: '🏭', permission: 'masters.suppliers:read' },
-  { path: '/masters/warehouses', label: 'Warehouses', icon: '🏢', permission: 'masters.warehouses:read' },
-  { path: '/masters/salespersons', label: 'Salespersons', icon: '🧑‍💼', permission: 'masters.salespersons:read' },
-  { path: '/masters/tax-profiles', label: 'Tax profiles', icon: '🧾', permission: 'masters.tax:read' },
-  { path: '/masters/payment-terms', label: 'Payment terms', icon: '📅', permission: 'masters.payment_terms:read' },
-  {
-    path: '/import',
-    label: 'Import',
-    icon: '📥',
-    permission: null,
-    anyOf: ['masters.products:write', 'masters.customers:write', 'inventory:write'],
-  },
-  { path: '/inventory/stock', label: 'Inventory', icon: '🗃️', permission: 'inventory:read' },
   { path: '/sales/quotations', label: 'Sales', icon: '🧾', permission: 'sales:read' },
   {
     path: '/purchases/orders',
@@ -47,6 +26,7 @@ const menuItems: Array<{
       'purchases.reports:read',
     ],
   },
+  { path: '/inventory/stock', label: 'Inventory', icon: '🗃️', permission: 'inventory:read' },
   { path: '/accounting/coa', label: 'Accounting', icon: '📒', permission: 'accounting:read' },
   {
     path: '/reports',
@@ -66,6 +46,26 @@ const menuItems: Array<{
       'reports.logistics:read',
     ],
   },
+  {
+    path: '/import',
+    label: 'Import',
+    icon: '📥',
+    permission: null,
+    anyOf: ['masters.products:write', 'masters.customers:write', 'inventory:write'],
+  },
+  { path: '/masters/product-categories', label: 'Categories', icon: '🌳', permission: 'masters.products:read' },
+  { path: '/masters/products', label: 'Products', icon: '📦', permission: 'masters.products:read' },
+  { path: '/masters/units', label: 'Units', icon: '📏', permission: 'masters.products:read' },
+  { path: '/masters/price-levels', label: 'Price levels', icon: '💰', permission: 'masters.products:read' },
+  { path: '/masters/customers', label: 'Customers', icon: '👤', permission: 'masters.customers:read' },
+  { path: '/masters/suppliers', label: 'Suppliers', icon: '🏭', permission: 'masters.suppliers:read' },
+  { path: '/masters/warehouses', label: 'Warehouses', icon: '🏢', permission: 'masters.warehouses:read' },
+  { path: '/masters/salespersons', label: 'Salespersons', icon: '🧑‍💼', permission: 'masters.salespersons:read' },
+  { path: '/masters/tax-profiles', label: 'Tax profiles', icon: '🧾', permission: 'masters.tax:read' },
+  { path: '/masters/payment-terms', label: 'Payment terms', icon: '📅', permission: 'masters.payment_terms:read' },
+  { path: '/settings', label: 'Settings', icon: '⚙️', permission: 'settings:read' },
+  { path: '/audit-logs', label: 'Audit Logs', icon: '📋', permission: 'audit:read' },
+  { path: '/recycle-bin', label: 'Recycle bin', icon: '♻️', permission: 'recycle_bin:read' },
 ];
 
 export function Sidebar() {

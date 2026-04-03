@@ -137,8 +137,46 @@ export function SettingsPage() {
     return <p className="text-slate-600">You do not have permission to view settings.</p>;
   }
 
-  if (settings.isLoading || !settings.data) {
+  if (settings.isError) {
+    return (
+      <div className="max-w-4xl space-y-2">
+        <h1 className="text-2xl font-semibold text-slate-800">Settings</h1>
+        <p className="text-red-600">
+          {(settings.error as Error)?.message || 'Could not load settings.'}
+        </p>
+        <p className="text-sm text-slate-600">
+          If this mentions company settings not being initialized, run database migrations and seed (or ask your
+          administrator to create company settings in the database).
+        </p>
+        <button
+          type="button"
+          className="rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-300"
+          onClick={() => settings.refetch()}
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (settings.isPending) {
     return <p className="text-slate-600">Loading settings…</p>;
+  }
+
+  if (!settings.data) {
+    return (
+      <div className="max-w-4xl space-y-2">
+        <h1 className="text-2xl font-semibold text-slate-800">Settings</h1>
+        <p className="text-slate-600">No settings data was returned.</p>
+        <button
+          type="button"
+          className="rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-300"
+          onClick={() => settings.refetch()}
+        >
+          Try again
+        </button>
+      </div>
+    );
   }
 
   const data = { ...settings.data, ...form };

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { FindOptionsRelations } from 'typeorm';
 import { dataSource, Account, CompanySettings, InvoiceTemplate } from '@tradeflow/db';
 import {
   patchCompanyProfileSchema,
@@ -11,6 +12,19 @@ import { computeFinancialYearLabel } from '../utils/financialYear';
 
 export const companySettingsRouter = Router();
 companySettingsRouter.use(authMiddleware, loadUser);
+
+/** Single-row table; TypeORM 0.3+ requires `where` for findOne — use find + take. */
+async function getSingletonCompanySettings(
+  relations?: FindOptionsRelations<CompanySettings>
+): Promise<CompanySettings | null> {
+  const repo = dataSource.getRepository(CompanySettings);
+  const rows = await repo.find({
+    take: 1,
+    order: { id: 'ASC' },
+    ...(relations ? { relations } : {}),
+  });
+  return rows[0] ?? null;
+}
 
 function serializeGeneral(cs: CompanySettings) {
   return {
@@ -47,7 +61,7 @@ function serializeGeneral(cs: CompanySettings) {
 }
 
 companySettingsRouter.get('/', requirePermission('settings', 'read'), async (_req, res) => {
-  const row = await dataSource.getRepository(CompanySettings).findOne({ order: { id: 'ASC' } });
+  const row = await getSingletonCompanySettings();
   if (!row) {
     res.status(500).json({ error: 'Company settings not initialized' });
     return;
@@ -66,7 +80,7 @@ companySettingsRouter.patch(
       return;
     }
     const b = parsed.data;
-    let row = await dataSource.getRepository(CompanySettings).findOne({ order: { id: 'ASC' } });
+    let row = await getSingletonCompanySettings();
     if (!row) {
       res.status(500).json({ error: 'Company settings not initialized' });
       return;
@@ -101,13 +115,13 @@ companySettingsRouter.patch(
     if (b.defaultInvoiceTemplateId !== undefined) row.defaultInvoiceTemplateId = b.defaultInvoiceTemplateId ?? undefined;
     if (b.inventoryCostingMethod !== undefined) row.inventoryCostingMethod = b.inventoryCostingMethod;
     await dataSource.getRepository(CompanySettings).save(row);
-    row = await dataSource.getRepository(CompanySettings).findOneOrFail({ order: { id: 'ASC' } });
+    row = await dataSource.getRepository(CompanySettings).findOneOrFail({ where: { id: row.id } });
     res.json({ data: serializeGeneral(row) });
   }
 );
 
 companySettingsRouter.get('/company', requirePermission('settings', 'read'), async (_req, res) => {
-  const row = await dataSource.getRepository(CompanySettings).findOne({ order: { id: 'ASC' } });
+  const row = await getSingletonCompanySettings();
   if (!row) {
     res.status(500).json({ error: 'Company settings not initialized' });
     return;
@@ -141,7 +155,7 @@ companySettingsRouter.patch(
       return;
     }
     const b = parsed.data;
-    let row = await dataSource.getRepository(CompanySettings).findOne({ order: { id: 'ASC' } });
+    let row = await getSingletonCompanySettings();
     if (!row) {
       res.status(500).json({ error: 'Company settings not initialized' });
       return;
@@ -159,7 +173,7 @@ companySettingsRouter.patch(
     if (b.taxRegistrationNumber !== undefined) row.taxRegistrationNumber = b.taxRegistrationNumber ?? undefined;
     if (b.logoUrl !== undefined) row.logoUrl = b.logoUrl ?? undefined;
     await dataSource.getRepository(CompanySettings).save(row);
-    row = await dataSource.getRepository(CompanySettings).findOneOrFail({ order: { id: 'ASC' } });
+    row = await dataSource.getRepository(CompanySettings).findOneOrFail({ where: { id: row.id } });
     res.json({
       data: {
         companyName: row.companyName,
@@ -191,9 +205,9 @@ function serialize(cs: CompanySettings) {
 }
 
 companySettingsRouter.get('/accounting', requirePermission('accounting', 'read'), async (_req, res) => {
-  const row = await dataSource.getRepository(CompanySettings).findOne({
-    order: { id: 'ASC' },
-    relations: ['defaultCashAccount', 'defaultBankAccount'],
+  const row = await getSingletonCompanySettings({
+    defaultCashAccount: true,
+    defaultBankAccount: true,
   });
   if (!row) {
     res.status(500).json({ error: 'Company settings not initialized' });
@@ -230,7 +244,7 @@ companySettingsRouter.patch(
     }
     const b = parsed.data;
 
-    let row = await dataSource.getRepository(CompanySettings).findOne({ order: { id: 'ASC' } });
+    let row = await getSingletonCompanySettings();
     if (!row) {
       res.status(500).json({ error: 'Company settings not initialized' });
       return;
