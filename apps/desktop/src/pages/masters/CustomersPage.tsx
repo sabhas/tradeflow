@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { apiFetch, apiFetchData } from '../../api/client';
+import { apiFetch, apiFetchData, downloadAuthenticatedFile } from '../../api/client';
 import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -101,24 +101,39 @@ export function CustomersPage() {
           <h1 className="text-2xl font-semibold text-slate-800">Customers</h1>
           <p className="mt-1 text-slate-600">Credit limits, payment terms, and tax profiles</p>
         </div>
-        {canWrite && (
-          <button
-            type="button"
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
-            onClick={() => {
-              setEditing(null);
-              setName('');
-              setType('retailer');
-              setCreditLimit('0');
-              setPaymentTermsId('');
-              setTaxProfileId('');
-              setDefaultRouteId('');
-              setOpen(true);
-            }}
-          >
-            Add customer
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {canRead && (
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              onClick={() =>
+                downloadAuthenticatedFile('/export/customers', 'customers-export.xlsx').catch((e: Error) =>
+                  alert(e.message)
+                )
+              }
+            >
+              Export Excel
+            </button>
+          )}
+          {canWrite && (
+            <button
+              type="button"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
+              onClick={() => {
+                setEditing(null);
+                setName('');
+                setType('retailer');
+                setCreditLimit('0');
+                setPaymentTermsId('');
+                setTaxProfileId('');
+                setDefaultRouteId('');
+                setOpen(true);
+              }}
+            >
+              Add customer
+            </button>
+          )}
+        </div>
       </div>
       <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
         <table className="min-w-full text-sm">

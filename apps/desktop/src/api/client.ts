@@ -47,3 +47,25 @@ export async function openAuthenticatedRoute(path: string): Promise<void> {
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank', 'noopener');
 }
+
+/** Download a file (e.g. Excel export) with Bearer auth. Omits Content-Type so multipart can use FormData elsewhere. */
+export async function downloadAuthenticatedFile(path: string, filename: string): Promise<void> {
+  const token = localStorage.getItem('tradeflow_token');
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.message || err.error || `Request failed: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

@@ -24,6 +24,13 @@ const menuItems: Array<{
   { path: '/masters/salespersons', label: 'Salespersons', icon: '🧑‍💼', permission: 'masters.salespersons:read' },
   { path: '/masters/tax-profiles', label: 'Tax profiles', icon: '🧾', permission: 'masters.tax:read' },
   { path: '/masters/payment-terms', label: 'Payment terms', icon: '📅', permission: 'masters.payment_terms:read' },
+  {
+    path: '/import',
+    label: 'Import',
+    icon: '📥',
+    permission: null,
+    anyOf: ['masters.products:write', 'masters.customers:write', 'inventory:write'],
+  },
   { path: '/inventory/stock', label: 'Inventory', icon: '🗃️', permission: 'inventory:read' },
   { path: '/sales/quotations', label: 'Sales', icon: '🧾', permission: 'sales:read' },
   {

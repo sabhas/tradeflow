@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { apiFetch, apiFetchData } from '../../api/client';
+import { apiFetch, apiFetchData, downloadAuthenticatedFile } from '../../api/client';
 import { MastersModal } from '../../components/MastersModal';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { hasPermission } from '../../lib/permissions';
@@ -87,6 +87,13 @@ export function ProductsPage() {
     if (categoryId) q.set('categoryId', categoryId);
     if (search.trim()) q.set('search', search.trim());
     q.set('limit', '100');
+    return q.toString();
+  }, [categoryId, search]);
+
+  const exportQuery = useMemo(() => {
+    const q = new URLSearchParams();
+    if (categoryId) q.set('categoryId', categoryId);
+    if (search.trim()) q.set('search', search.trim());
     return q.toString();
   }, [categoryId, search]);
 
@@ -206,15 +213,31 @@ export function ProductsPage() {
           <h1 className="text-2xl font-semibold text-slate-800">Products</h1>
           <p className="mt-1 text-slate-600">SKU, pricing, and optional batch or expiry tracking</p>
         </div>
-        {canWrite && (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            Add product
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {canRead && (
+            <button
+              type="button"
+              onClick={() =>
+                downloadAuthenticatedFile(
+                  `/export/products${exportQuery ? `?${exportQuery}` : ''}`,
+                  'products-export.xlsx'
+                ).catch((e: Error) => alert(e.message))
+              }
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            >
+              Export Excel
+            </button>
+          )}
+          {canWrite && (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Add product
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mt-6 flex flex-wrap gap-4">

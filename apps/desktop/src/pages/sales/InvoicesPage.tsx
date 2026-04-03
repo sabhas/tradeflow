@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { apiFetch, apiFetchData, openAuthenticatedRoute } from '../../api/client';
+import { apiFetch, apiFetchData, downloadAuthenticatedFile, openAuthenticatedRoute } from '../../api/client';
 import { SalesSubNav } from '../../components/SalesSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -241,27 +241,42 @@ export function InvoicesPage() {
           <h1 className="text-2xl font-semibold text-slate-800">Invoices</h1>
           <p className="mt-1 text-slate-600">Draft, post (stock + accounts), print</p>
         </div>
-        {canWrite && (
-          <button
-            type="button"
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-            onClick={() => {
-              setEditingId(null);
-              setCustomerId('');
-              setInvoiceDate(new Date().toISOString().slice(0, 10));
-              setDueDate('');
-              setPaymentType('credit');
-              setNotes('');
-              setHeaderDiscount('0');
-              setSalespersonId('');
-              setLines([emptyLine()]);
-              setError(null);
-              setPanelOpen(true);
-            }}
-          >
-            New invoice
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {canRead && (
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              onClick={() =>
+                downloadAuthenticatedFile('/export/invoices', 'invoices-export.xlsx').catch((e: Error) =>
+                  alert(e.message)
+                )
+              }
+            >
+              Export Excel
+            </button>
+          )}
+          {canWrite && (
+            <button
+              type="button"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+              onClick={() => {
+                setEditingId(null);
+                setCustomerId('');
+                setInvoiceDate(new Date().toISOString().slice(0, 10));
+                setDueDate('');
+                setPaymentType('credit');
+                setNotes('');
+                setHeaderDiscount('0');
+                setSalespersonId('');
+                setLines([emptyLine()]);
+                setError(null);
+                setPanelOpen(true);
+              }}
+            >
+              New invoice
+            </button>
+          )}
+        </div>
       </div>
       <SalesSubNav />
 

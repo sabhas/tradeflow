@@ -8,3 +8,4 @@ export * from './validation/sales';
 export * from './validation/purchases';
 export * from './validation/accounting';
 export * from './validation/logistics';
+export * from './validation/importExport';

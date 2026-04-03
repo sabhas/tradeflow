@@ -30,6 +30,8 @@ import { companySettingsRouter } from './routes/companySettings';
 import { deliveryRoutesRouter } from './routes/deliveryRoutes';
 import { deliveryRunsRouter } from './routes/deliveryRuns';
 import { deliveryNotesRouter } from './routes/deliveryNotes';
+import { importRouter } from './routes/import';
+import { exportRouter } from './routes/export';
 
 export const app = express();
 
@@ -66,3 +68,5 @@ app.use('/settings', companySettingsRouter);
 app.use('/delivery-routes', deliveryRoutesRouter);
 app.use('/delivery-runs', deliveryRunsRouter);
 app.use('/delivery-notes', deliveryNotesRouter);
+app.use('/import', importRouter);
+app.use('/export', exportRouter);
