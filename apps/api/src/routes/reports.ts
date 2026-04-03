@@ -860,3 +860,83 @@ reportsRouter.get('/sales-by-route', requirePermission('reports.logistics', 'rea
     },
   });
 });
+
+/** On-hand stock with no sales in the lookback window (dead stock). */
+reportsRouter.get('/dead-stock', requirePermission('inventory', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const rawDays = parseInt(String(req.query.daysWithoutSale || '90'), 10);
+  const days = Number.isFinite(rawDays) ? Math.min(Math.max(rawDays, 1), 3650) : 90;
+  const fromDate = new Date(asOf + 'T12:00:00Z');
+  fromDate.setUTCDate(fromDate.getUTCDate() - days);
+  const fromStr = fromDate.toISOString().slice(0, 10);
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      sb.product_id AS "productId",
+      p.sku AS "productSku",
+      p.name AS "productName",
+      sb.warehouse_id AS "warehouseId",
+      w.name AS "warehouseName",
+      w.code AS "warehouseCode",
+      sb.quantity::text AS "quantityOnHand"
+    FROM stock_balances sb
+    INNER JOIN products p ON p.id = sb.product_id AND p.deleted_at IS NULL
+    INNER JOIN warehouses w ON w.id = sb.warehouse_id
+    WHERE sb.quantity::numeric > 0.00001
+      AND ($1::uuid IS NULL OR p.branch_id IS NULL OR p.branch_id = $1::uuid)
+      AND ($1::uuid IS NULL OR w.branch_id IS NULL OR w.branch_id = $1::uuid)
+      AND NOT EXISTS (
+        SELECT 1 FROM inventory_movements im
+        WHERE im.product_id = sb.product_id
+          AND im.warehouse_id = sb.warehouse_id
+          AND im.ref_type = 'sale'
+          AND im.movement_date >= $2::date
+          AND im.movement_date <= $3::date
+      )
+    ORDER BY p.name, w.name
+    `,
+    [branchId || null, fromStr, asOf]
+  );
+
+  res.json({
+    data: rows,
+    meta: { asOf, daysWithoutSale: days, lookbackFrom: fromStr, rowCount: rows.length },
+  });
+});
+
+/** Lowest quantity sold in period (slow movers). */
+reportsRouter.get('/slow-moving', requirePermission('sales', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const rawLimit = parseInt(String(req.query.limit || '50'), 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 50;
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      p.id AS "productId",
+      p.sku AS "productSku",
+      p.name AS "productName",
+      COALESCE(SUM(il.quantity::numeric), 0)::text AS "quantitySold"
+    FROM products p
+    LEFT JOIN invoice_lines il ON il.product_id = p.id
+    LEFT JOIN invoices i ON i.id = il.invoice_id
+      AND i.deleted_at IS NULL
+      AND i.status = 'posted'
+      AND i.invoice_date >= $1::date
+      AND i.invoice_date <= $2::date
+      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+    WHERE p.deleted_at IS NULL
+      AND ($3::uuid IS NULL OR p.branch_id IS NULL OR p.branch_id = $3::uuid)
+    GROUP BY p.id, p.sku, p.name
+    ORDER BY COALESCE(SUM(il.quantity::numeric), 0) ASC NULLS FIRST, p.name ASC
+    LIMIT $4
+    `,
+    [dateFrom, dateTo, branchId || null, limit]
+  );
+
+  res.json({ data: rows, meta: { dateFrom, dateTo, limit } });
+});

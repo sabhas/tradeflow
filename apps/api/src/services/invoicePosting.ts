@@ -59,6 +59,7 @@ export async function postInvoice(
         branchId: inv.branchId ?? branchId,
         notes: `Invoice ${inv.id}`,
         userId,
+        invoiceLineId: line.id,
       });
     }
 

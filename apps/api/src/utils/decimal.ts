@@ -14,3 +14,13 @@ export function parseDecimalStrict(s: string): string {
   if (!Number.isFinite(n)) throw new Error('Invalid number');
   return n.toFixed(4);
 }
+
+export function decimalSub(a: string, b: string): string {
+  const pa = Math.round(parseFloat(a || '0') * 10000);
+  const pb = Math.round(parseFloat(b || '0') * 10000);
+  return ((pa - pb) / 10000).toFixed(4);
+}
+
+export function decimalCmp(a: string, b: string): number {
+  return parseFloat(a || '0') - parseFloat(b || '0');
+}

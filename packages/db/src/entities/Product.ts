@@ -53,6 +53,10 @@ export class Product {
   @Column({ name: 'expiry_tracked', default: false })
   expiryTracked!: boolean;
 
+  /** Override company default: fifo, lifo, or null to use company settings (FEFO applies when expiry_tracked). */
+  @Column({ name: 'costing_method', length: 8, nullable: true })
+  costingMethod?: string;
+
   @Column({ name: 'min_stock', type: 'decimal', precision: 14, scale: 4, nullable: true })
   minStock?: string;
 

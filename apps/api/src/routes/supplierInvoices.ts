@@ -401,11 +401,16 @@ supplierInvoicesRouter.post(
           const qty = parseFloat(cmp.quantity);
           if (qty <= 0) continue;
           const unitCost = (parseFloat(cmp.lineBase) / qty).toFixed(4);
+          const uc = parseDecimalStrict(unitCost);
           await manager.update(
             InventoryMovement,
             { grnLineId: line.grnLineId },
-            { unitCost: parseDecimalStrict(unitCost) }
+            { unitCost: uc }
           );
+          await manager.query(`UPDATE stock_layers SET unit_cost = $1::numeric WHERE grn_line_id = $2`, [
+            uc,
+            line.grnLineId,
+          ]);
         }
 
         inv.subtotal = totals.subtotal;

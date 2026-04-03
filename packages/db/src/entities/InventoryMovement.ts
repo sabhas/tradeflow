@@ -9,7 +9,9 @@ import {
 } from 'typeorm';
 import { Branch } from './Branch';
 import { GrnLine } from './GrnLine';
+import { InvoiceLine } from './InvoiceLine';
 import { Product } from './Product';
+import { StockTransferLine } from './StockTransferLine';
 import { User } from './User';
 import { Warehouse } from './Warehouse';
 
@@ -79,6 +81,20 @@ export class InventoryMovement {
   @ManyToOne(() => GrnLine, { nullable: true })
   @JoinColumn({ name: 'grn_line_id' })
   grnLine?: GrnLine;
+
+  @Column({ name: 'invoice_line_id', type: 'uuid', nullable: true })
+  invoiceLineId?: string;
+
+  @ManyToOne(() => InvoiceLine, { nullable: true })
+  @JoinColumn({ name: 'invoice_line_id' })
+  invoiceLine?: InvoiceLine;
+
+  @Column({ name: 'stock_transfer_line_id', type: 'uuid', nullable: true })
+  stockTransferLineId?: string;
+
+  @ManyToOne(() => StockTransferLine, { nullable: true })
+  @JoinColumn({ name: 'stock_transfer_line_id' })
+  stockTransferLine?: StockTransferLine;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

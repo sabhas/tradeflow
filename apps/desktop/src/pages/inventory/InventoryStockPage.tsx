@@ -12,6 +12,7 @@ interface BalanceRow {
   quantity: string;
   updatedAt: string;
   valueAtCost?: string;
+  valueAtLayers?: string;
   product?: { id: string; sku: string; name: string; costPrice: string };
   warehouse?: { id: string; name: string; code: string };
 }
@@ -75,7 +76,10 @@ export function InventoryStockPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold text-slate-800">Current stock</h1>
-      <p className="mt-1 text-slate-600">Balances by product and warehouse. Value uses product cost price.</p>
+      <p className="mt-1 text-slate-600">
+        Balances by product and warehouse. Layer value uses FIFO/LIFO/FEFO stock layers; legacy column uses product cost
+        price.
+      </p>
       <InventorySubNav />
 
       <div className="mb-4 flex flex-wrap items-end gap-3">
@@ -119,19 +123,20 @@ export function InventoryStockPage() {
               <th className="px-4 py-3 text-left font-medium">Product</th>
               <th className="px-4 py-3 text-left font-medium">Warehouse</th>
               <th className="px-4 py-3 text-right font-medium">Quantity</th>
-              <th className="px-4 py-3 text-right font-medium">Value at cost</th>
+              <th className="px-4 py-3 text-right font-medium">Value (layers)</th>
+              <th className="px-4 py-3 text-right font-medium">Value (product cost)</th>
             </tr>
           </thead>
           <tbody>
             {balances.isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                   Loading…
                 </td>
               </tr>
             ) : (balances.data ?? []).length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                   No stock rows yet. Post an opening balance or receive stock.
                 </td>
               </tr>
@@ -144,6 +149,7 @@ export function InventoryStockPage() {
                     {row.warehouse ? `${row.warehouse.code} — ${row.warehouse.name}` : row.warehouseId}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.quantity}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{row.valueAtLayers ?? '—'}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.valueAtCost ?? '—'}</td>
                 </tr>
               ))

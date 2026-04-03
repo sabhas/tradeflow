@@ -28,6 +28,12 @@ export class GrnLine {
   @Column({ name: 'unit_price', type: 'decimal', precision: 14, scale: 4, default: 0 })
   unitPrice!: string;
 
+  @Column({ name: 'batch_code', type: 'varchar', length: 128, nullable: true })
+  batchCode?: string;
+
+  @Column({ name: 'expiry_date', type: 'date', nullable: true })
+  expiryDate?: string;
+
   @Column({ name: 'purchase_order_line_id', nullable: true })
   purchaseOrderLineId?: string;
 

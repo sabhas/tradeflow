@@ -25,6 +25,7 @@ type GeneralSettings = {
   moneyDecimals: number;
   quantityDecimals: number;
   roundingMode: string;
+  inventoryCostingMethod: string;
   defaultInvoiceTemplateId: string | null;
   updatedAt: string;
 };
@@ -93,7 +94,10 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (!settings.data) return;
-    setForm(settings.data);
+    setForm({
+      ...settings.data,
+      inventoryCostingMethod: settings.data.inventoryCostingMethod ?? 'fifo',
+    });
   }, [settings.data]);
 
   const save = useMutation({
@@ -103,13 +107,13 @@ export function SettingsPage() {
   });
 
   const [newTplName, setNewTplName] = useState('');
-  const [newTplCfg, setNewTplCfg] = useState({
+  const newTplCfg = {
     showLogo: true,
     showLegalName: true,
     showTaxNumber: true,
     showPaymentTerms: true,
     showNotes: true,
-  });
+  };
 
   const createTpl = useMutation({
     mutationFn: () =>
@@ -370,7 +374,8 @@ export function SettingsPage() {
         <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-medium text-slate-900">Currency & rounding</h2>
           <p className="text-sm text-slate-600">
-            Affects sales document totals, tax lines, and how amounts appear on invoices.
+            Affects sales document totals, tax lines, and how amounts appear on invoices. Inventory default costing
+            (FIFO/LIFO) applies to non–expiry-tracked products; expiry-tracked products use FEFO.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm">
@@ -422,6 +427,18 @@ export function SettingsPage() {
                 disabled={!canWrite}
               />
             </label>
+            <label className="block text-sm">
+              <span className="text-slate-600">Default inventory costing (non-expiry products)</span>
+              <select
+                className="mt-1 w-full max-w-xs rounded border border-slate-300 px-2 py-1.5"
+                value={data.inventoryCostingMethod ?? 'fifo'}
+                onChange={(e) => setForm((f) => ({ ...f, inventoryCostingMethod: e.target.value }))}
+                disabled={!canWrite}
+              >
+                <option value="fifo">FIFO (first in, first out)</option>
+                <option value="lifo">LIFO (last in, first out)</option>
+              </select>
+            </label>
             <label className="block text-sm sm:col-span-2">
               <span className="text-slate-600">Default invoice template</span>
               <select
@@ -455,6 +472,7 @@ export function SettingsPage() {
                   roundingMode: data.roundingMode,
                   moneyDecimals: data.moneyDecimals,
                   quantityDecimals: data.quantityDecimals,
+                  inventoryCostingMethod: data.inventoryCostingMethod,
                   defaultInvoiceTemplateId: data.defaultInvoiceTemplateId,
                 })
               }

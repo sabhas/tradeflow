@@ -32,6 +32,13 @@ export function ReportsHubPage() {
         hasPermission(permissions, 'purchases.reports:read'),
     },
     {
+      to: '/reports/inventory-health',
+      title: 'Inventory health',
+      description: 'Low stock, dead stock, and slow-moving products.',
+      visible:
+        hasPermission(permissions, 'inventory:read') || hasPermission(permissions, 'sales:read'),
+    },
+    {
       to: '/accounting/reports',
       title: 'Financial statements',
       description: 'Trial balance, profit and loss, balance sheet, and expense analysis.',

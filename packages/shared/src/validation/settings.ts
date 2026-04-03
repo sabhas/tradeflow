@@ -10,6 +10,8 @@ export const invoiceTemplateConfigSchema = z.object({
   showNotes: z.boolean().optional(),
 });
 
+export const inventoryCostingMethodSchema = z.enum(['fifo', 'lifo']);
+
 export const patchGeneralSettingsSchema = z
   .object({
     companyName: z.string().min(1).max(255).optional(),
@@ -31,6 +33,7 @@ export const patchGeneralSettingsSchema = z
     quantityDecimals: z.number().int().min(0).max(6).optional(),
     roundingMode: roundingModeSchema.optional(),
     defaultInvoiceTemplateId: z.union([z.string().uuid(), z.null()]).optional(),
+    inventoryCostingMethod: inventoryCostingMethodSchema.optional(),
   })
   .strict();
 

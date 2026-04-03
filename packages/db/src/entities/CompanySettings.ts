@@ -82,6 +82,10 @@ export class CompanySettings {
   @Column({ name: 'rounding_mode', length: 32, default: 'half_up' })
   roundingMode!: string;
 
+  /** Default stock costing method for non–expiry-tracked products: fifo or lifo. */
+  @Column({ name: 'inventory_costing_method', length: 8, default: 'fifo' })
+  inventoryCostingMethod!: string;
+
   @Column({ name: 'default_invoice_template_id', nullable: true })
   defaultInvoiceTemplateId?: string;
 

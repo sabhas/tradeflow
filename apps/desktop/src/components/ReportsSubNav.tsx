@@ -28,6 +28,12 @@ export function ReportsSubNav() {
         hasPermission(permissions, 'purchases.reports:read'),
     },
     {
+      to: '/reports/inventory-health',
+      label: 'Inventory health',
+      visible:
+        hasPermission(permissions, 'inventory:read') || hasPermission(permissions, 'sales:read'),
+    },
+    {
       to: '/accounting/reports',
       label: 'Financial',
       visible: hasPermission(permissions, 'accounting:read'),

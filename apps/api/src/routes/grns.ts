@@ -42,6 +42,8 @@ function serialize(g: Grn, lines?: GrnLine[]) {
         quantity: l.quantity,
         unitPrice: l.unitPrice,
         purchaseOrderLineId: l.purchaseOrderLineId ?? null,
+        batchCode: l.batchCode ?? null,
+        expiryDate: l.expiryDate ? String(l.expiryDate).slice(0, 10) : null,
       })) ?? undefined,
   };
 }
@@ -146,6 +148,8 @@ grnsRouter.post(
               quantity: parseDecimalStrict(String(ln.quantity)),
               unitPrice: parseDecimalStrict(unitPriceStr),
               purchaseOrderLineId: ln.purchaseOrderLineId ?? undefined,
+              batchCode: ln.batchCode?.trim() || undefined,
+              expiryDate: ln.expiryDate?.trim() ? ln.expiryDate.slice(0, 10) : undefined,
             })
           );
         }
@@ -195,6 +199,8 @@ grnsRouter.post(
             branchId: grn.branchId ?? undefined,
             userId: req.auth?.userId,
             grnLineId: line.id,
+            batchCode: line.batchCode,
+            expiryDate: line.expiryDate ? String(line.expiryDate).slice(0, 10) : undefined,
           });
 
           if (line.purchaseOrderLineId) {

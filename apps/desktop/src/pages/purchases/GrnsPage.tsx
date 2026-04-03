@@ -28,7 +28,14 @@ interface EligibleResponse {
   }>;
 }
 
-type Line = { productId: string; quantity: string; unitPrice: string; purchaseOrderLineId: string };
+type Line = {
+  productId: string;
+  quantity: string;
+  unitPrice: string;
+  purchaseOrderLineId: string;
+  batchCode: string;
+  expiryDate: string;
+};
 
 export function GrnsPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
@@ -44,7 +51,9 @@ export function GrnsPage() {
   const [supplierId, setSupplierId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [grnDate, setGrnDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [lines, setLines] = useState<Line[]>([{ productId: '', quantity: '1', unitPrice: '0', purchaseOrderLineId: '' }]);
+  const [lines, setLines] = useState<Line[]>([
+    { productId: '', quantity: '1', unitPrice: '0', purchaseOrderLineId: '', batchCode: '', expiryDate: '' },
+  ]);
   const [error, setError] = useState<string | null>(null);
 
   const list = useQuery({
@@ -88,6 +97,8 @@ export function GrnsPage() {
           quantity: l.remaining,
           unitPrice: l.unitPrice,
           purchaseOrderLineId: l.purchaseOrderLineId,
+          batchCode: '',
+          expiryDate: '',
         }))
       );
     }
@@ -117,6 +128,8 @@ export function GrnsPage() {
             quantity: l.quantity,
             unitPrice: l.unitPrice || undefined,
             purchaseOrderLineId: l.purchaseOrderLineId || null,
+            batchCode: l.batchCode.trim() ? l.batchCode.trim() : null,
+            expiryDate: l.expiryDate.trim() ? l.expiryDate : null,
           })),
         }),
       });
@@ -158,7 +171,16 @@ export function GrnsPage() {
               setPurchaseOrderId(null);
               setSupplierId('');
               setGrnDate(new Date().toISOString().slice(0, 10));
-              setLines([{ productId: '', quantity: '1', unitPrice: '0', purchaseOrderLineId: '' }]);
+              setLines([
+                {
+                  productId: '',
+                  quantity: '1',
+                  unitPrice: '0',
+                  purchaseOrderLineId: '',
+                  batchCode: '',
+                  expiryDate: '',
+                },
+              ]);
               setError(null);
               setPanelOpen(true);
             }}
@@ -292,7 +314,17 @@ export function GrnsPage() {
                   type="button"
                   className="text-sm font-medium text-indigo-600 hover:underline"
                   onClick={() =>
-                    setLines((prev) => [...prev, { productId: '', quantity: '1', unitPrice: '0', purchaseOrderLineId: '' }])
+                    setLines((prev) => [
+                      ...prev,
+                      {
+                        productId: '',
+                        quantity: '1',
+                        unitPrice: '0',
+                        purchaseOrderLineId: '',
+                        batchCode: '',
+                        expiryDate: '',
+                      },
+                    ])
                   }
                 >
                   + Add line
@@ -301,7 +333,8 @@ export function GrnsPage() {
             </div>
             <div className="mt-2 space-y-2">
               {lines.map((line, idx) => (
-                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-12 sm:items-end">
+                <div key={idx} className="space-y-2 rounded-lg border border-slate-200 p-3">
+                  <div className="grid gap-2 sm:grid-cols-12 sm:items-end">
                   <label className="sm:col-span-5">
                     <span className="text-xs text-slate-500">Product</span>
                     {purchaseOrderId && eligible.data?.lines[idx]?.productName ? (
@@ -343,7 +376,7 @@ export function GrnsPage() {
                       }
                     />
                   </label>
-                  <label className="sm:col-span-3">
+                  <label className="sm:col-span-4">
                     <span className="text-xs text-slate-500">Unit cost</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
@@ -357,6 +390,38 @@ export function GrnsPage() {
                       }
                     />
                   </label>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                  <label>
+                    <span className="text-xs text-slate-500">Batch (optional)</span>
+                    <input
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      value={line.batchCode}
+                      onChange={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], batchCode: e.target.value };
+                          return n;
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span className="text-xs text-slate-500">Expiry (optional)</span>
+                    <input
+                      type="date"
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      value={line.expiryDate}
+                      onChange={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], expiryDate: e.target.value };
+                          return n;
+                        })
+                      }
+                    />
+                  </label>
+                  </div>
                 </div>
               ))}
             </div>

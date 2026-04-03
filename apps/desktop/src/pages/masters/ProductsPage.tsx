@@ -16,6 +16,7 @@ interface ProductRow {
   sellingPrice: string;
   batchTracked: boolean;
   expiryTracked: boolean;
+  costingMethod?: string | null;
   minStock?: string | null;
   reorderLevel?: string | null;
   prices?: { priceLevelId: string; price: string }[];
@@ -59,6 +60,7 @@ export function ProductsPage() {
     sellingPrice: '0',
     batchTracked: false,
     expiryTracked: false,
+    costingMethod: '' as '' | 'fifo' | 'lifo',
     minStock: '',
     reorderLevel: '',
     priceRows: [] as { priceLevelId: string; price: string }[],
@@ -126,6 +128,7 @@ export function ProductsPage() {
       sellingPrice: '0',
       batchTracked: false,
       expiryTracked: false,
+      costingMethod: '',
       minStock: '',
       reorderLevel: '',
       priceRows: pl,
@@ -151,6 +154,7 @@ export function ProductsPage() {
       sellingPrice: full.sellingPrice,
       batchTracked: full.batchTracked,
       expiryTracked: full.expiryTracked,
+      costingMethod: (full.costingMethod as 'fifo' | 'lifo' | null | undefined) || '',
       minStock: full.minStock || '',
       reorderLevel: full.reorderLevel || '',
       priceRows,
@@ -170,6 +174,7 @@ export function ProductsPage() {
         sellingPrice: form.sellingPrice,
         batchTracked: form.batchTracked,
         expiryTracked: form.expiryTracked,
+        costingMethod: form.costingMethod || null,
         minStock: form.minStock || null,
         reorderLevel: form.reorderLevel || null,
         prices: form.priceRows.map((r) => ({
@@ -448,6 +453,26 @@ export function ProductsPage() {
                 value={form.reorderLevel}
                 onChange={(e) => setForm((f) => ({ ...f, reorderLevel: e.target.value }))}
               />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-slate-700">Stock costing override</label>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Empty uses company default. Expiry-tracked products always allocate by FEFO (earliest expiry first).
+              </p>
+              <select
+                className="mt-1 w-full max-w-xs rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={form.costingMethod}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    costingMethod: e.target.value as '' | 'fifo' | 'lifo',
+                  }))
+                }
+              >
+                <option value="">Company default</option>
+                <option value="fifo">FIFO</option>
+                <option value="lifo">LIFO</option>
+              </select>
             </div>
           </div>
 

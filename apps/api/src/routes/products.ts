@@ -30,6 +30,7 @@ function serializeProduct(p: Product, prices?: ProductPrice[]) {
     sellingPrice: p.sellingPrice,
     batchTracked: p.batchTracked,
     expiryTracked: p.expiryTracked,
+    costingMethod: p.costingMethod ?? null,
     minStock: p.minStock,
     reorderLevel: p.reorderLevel,
     branchId: p.branchId,
@@ -246,6 +247,7 @@ productsRouter.post(
         sellingPrice: b.sellingPrice ?? '0',
         batchTracked: b.batchTracked ?? false,
         expiryTracked: b.expiryTracked ?? false,
+        costingMethod: b.costingMethod ?? undefined,
         minStock: b.minStock ?? undefined,
         reorderLevel: b.reorderLevel ?? undefined,
         branchId: branchId ?? undefined,
@@ -325,6 +327,7 @@ productsRouter.patch(
     if (b.sellingPrice !== undefined) row.sellingPrice = b.sellingPrice;
     if (b.batchTracked !== undefined) row.batchTracked = b.batchTracked;
     if (b.expiryTracked !== undefined) row.expiryTracked = b.expiryTracked;
+    if (b.costingMethod !== undefined) row.costingMethod = b.costingMethod ?? undefined;
     if (b.minStock !== undefined) row.minStock = b.minStock ?? undefined;
     if (b.reorderLevel !== undefined) row.reorderLevel = b.reorderLevel ?? undefined;
     if (b.branchId !== undefined) row.branchId = b.branchId ?? undefined;

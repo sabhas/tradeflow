@@ -5,6 +5,7 @@ import { hasPermission } from '../lib/permissions';
 const links: Array<{ to: string; label: string; permission: string }> = [
   { to: '/inventory/stock', label: 'Stock', permission: 'inventory:read' },
   { to: '/inventory/movements', label: 'Movements', permission: 'inventory:read' },
+  { to: '/inventory/transfers', label: 'Transfers', permission: 'inventory:read' },
   { to: '/inventory/opening-balance', label: 'Opening balance', permission: 'inventory:write' },
   { to: '/inventory/adjustment', label: 'Adjustment', permission: 'inventory:write' },
 ];

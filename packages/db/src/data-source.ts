@@ -20,6 +20,10 @@ import { Warehouse } from './entities/Warehouse';
 import { Salesperson } from './entities/Salesperson';
 import { InventoryMovement } from './entities/InventoryMovement';
 import { StockBalance } from './entities/StockBalance';
+import { StockLayer } from './entities/StockLayer';
+import { StockTransfer } from './entities/StockTransfer';
+import { StockTransferLine } from './entities/StockTransferLine';
+import { InventoryLayerConsumption } from './entities/InventoryLayerConsumption';
 import { Account } from './entities/Account';
 import { JournalEntry } from './entities/JournalEntry';
 import { JournalLine } from './entities/JournalLine';
@@ -73,6 +77,10 @@ export const dataSource = new DataSource({
     Salesperson,
     InventoryMovement,
     StockBalance,
+    StockLayer,
+    StockTransfer,
+    StockTransferLine,
+    InventoryLayerConsumption,
     Account,
     JournalEntry,
     JournalLine,

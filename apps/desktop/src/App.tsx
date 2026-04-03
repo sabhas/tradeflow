@@ -18,6 +18,7 @@ import { InventoryStockPage } from './pages/inventory/InventoryStockPage';
 import { InventoryMovementsPage } from './pages/inventory/InventoryMovementsPage';
 import { InventoryOpeningBalancePage } from './pages/inventory/InventoryOpeningBalancePage';
 import { InventoryAdjustmentPage } from './pages/inventory/InventoryAdjustmentPage';
+import { InventoryTransfersPage } from './pages/inventory/InventoryTransfersPage';
 import { QuotationsPage } from './pages/sales/QuotationsPage';
 import { SalesOrdersPage } from './pages/sales/SalesOrdersPage';
 import { InvoicesPage } from './pages/sales/InvoicesPage';
@@ -36,6 +37,7 @@ import { ReportsHubPage } from './pages/reports/ReportsHubPage';
 import { OperationalReportsPage } from './pages/reports/OperationalReportsPage';
 import { AgingReportsPage } from './pages/reports/AgingReportsPage';
 import { TaxReportsPage } from './pages/reports/TaxReportsPage';
+import { InventoryHealthReportsPage } from './pages/reports/InventoryHealthReportsPage';
 import { DeliveryRoutesPage } from './pages/logistics/DeliveryRoutesPage';
 import { DeliveryRunsPage } from './pages/logistics/DeliveryRunsPage';
 import { DeliveryNotesPage } from './pages/logistics/DeliveryNotesPage';
@@ -95,6 +97,7 @@ export default function App() {
           <Route path="inventory/movements" element={<InventoryMovementsPage />} />
           <Route path="inventory/opening-balance" element={<InventoryOpeningBalancePage />} />
           <Route path="inventory/adjustment" element={<InventoryAdjustmentPage />} />
+          <Route path="inventory/transfers" element={<InventoryTransfersPage />} />
           <Route path="sales" element={<Navigate to="/sales/quotations" replace />} />
           <Route path="sales/quotations" element={<QuotationsPage />} />
           <Route path="sales/orders" element={<SalesOrdersPage />} />
@@ -116,6 +119,7 @@ export default function App() {
             <Route path="operational" element={<OperationalReportsPage />} />
             <Route path="aging" element={<AgingReportsPage />} />
             <Route path="tax" element={<TaxReportsPage />} />
+            <Route path="inventory-health" element={<InventoryHealthReportsPage />} />
           </Route>
           <Route path="logistics" element={<Navigate to="/logistics/routes" replace />} />
           <Route path="logistics/routes" element={<DeliveryRoutesPage />} />

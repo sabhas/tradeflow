@@ -37,6 +37,8 @@ function serializeMovement(m: InventoryMovement) {
     refType: m.refType,
     refId: m.refId,
     grnLineId: m.grnLineId ?? null,
+    invoiceLineId: m.invoiceLineId ?? null,
+    stockTransferLineId: m.stockTransferLineId ?? null,
     unitCost: m.unitCost,
     movementDate: formatMovementDate(m.movementDate),
     branchId: m.branchId,
@@ -102,7 +104,64 @@ inventoryRouter.get('/balances', requirePermission('inventory', 'read'), async (
   qb.orderBy('p.name', 'ASC').addOrderBy('w.name', 'ASC');
 
   const rows = await qb.getMany();
-  res.json({ data: rows.map(serializeBalance) });
+  if (rows.length === 0) {
+    res.json({ data: [] });
+    return;
+  }
+  const pairs = rows.map((r) => ({ pid: r.productId, wid: r.warehouseId }));
+  const layerVals = await dataSource.query(
+    `
+    SELECT product_id AS "productId", warehouse_id AS "warehouseId",
+      COALESCE(SUM(quantity_remaining::numeric * unit_cost::numeric), 0)::text AS "valueAtLayers"
+    FROM stock_layers
+    WHERE (product_id, warehouse_id) IN (${pairs.map((_, i) => `($${i * 2 + 1}::uuid, $${i * 2 + 2}::uuid)`).join(', ')})
+    GROUP BY product_id, warehouse_id
+    `,
+    pairs.flatMap((p) => [p.pid, p.wid])
+  );
+  const vmap = new Map<string, string>();
+  for (const v of layerVals) {
+    vmap.set(`${v.productId}|${v.warehouseId}`, v.valueAtLayers);
+  }
+  res.json({
+    data: rows.map((sb) => {
+      const s = serializeBalance(sb);
+      const lv = vmap.get(`${sb.productId}|${sb.warehouseId}`);
+      return { ...s, valueAtLayers: lv ?? '0.0000' };
+    }),
+  });
+});
+
+inventoryRouter.get('/balances/low-stock', requirePermission('inventory', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const rows = await dataSource.query(
+    `
+    SELECT
+      sb.product_id AS "productId",
+      p.sku AS "productSku",
+      p.name AS "productName",
+      sb.warehouse_id AS "warehouseId",
+      w.name AS "warehouseName",
+      w.code AS "warehouseCode",
+      sb.quantity::text AS "quantityOnHand",
+      p.min_stock::text AS "minStock",
+      p.reorder_level::text AS "reorderLevel"
+    FROM stock_balances sb
+    INNER JOIN products p ON p.id = sb.product_id AND p.deleted_at IS NULL
+    INNER JOIN warehouses w ON w.id = sb.warehouse_id
+    WHERE (p.min_stock IS NOT NULL OR p.reorder_level IS NOT NULL)
+      AND sb.quantity::numeric > 0
+      AND (
+        (p.min_stock IS NOT NULL AND sb.quantity::numeric < p.min_stock::numeric)
+        OR (p.reorder_level IS NOT NULL AND sb.quantity::numeric < p.reorder_level::numeric)
+      )
+      AND ($1::uuid IS NULL OR p.branch_id IS NULL OR p.branch_id = $1::uuid)
+      AND ($1::uuid IS NULL OR w.branch_id IS NULL OR w.branch_id = $1::uuid)
+    ORDER BY p.name, w.name
+    `,
+    [branchId || null]
+  );
+  res.json({ data: rows, meta: { rowCount: rows.length } });
 });
 
 inventoryRouter.get('/movements', requirePermission('inventory', 'read'), async (req, res) => {
@@ -181,6 +240,8 @@ inventoryRouter.post(
             movementDate: body.movementDate,
             branchId,
             userId,
+            batchCode: line.batchCode?.trim() || undefined,
+            expiryDate: line.expiryDate?.trim() ? line.expiryDate.slice(0, 10) : undefined,
           });
           out.push(mov);
         }

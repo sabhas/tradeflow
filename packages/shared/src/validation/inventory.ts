@@ -16,6 +16,8 @@ const openingLineSchema = z
     productId: z.string().uuid(),
     quantity: decimal,
     unitCost: decimal.optional().nullable(),
+    batchCode: z.string().max(128).optional().nullable(),
+    expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   })
   .refine((l) => parseFloat(l.quantity) > 0, { message: 'Opening quantity must be positive' });
 
@@ -41,3 +43,21 @@ export const postStockAdjustmentSchema = z.object({
 
 export type PostOpeningBalanceInput = z.infer<typeof postOpeningBalanceSchema>;
 export type PostStockAdjustmentInput = z.infer<typeof postStockAdjustmentSchema>;
+
+const optionalUuid = z.union([z.string().uuid(), z.null()]).optional();
+
+export const createStockTransferSchema = z.object({
+  fromWarehouseId: z.string().uuid(),
+  toWarehouseId: z.string().uuid(),
+  transferDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notes: z.string().optional().nullable(),
+  branchId: optionalUuid,
+  lines: z
+    .array(
+      z.object({
+        productId: z.string().uuid(),
+        quantity: decimal,
+      })
+    )
+    .min(1),
+});

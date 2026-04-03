@@ -38,6 +38,7 @@ function serializeGeneral(cs: CompanySettings) {
     moneyDecimals: cs.moneyDecimals,
     quantityDecimals: cs.quantityDecimals,
     roundingMode: cs.roundingMode,
+    inventoryCostingMethod: cs.inventoryCostingMethod ?? 'fifo',
     defaultInvoiceTemplateId: cs.defaultInvoiceTemplateId ?? null,
     defaultCashAccountId: cs.defaultCashAccountId,
     defaultBankAccountId: cs.defaultBankAccountId,
@@ -98,6 +99,7 @@ companySettingsRouter.patch(
     if (b.quantityDecimals !== undefined) row.quantityDecimals = b.quantityDecimals;
     if (b.roundingMode !== undefined) row.roundingMode = b.roundingMode;
     if (b.defaultInvoiceTemplateId !== undefined) row.defaultInvoiceTemplateId = b.defaultInvoiceTemplateId ?? undefined;
+    if (b.inventoryCostingMethod !== undefined) row.inventoryCostingMethod = b.inventoryCostingMethod;
     await dataSource.getRepository(CompanySettings).save(row);
     row = await dataSource.getRepository(CompanySettings).findOneOrFail({ order: { id: 'ASC' } });
     res.json({ data: serializeGeneral(row) });

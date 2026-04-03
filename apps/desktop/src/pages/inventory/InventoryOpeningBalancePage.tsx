@@ -17,7 +17,7 @@ interface ProductOpt {
   name: string;
 }
 
-type Line = { productId: string; quantity: string; unitCost: string };
+type Line = { productId: string; quantity: string; unitCost: string; batchCode: string; expiryDate: string };
 
 export function InventoryOpeningBalancePage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
@@ -26,7 +26,9 @@ export function InventoryOpeningBalancePage() {
 
   const [warehouseId, setWarehouseId] = useState('');
   const [movementDate, setMovementDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [lines, setLines] = useState<Line[]>([{ productId: '', quantity: '1', unitCost: '' }]);
+  const [lines, setLines] = useState<Line[]>([
+    { productId: '', quantity: '1', unitCost: '', batchCode: '', expiryDate: '' },
+  ]);
   const [error, setError] = useState<string | null>(null);
 
   const warehouses = useQuery({
@@ -69,13 +71,15 @@ export function InventoryOpeningBalancePage() {
             productId: l.productId,
             quantity: l.quantity,
             unitCost: l.unitCost.trim() ? l.unitCost : null,
+            batchCode: l.batchCode.trim() ? l.batchCode.trim() : null,
+            expiryDate: l.expiryDate.trim() ? l.expiryDate : null,
           })),
         }),
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['inventory'] });
-      setLines([{ productId: '', quantity: '1', unitCost: '' }]);
+      setLines([{ productId: '', quantity: '1', unitCost: '', batchCode: '', expiryDate: '' }]);
     },
     onError: (e: Error) => setError(e.message || 'Request failed'),
   });
@@ -126,7 +130,9 @@ export function InventoryOpeningBalancePage() {
             <button
               type="button"
               className="text-sm text-indigo-600 hover:text-indigo-800"
-              onClick={() => setLines((prev) => [...prev, { productId: '', quantity: '1', unitCost: '' }])}
+              onClick={() =>
+                setLines((prev) => [...prev, { productId: '', quantity: '1', unitCost: '', batchCode: '', expiryDate: '' }])
+              }
             >
               + Add line
             </button>
@@ -174,6 +180,28 @@ export function InventoryOpeningBalancePage() {
                   value={line.unitCost}
                   onChange={(e) =>
                     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, unitCost: e.target.value } : l)))
+                  }
+                />
+              </label>
+              <label className="w-28 flex flex-col gap-1 text-sm">
+                <span className="text-slate-600">Batch</span>
+                <input
+                  className="rounded-md border border-slate-300 px-2 py-2 text-sm"
+                  placeholder="Opt."
+                  value={line.batchCode}
+                  onChange={(e) =>
+                    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, batchCode: e.target.value } : l)))
+                  }
+                />
+              </label>
+              <label className="w-36 flex flex-col gap-1 text-sm">
+                <span className="text-slate-600">Expiry</span>
+                <input
+                  type="date"
+                  className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  value={line.expiryDate}
+                  onChange={(e) =>
+                    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, expiryDate: e.target.value } : l)))
                   }
                 />
               </label>

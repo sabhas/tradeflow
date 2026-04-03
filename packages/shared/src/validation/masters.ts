@@ -43,6 +43,8 @@ const productPriceRowSchema = z.object({
   price: decimal,
 });
 
+export const costingMethodSchema = z.enum(['fifo', 'lifo']).nullable().optional();
+
 export const createProductSchema = z.object({
   categoryId: z.string().uuid(),
   sku: z.string().min(1),
@@ -53,6 +55,7 @@ export const createProductSchema = z.object({
   sellingPrice: decimal.optional(),
   batchTracked: z.boolean().optional(),
   expiryTracked: z.boolean().optional(),
+  costingMethod: costingMethodSchema,
   minStock: decimal.optional().nullable(),
   reorderLevel: decimal.optional().nullable(),
   branchId: optionalUuid,
