@@ -14,6 +14,11 @@ import { salespersonsRouter } from './routes/salespersons';
 import { taxProfilesRouter } from './routes/taxProfiles';
 import { paymentTermsRouter } from './routes/paymentTerms';
 import { inventoryRouter } from './routes/inventory';
+import { quotationsRouter } from './routes/quotations';
+import { salesOrdersRouter } from './routes/salesOrders';
+import { invoicesRouter } from './routes/invoices';
+import { receiptsRouter } from './routes/receipts';
+import { reportsRouter } from './routes/reports';
 
 export const app = express();
 
@@ -34,3 +39,8 @@ app.use('/salespersons', salespersonsRouter);
 app.use('/tax-profiles', taxProfilesRouter);
 app.use('/payment-terms', paymentTermsRouter);
 app.use('/inventory', inventoryRouter);
+app.use('/quotations', quotationsRouter);
+app.use('/sales-orders', salesOrdersRouter);
+app.use('/invoices', invoicesRouter);
+app.use('/receipts', receiptsRouter);
+app.use('/reports', reportsRouter);

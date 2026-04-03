@@ -17,6 +17,11 @@ import { InventoryStockPage } from './pages/inventory/InventoryStockPage';
 import { InventoryMovementsPage } from './pages/inventory/InventoryMovementsPage';
 import { InventoryOpeningBalancePage } from './pages/inventory/InventoryOpeningBalancePage';
 import { InventoryAdjustmentPage } from './pages/inventory/InventoryAdjustmentPage';
+import { QuotationsPage } from './pages/sales/QuotationsPage';
+import { SalesOrdersPage } from './pages/sales/SalesOrdersPage';
+import { InvoicesPage } from './pages/sales/InvoicesPage';
+import { ReceiptsPage } from './pages/sales/ReceiptsPage';
+import { SalesReportsPage } from './pages/sales/SalesReportsPage';
 import { useAppSelector } from './hooks/useAppSelector';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,6 +66,12 @@ export default function App() {
           <Route path="inventory/movements" element={<InventoryMovementsPage />} />
           <Route path="inventory/opening-balance" element={<InventoryOpeningBalancePage />} />
           <Route path="inventory/adjustment" element={<InventoryAdjustmentPage />} />
+          <Route path="sales" element={<Navigate to="/sales/quotations" replace />} />
+          <Route path="sales/quotations" element={<QuotationsPage />} />
+          <Route path="sales/orders" element={<SalesOrdersPage />} />
+          <Route path="sales/invoices" element={<InvoicesPage />} />
+          <Route path="sales/receipts" element={<ReceiptsPage />} />
+          <Route path="sales/reports" element={<SalesReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

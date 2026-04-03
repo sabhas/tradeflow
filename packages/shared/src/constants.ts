@@ -17,6 +17,7 @@ export const PERMISSIONS = {
   'sales:read': 'sales:read',
   'sales:create': 'sales:create',
   'sales:update': 'sales:update',
+  'sales:post': 'sales:post',
 
   // Accounting (future)
   'accounting:read': 'accounting:read',

@@ -104,6 +104,31 @@ productsRouter.get('/', requirePermission('masters.products', 'read'), async (re
 });
 
 productsRouter.get(
+  '/lookup/barcode/:barcode',
+  requirePermission('masters.products', 'read'),
+  async (req, res) => {
+    const code = req.params.barcode.trim();
+    if (!code) {
+      res.status(400).json({ error: 'Barcode required' });
+      return;
+    }
+    const branchId = resolveBranchId(req);
+    const qb = dataSource
+      .getRepository(Product)
+      .createQueryBuilder('p')
+      .where('p.deleted_at IS NULL AND p.barcode = :code', { code });
+    if (branchId) qb.andWhere('(p.branch_id IS NULL OR p.branch_id = :bid)', { bid: branchId });
+    const p = await qb.getOne();
+    if (!p) {
+      res.status(404).json({ error: 'No product for barcode' });
+      return;
+    }
+    const prices = await loadProductPrices(p.id);
+    res.json({ data: serializeProduct(p, prices) });
+  }
+);
+
+productsRouter.get(
   '/:id/prices',
   requirePermission('masters.products', 'read'),
   async (req, res) => {

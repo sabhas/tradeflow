@@ -1,5 +1,9 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+export function getApiBase(): string {
+  return API_BASE;
+}
+
 export function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('tradeflow_token');
   const h: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -23,4 +27,16 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 export async function apiFetchData<T>(path: string, init?: RequestInit): Promise<T> {
   const json = await apiFetch<{ data: T }>(path, init);
   return json.data;
+}
+
+/** Open an authenticated URL (e.g. HTML invoice) in a new tab via blob URL. */
+export async function openAuthenticatedRoute(path: string): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, { headers: getAuthHeaders() });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.message || err.error || `Request failed: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener');
 }

@@ -48,6 +48,100 @@ customersRouter.get('/', requirePermission('masters.customers', 'read'), async (
   res.json({ data: rows.map(serialize), meta: { total, limit, offset } });
 });
 
+customersRouter.get('/:id/statement', requirePermission('sales', 'read'), async (req, res) => {
+  const { id } = req.params;
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+
+  const op = await dataSource.query(
+    `
+    SELECT (
+      (SELECT COALESCE(SUM(i.total::numeric), 0) FROM invoices i
+       WHERE i.customer_id = $1 AND i.status = 'posted' AND i.payment_type = 'credit'
+         AND i.invoice_date < $2::date)
+      -
+      (SELECT COALESCE(SUM(ra.amount::numeric), 0)
+       FROM receipt_allocations ra
+       INNER JOIN receipts r ON r.id = ra.receipt_id
+       INNER JOIN invoices i ON i.id = ra.invoice_id
+       WHERE i.customer_id = $1 AND i.status = 'posted' AND i.payment_type = 'credit'
+         AND r.receipt_date < $2::date)
+    )::text AS opening
+    `,
+    [id, dateFrom]
+  );
+  const opening = op[0]?.opening ?? '0.0000';
+
+  const invoices = await dataSource.query(
+    `
+    SELECT i.id, i.invoice_date AS date, i.total::text AS amount, i.due_date AS "dueDate"
+    FROM invoices i
+    WHERE i.customer_id = $1 AND i.status = 'posted' AND i.payment_type = 'credit'
+      AND i.invoice_date >= $2::date AND i.invoice_date <= $3::date
+    ORDER BY i.invoice_date ASC, i.id ASC
+    `,
+    [id, dateFrom, dateTo]
+  );
+
+  const receipts = await dataSource.query(
+    `
+    SELECT r.id, r.receipt_date AS date, r.amount::text AS amount, r.reference AS reference
+    FROM receipts r
+    WHERE r.customer_id = $1
+      AND r.receipt_date >= $2::date AND r.receipt_date <= $3::date
+    ORDER BY r.receipt_date ASC, r.id ASC
+    `,
+    [id, dateFrom, dateTo]
+  );
+
+  type Row =
+    | { kind: 'invoice'; date: string; id: string; debit: string; credit: string; ref: string }
+    | { kind: 'receipt'; date: string; id: string; debit: string; credit: string; ref: string };
+
+  const merged: Row[] = [
+    ...invoices.map(
+      (i: { id: string; date: string; amount: string }) =>
+        ({
+          kind: 'invoice',
+          date: i.date,
+          id: i.id,
+          debit: i.amount,
+          credit: '0.0000',
+          ref: `Invoice ${i.id.slice(0, 8)}`,
+        }) satisfies Row
+    ),
+    ...receipts.map(
+      (r: { id: string; date: string; amount: string; reference: string | null }) =>
+        ({
+          kind: 'receipt',
+          date: r.date,
+          id: r.id,
+          debit: '0.0000',
+          credit: r.amount,
+          ref: r.reference || `Receipt ${r.id.slice(0, 8)}`,
+        }) satisfies Row
+    ),
+  ];
+  merged.sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
+
+  let balance = parseFloat(opening);
+  const lines = merged.map((row) => {
+    balance += parseFloat(row.debit) - parseFloat(row.credit);
+    return { ...row, balance: balance.toFixed(4) };
+  });
+
+  res.json({
+    data: {
+      customerId: id,
+      dateFrom,
+      dateTo,
+      openingBalance: opening,
+      lines,
+      closingBalance: balance.toFixed(4),
+    },
+  });
+});
+
 customersRouter.get('/:id', requirePermission('masters.customers', 'read'), async (req, res) => {
   const row = await dataSource.getRepository(Customer).findOne({
     where: { id: req.params.id, deletedAt: IsNull() },

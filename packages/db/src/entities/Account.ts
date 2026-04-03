@@ -1,0 +1,46 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Branch } from './Branch';
+
+export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
+
+@Entity('accounts')
+export class Account {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column()
+  code!: string;
+
+  @Column()
+  name!: string;
+
+  @Column({ type: 'varchar', length: 32 })
+  type!: AccountType;
+
+  @Column({ name: 'parent_id', nullable: true })
+  parentId?: string;
+
+  @Column({ name: 'is_system', default: false })
+  isSystem!: boolean;
+
+  @Column({ name: 'branch_id', nullable: true })
+  branchId?: string;
+
+  @ManyToOne(() => Branch, { nullable: true })
+  @JoinColumn({ name: 'branch_id' })
+  branch?: Branch;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt!: Date;
+}

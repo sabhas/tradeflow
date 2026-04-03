@@ -23,6 +23,7 @@ const menuItems: Array<{
   { path: '/masters/tax-profiles', label: 'Tax profiles', icon: '🧾', permission: 'masters.tax:read' },
   { path: '/masters/payment-terms', label: 'Payment terms', icon: '📅', permission: 'masters.payment_terms:read' },
   { path: '/inventory/stock', label: 'Inventory', icon: '🗃️', permission: 'inventory:read' },
+  { path: '/sales/quotations', label: 'Sales', icon: '🧾', permission: 'sales:read' },
 ];
 
 export function Sidebar() {
