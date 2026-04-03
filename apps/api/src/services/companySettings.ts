@@ -34,3 +34,12 @@ export async function resolveLiquidAccountId(
   const { cashId, bankId } = await getCompanyAccountingSettings(manager);
   return isBankPaymentMethod(paymentMethod) ? bankId : cashId;
 }
+
+export async function getCompanySettingsRow(manager: EntityManager): Promise<CompanySettings> {
+  const row = await manager.getRepository(CompanySettings).findOne({
+    order: { id: 'ASC' },
+    relations: ['defaultInvoiceTemplate'],
+  });
+  if (!row) throw new Error('Company settings not initialized');
+  return row;
+}

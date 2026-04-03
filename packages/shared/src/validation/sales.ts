@@ -50,6 +50,7 @@ export const createInvoiceSchema = z.object({
   warehouseId: z.string().uuid(),
   salesOrderId: optionalUuid,
   salespersonId: optionalUuid,
+  invoiceTemplateId: optionalUuid,
   notes: z.string().optional().nullable(),
   branchId: optionalUuid,
   discountAmount: decimal.optional(),

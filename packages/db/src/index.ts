@@ -37,6 +37,7 @@ export * from './entities/SupplierInvoiceLine';
 export * from './entities/SupplierPayment';
 export * from './entities/SupplierPaymentAllocation';
 export * from './entities/CompanySettings';
+export * from './entities/InvoiceTemplate';
 export * from './entities/DeliveryRoute';
 export * from './entities/RouteStop';
 export * from './entities/DeliveryRun';

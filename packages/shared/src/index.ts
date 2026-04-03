@@ -9,3 +9,4 @@ export * from './validation/purchases';
 export * from './validation/accounting';
 export * from './validation/logistics';
 export * from './validation/importExport';
+export * from './validation/settings';

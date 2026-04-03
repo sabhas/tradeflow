@@ -60,6 +60,8 @@ const PERMISSIONS: Array<{ resource: string; action: string; code: string }> = [
   { resource: 'logistics.deliveries', action: 'write', code: 'logistics.deliveries:write' },
   { resource: 'logistics.pod', action: 'write', code: 'logistics.pod:write' },
   { resource: 'reports.logistics', action: 'read', code: 'reports.logistics:read' },
+  { resource: 'settings', action: 'read', code: 'settings:read' },
+  { resource: 'settings', action: 'write', code: 'settings:write' },
 ];
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {

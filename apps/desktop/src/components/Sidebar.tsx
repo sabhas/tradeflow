@@ -12,6 +12,7 @@ const menuItems: Array<{
   anyOf?: string[];
 }> = [
   { path: '/', label: 'Dashboard', icon: '📊', permission: null },
+  { path: '/settings', label: 'Settings', icon: '⚙️', permission: 'settings:read' },
   { path: '/audit-logs', label: 'Audit Logs', icon: '📋', permission: 'audit:read' },
   { path: '/recycle-bin', label: 'Recycle bin', icon: '♻️', permission: 'recycle_bin:read' },
   { path: '/masters/product-categories', label: 'Categories', icon: '🌳', permission: 'masters.products:read' },

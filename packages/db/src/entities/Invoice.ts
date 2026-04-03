@@ -16,6 +16,7 @@ import { Warehouse } from './Warehouse';
 import { SalesOrder } from './SalesOrder';
 import { Salesperson } from './Salesperson';
 import { InvoiceLine } from './InvoiceLine';
+import { InvoiceTemplate } from './InvoiceTemplate';
 
 @Entity('invoices')
 @Index(['customerId', 'status'])
@@ -93,6 +94,13 @@ export class Invoice {
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'created_by' })
   creator?: User;
+
+  @Column({ name: 'invoice_template_id', nullable: true })
+  invoiceTemplateId?: string;
+
+  @ManyToOne(() => InvoiceTemplate, { nullable: true })
+  @JoinColumn({ name: 'invoice_template_id' })
+  invoiceTemplate?: InvoiceTemplate;
 
   @OneToMany(() => InvoiceLine, (l) => l.invoice)
   lines!: InvoiceLine[];

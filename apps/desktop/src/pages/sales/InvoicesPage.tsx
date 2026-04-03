@@ -43,6 +43,7 @@ export function InvoicesPage() {
   const canRead = hasPermission(permissions, 'sales:read');
   const canWrite = hasPermission(permissions, 'sales:create') || hasPermission(permissions, 'sales:update');
   const canPost = hasPermission(permissions, 'sales:post');
+  const canPickTemplate = hasPermission(permissions, 'settings:read');
   const qc = useQueryClient();
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -56,6 +57,7 @@ export function InvoicesPage() {
   const [salespersonId, setSalespersonId] = useState('');
   const [notes, setNotes] = useState('');
   const [headerDiscount, setHeaderDiscount] = useState('0');
+  const [invoiceTemplateId, setInvoiceTemplateId] = useState('');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,6 +85,7 @@ export function InvoicesPage() {
           notes?: string;
           discountAmount: string;
           salespersonId?: string | null;
+          invoiceTemplateId?: string | null;
         };
       }>(`/invoices/${editingId}`).then((r) => r.data),
   });
@@ -98,6 +101,7 @@ export function InvoicesPage() {
     setSalespersonId(d.salespersonId ?? '');
     setNotes(d.notes ?? '');
     setHeaderDiscount(d.discountAmount);
+    setInvoiceTemplateId(d.invoiceTemplateId ?? '');
     setLines(
       (d.lines || []).length
         ? d.lines.map((l) => ({
@@ -139,6 +143,12 @@ export function InvoicesPage() {
     queryKey: ['salespersons', 'inv-panel'],
     enabled: canRead && panelOpen,
     queryFn: () => apiFetch<{ data: Array<{ id: string; name: string }> }>('/salespersons').then((r) => r.data),
+  });
+
+  const invoiceTemplates = useQuery({
+    queryKey: ['invoice-templates'],
+    enabled: canRead && panelOpen && canPickTemplate,
+    queryFn: () => apiFetch<{ data: Array<{ id: string; name: string }> }>('/invoice-templates').then((r) => r.data),
   });
 
   useEffect(() => {
@@ -190,7 +200,7 @@ export function InvoicesPage() {
       if (!customerId) throw new Error('Select a customer');
       if (!warehouseId) throw new Error('Select a warehouse');
       if (cleaned.length === 0) throw new Error('Add at least one line');
-      const payload = {
+      const payload: Record<string, unknown> = {
         customerId,
         invoiceDate,
         dueDate: dueDate || null,
@@ -207,6 +217,9 @@ export function InvoicesPage() {
           taxProfileId: l.taxProfileId || null,
         })),
       };
+      if (canPickTemplate) {
+        payload.invoiceTemplateId = invoiceTemplateId || null;
+      }
       if (editingId) {
         await apiFetch(`/invoices/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
       } else {
@@ -268,6 +281,7 @@ export function InvoicesPage() {
                 setNotes('');
                 setHeaderDiscount('0');
                 setSalespersonId('');
+                setInvoiceTemplateId('');
                 setLines([emptyLine()]);
                 setError(null);
                 setPanelOpen(true);
@@ -431,6 +445,23 @@ export function InvoicesPage() {
                   ))}
                 </select>
               </label>
+              {canPickTemplate && (
+                <label className="block text-sm">
+                  <span className="text-slate-600">Invoice template</span>
+                  <select
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    value={invoiceTemplateId}
+                    onChange={(e) => setInvoiceTemplateId(e.target.value)}
+                  >
+                    <option value="">Default (from settings)</option>
+                    {(invoiceTemplates.data ?? []).map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="block text-sm">
                 <span className="text-slate-600">Invoice date</span>
                 <input

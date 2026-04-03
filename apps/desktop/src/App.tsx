@@ -44,6 +44,7 @@ import { ImportHubPage } from './pages/import/ImportHubPage';
 import { ImportProductsPage } from './pages/import/ImportProductsPage';
 import { ImportCustomersPage } from './pages/import/ImportCustomersPage';
 import { ImportOpeningBalancesPage } from './pages/import/ImportOpeningBalancesPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 import { useAppSelector } from './hooks/useAppSelector';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -72,6 +73,7 @@ export default function App() {
           }
         >
           <Route index element={<DashboardPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route path="recycle-bin" element={<RecycleBinPage />} />
           <Route path="masters/product-categories" element={<ProductCategoriesPage />} />

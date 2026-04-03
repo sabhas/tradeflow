@@ -40,6 +40,7 @@ import { SupplierInvoiceLine } from './entities/SupplierInvoiceLine';
 import { SupplierPayment } from './entities/SupplierPayment';
 import { SupplierPaymentAllocation } from './entities/SupplierPaymentAllocation';
 import { CompanySettings } from './entities/CompanySettings';
+import { InvoiceTemplate } from './entities/InvoiceTemplate';
 import { DeliveryRoute } from './entities/DeliveryRoute';
 import { RouteStop } from './entities/RouteStop';
 import { DeliveryRun } from './entities/DeliveryRun';
@@ -92,6 +93,7 @@ export const dataSource = new DataSource({
     SupplierPayment,
     SupplierPaymentAllocation,
     CompanySettings,
+    InvoiceTemplate,
     DeliveryRoute,
     RouteStop,
     DeliveryRun,

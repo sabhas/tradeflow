@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { IsNull } from 'typeorm';
-import { dataSource, Customer, Invoice, InvoiceLine } from '@tradeflow/db';
+import { dataSource, CompanySettings, Customer, Invoice, InvoiceLine, InvoiceTemplate } from '@tradeflow/db';
 import { createInvoiceSchema, updateInvoiceSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
@@ -9,6 +9,8 @@ import { getPagination } from '../utils/pagination';
 import { computeSalesDocumentTotals } from '../services/salesTotals';
 import { runInTransaction } from '../services/inventoryService';
 import { postInvoice, resolveInvoiceDueDate } from '../services/invoicePosting';
+import { getCompanySettingsRow } from '../services/companySettings';
+import { buildInvoicePrintHtml } from '../services/invoiceHtml';
 
 export const invoicesRouter = Router();
 invoicesRouter.use(authMiddleware, loadUser);
@@ -16,7 +18,7 @@ invoicesRouter.use(authMiddleware, loadUser);
 async function pdfHandler(req: express.Request, res: express.Response) {
   const inv = await dataSource.getRepository(Invoice).findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
-    relations: ['lines', 'lines.product', 'customer', 'warehouse'],
+    relations: ['lines', 'lines.product', 'customer', 'customer.paymentTerms', 'warehouse', 'invoiceTemplate'],
   });
   if (!inv) {
     res.status(404).json({ error: 'Not found' });
@@ -24,61 +26,40 @@ async function pdfHandler(req: express.Request, res: express.Response) {
   }
   const cust =
     inv.customer ||
-    (await dataSource.getRepository(Customer).findOne({ where: { id: inv.customerId, deletedAt: IsNull() } }));
+    (await dataSource.getRepository(Customer).findOne({
+      where: { id: inv.customerId, deletedAt: IsNull() },
+      relations: ['paymentTerms'],
+    }));
   const name = cust?.name ?? 'Customer';
-  const rows =
-    inv.lines
-      ?.map(
-        (l) => `<tr>
-    <td>${escapeHtml(l.product?.name ?? l.productId)}</td>
-    <td style="text-align:right">${l.quantity}</td>
-    <td style="text-align:right">${l.unitPrice}</td>
-    <td style="text-align:right">${l.discountAmount}</td>
-    <td style="text-align:right">${l.taxAmount}</td>
-    <td style="text-align:right">${(
-      parseFloat(l.quantity) * parseFloat(l.unitPrice) -
-      parseFloat(l.discountAmount) +
-      parseFloat(l.taxAmount)
-    ).toFixed(4)}</td>
-  </tr>`
-      )
-      .join('') ?? '';
-  const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Invoice ${inv.id.slice(0, 8)}</title>
-<style>
-  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 24px auto; color: #111; }
-  h1 { font-size: 1.5rem; }
-  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-  th, td { border: 1px solid #ccc; padding: 8px; font-size: 14px; }
-  th { background: #f4f4f5; text-align: left; }
-  .totals { margin-top: 16px; text-align: right; }
-</style></head><body>
-  <h1>Tax invoice</h1>
-  <p><strong>${escapeHtml(name)}</strong><br/>
-  Date: ${inv.invoiceDate} · Due: ${inv.dueDate} · Status: ${inv.status}</p>
-  <p>Warehouse: ${escapeHtml(inv.warehouse?.name ?? inv.warehouseId)} · Payment: ${inv.paymentType}</p>
-  <table>
-    <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Disc</th><th>Tax</th><th>Line</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <div class="totals">
-    <p>Subtotal: ${inv.subtotal}</p>
-    <p>Discount: ${inv.discountAmount}</p>
-    <p>Tax: ${inv.taxAmount}</p>
-    <p><strong>Total: ${inv.total}</strong></p>
-  </div>
-  <script>window.onload = function() { window.print(); }</script>
-</body></html>`;
+  const company = await dataSource.getRepository(CompanySettings).findOne({
+    order: { id: 'ASC' },
+    relations: ['defaultInvoiceTemplate'],
+  });
+  if (!company) {
+    res.status(500).json({ error: 'Company settings not initialized' });
+    return;
+  }
+  let template: InvoiceTemplate | null = inv.invoiceTemplate ?? null;
+  if (!template && company.defaultInvoiceTemplateId) {
+    template = await dataSource.getRepository(InvoiceTemplate).findOne({
+      where: { id: company.defaultInvoiceTemplateId },
+    });
+  }
+  const productNames = new Map<string, string>();
+  for (const l of inv.lines ?? []) {
+    if (l.product?.name) productNames.set(l.productId, l.product.name);
+  }
+  const html = buildInvoicePrintHtml({
+    invoice: inv,
+    lines: inv.lines ?? [],
+    customerName: name,
+    company,
+    template,
+    productNames,
+    paymentTermsLabel: cust?.paymentTerms?.name ?? null,
+  });
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 function serialize(inv: Invoice, lines?: InvoiceLine[]) {
@@ -98,6 +79,7 @@ function serialize(inv: Invoice, lines?: InvoiceLine[]) {
     total: inv.total,
     notes: inv.notes,
     branchId: inv.branchId,
+    invoiceTemplateId: inv.invoiceTemplateId ?? null,
     createdBy: inv.createdBy,
     createdAt: inv.createdAt,
     updatedAt: inv.updatedAt,
@@ -167,6 +149,14 @@ invoicesRouter.post(
           })),
           b.discountAmount
         );
+        let invoiceTemplateId: string | undefined = b.invoiceTemplateId ?? undefined;
+        if (invoiceTemplateId) {
+          const t = await manager.findOne(InvoiceTemplate, { where: { id: invoiceTemplateId } });
+          if (!t) throw new Error('Invoice template not found');
+        } else {
+          const cs = await getCompanySettingsRow(manager);
+          invoiceTemplateId = cs.defaultInvoiceTemplateId ?? undefined;
+        }
         const inv = manager.create(Invoice, {
           customerId: b.customerId,
           invoiceDate: b.invoiceDate.slice(0, 10),
@@ -181,6 +171,7 @@ invoicesRouter.post(
           notes: b.notes ?? undefined,
           salesOrderId: b.salesOrderId ?? undefined,
           salespersonId: b.salespersonId ?? undefined,
+          invoiceTemplateId,
           branchId: b.branchId ?? req.user?.branchId ?? undefined,
           createdBy: req.auth?.userId,
         });
@@ -271,6 +262,15 @@ invoicesRouter.patch(
         if (b.salesOrderId !== undefined) inv.salesOrderId = b.salesOrderId ?? undefined;
         if (b.salespersonId !== undefined) inv.salespersonId = b.salespersonId ?? undefined;
         if (b.branchId !== undefined) inv.branchId = b.branchId ?? undefined;
+        if (b.invoiceTemplateId !== undefined) {
+          if (b.invoiceTemplateId) {
+            const t = await manager.findOne(InvoiceTemplate, { where: { id: b.invoiceTemplateId } });
+            if (!t) throw new Error('Invoice template not found');
+            inv.invoiceTemplateId = b.invoiceTemplateId;
+          } else {
+            inv.invoiceTemplateId = undefined;
+          }
+        }
 
         if (b.dueDate !== undefined && b.dueDate !== null) {
           inv.dueDate = b.dueDate.slice(0, 10);
