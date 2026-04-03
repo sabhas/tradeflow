@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
-import { ReportsSubNav } from '../../components/ReportsSubNav';
 import { downloadXlsx } from '../../lib/downloadXlsx';
 import { hasPermission } from '../../lib/permissions';
 import { printTableAsPdf } from '../../lib/printTable';
@@ -269,9 +268,8 @@ export function TaxReportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Reports</h1>
-      <p className="mt-1 text-slate-600">Tax collected, tax paid, and period summary from posted documents</p>
-      <ReportsSubNav />
+      <h2 className="text-lg font-semibold text-slate-800">Tax</h2>
+      <p className="mt-1 text-sm text-slate-600">Collected, paid, and period summary from posted documents.</p>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {canCollected && (

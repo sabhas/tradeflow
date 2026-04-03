@@ -20,8 +20,166 @@ function requireTaxSummaryAccess(req: Request, res: Response, next: NextFunction
 export const reportsRouter = Router();
 reportsRouter.use(authMiddleware, loadUser);
 
-/** Receivables aging by customer (posted credit invoices with open balance). */
-reportsRouter.get('/aging', requirePermission('sales', 'read'), async (req, res) => {
+/** Posted invoices aggregated by calendar day (operational sales). */
+reportsRouter.get('/daily-sales', requirePermission('sales', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const customerId = (req.query.customerId as string)?.trim() || null;
+  const warehouseId = (req.query.warehouseId as string)?.trim() || null;
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      i.invoice_date::text AS date,
+      COUNT(*)::int AS count,
+      SUM(i.total::numeric)::text AS "totalAmount"
+    FROM invoices i
+    WHERE i.status = 'posted'
+      AND i.invoice_date >= $1::date
+      AND i.invoice_date <= $2::date
+      AND ($3::uuid IS NULL OR i.customer_id = $3::uuid)
+      AND ($4::uuid IS NULL OR i.warehouse_id = $4::uuid)
+      AND ($5::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $5::uuid)
+    GROUP BY i.invoice_date
+    ORDER BY i.invoice_date
+    `,
+    [dateFrom, dateTo, customerId, warehouseId, branchId || null]
+  );
+
+  let grandTotal = 0;
+  let invoiceCount = 0;
+  for (const r of rows) {
+    grandTotal += parseFloat(r.totalAmount);
+    invoiceCount += Number(r.count);
+  }
+
+  res.json({
+    data: rows,
+    meta: { dateFrom, dateTo, customerId, warehouseId, grandTotal: grandTotal.toFixed(4), invoiceCount },
+  });
+});
+
+/** Inventory movements in period with optional product / warehouse filters. */
+reportsRouter.get('/stock-movement', requirePermission('inventory', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const productId = (req.query.productId as string)?.trim() || null;
+  const warehouseId = (req.query.warehouseId as string)?.trim() || null;
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      im.movement_date::text AS date,
+      im.id AS "movementId",
+      p.id AS "productId",
+      p.sku AS "productSku",
+      p.name AS "productName",
+      im.ref_type AS type,
+      im.quantity_delta::text AS qty,
+      im.ref_id::text AS "refId",
+      w.id AS "warehouseId",
+      w.name AS "warehouseName",
+      COALESCE(im.notes, '') AS notes
+    FROM inventory_movements im
+    INNER JOIN products p ON p.id = im.product_id AND p.deleted_at IS NULL
+    INNER JOIN warehouses w ON w.id = im.warehouse_id
+    WHERE im.movement_date >= $1::date
+      AND im.movement_date <= $2::date
+      AND ($3::uuid IS NULL OR im.product_id = $3::uuid)
+      AND ($4::uuid IS NULL OR im.warehouse_id = $4::uuid)
+      AND ($5::uuid IS NULL OR im.branch_id IS NULL OR im.branch_id = $5::uuid)
+    ORDER BY im.movement_date, im.created_at, im.id
+    `,
+    [dateFrom, dateTo, productId, warehouseId, branchId || null]
+  );
+
+  res.json({ data: rows, meta: { dateFrom, dateTo, productId, warehouseId, rowCount: rows.length } });
+});
+
+/** Products ranked by quantity or line value sold in period (posted invoices). */
+reportsRouter.get('/fast-moving', requirePermission('sales', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const rawLimit = parseInt(String(req.query.limit || '50'), 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 50;
+  const sortBy = (req.query.sortBy as string) === 'value' ? 'value' : 'quantity';
+
+  const orderSql =
+    sortBy === 'value'
+      ? 'SUM((il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric)) DESC NULLS LAST'
+      : 'SUM(il.quantity::numeric) DESC NULLS LAST';
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      il.product_id AS "productId",
+      p.sku AS "productSku",
+      p.name AS "productName",
+      SUM(il.quantity::numeric)::text AS "quantitySold",
+      SUM((il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric))::text AS "lineValue"
+    FROM invoice_lines il
+    INNER JOIN invoices i ON i.id = il.invoice_id
+    INNER JOIN products p ON p.id = il.product_id AND p.deleted_at IS NULL
+    WHERE i.status = 'posted'
+      AND i.invoice_date >= $1::date
+      AND i.invoice_date <= $2::date
+      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+    GROUP BY il.product_id, p.sku, p.name
+    ORDER BY ${orderSql}
+    LIMIT $4
+    `,
+    [dateFrom, dateTo, branchId || null, limit]
+  );
+
+  res.json({ data: rows, meta: { dateFrom, dateTo, limit, sortBy } });
+});
+
+/** Expense accounts with period activity (P&amp;L expense slice). */
+reportsRouter.get('/expense-analysis', requirePermission('accounting', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      a.id AS "accountId",
+      a.code,
+      a.name,
+      COALESCE(SUM(jl.debit), 0)::text AS debit,
+      COALESCE(SUM(jl.credit), 0)::text AS credit,
+      (COALESCE(SUM(jl.debit), 0) - COALESCE(SUM(jl.credit), 0))::text AS "netExpense"
+    FROM accounts a
+    INNER JOIN journal_lines jl ON jl.account_id = a.id
+    INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+      AND je.status = 'posted'
+      AND je.entry_date >= $1::date
+      AND je.entry_date <= $2::date
+      AND ($3::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $3::uuid)
+    WHERE a.type = 'expense'
+      AND ($3::uuid IS NULL OR a.branch_id IS NULL OR a.branch_id = $3::uuid)
+    GROUP BY a.id, a.code, a.name
+    HAVING COALESCE(SUM(jl.debit), 0) != 0 OR COALESCE(SUM(jl.credit), 0) != 0
+    ORDER BY a.code
+    `,
+    [dateFrom, dateTo, branchId || null]
+  );
+
+  let totalNet = 0;
+  for (const r of rows) {
+    totalNet += parseFloat(r.netExpense);
+  }
+
+  res.json({
+    data: rows,
+    meta: { dateFrom, dateTo, totalNetExpense: totalNet.toFixed(4) },
+  });
+});
+
+async function receivablesAgingHandler(req: Request, res: Response) {
   const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const branchId = resolveBranchId(req);
 
@@ -96,7 +254,10 @@ reportsRouter.get('/aging', requirePermission('sales', 'read'), async (req, res)
   }));
 
   res.json({ data, meta: { asOf } });
-});
+}
+
+reportsRouter.get('/aging', requirePermission('sales', 'read'), receivablesAgingHandler);
+reportsRouter.get('/receivables-aging', requirePermission('sales', 'read'), receivablesAgingHandler);
 
 /** Payables aging by supplier (posted supplier invoices with open balance). */
 reportsRouter.get('/payables-aging', requirePermission('purchases.reports', 'read'), async (req, res) => {

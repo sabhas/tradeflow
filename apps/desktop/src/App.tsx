@@ -30,6 +30,10 @@ import { PurchaseReportsPage } from './pages/purchases/PurchaseReportsPage';
 import { ChartOfAccountsPage } from './pages/accounting/ChartOfAccountsPage';
 import { JournalEntriesPage } from './pages/accounting/JournalEntriesPage';
 import { FinancialReportsPage } from './pages/accounting/FinancialReportsPage';
+import { ReportsLayout } from './layouts/ReportsLayout';
+import { ReportsHubPage } from './pages/reports/ReportsHubPage';
+import { OperationalReportsPage } from './pages/reports/OperationalReportsPage';
+import { AgingReportsPage } from './pages/reports/AgingReportsPage';
 import { TaxReportsPage } from './pages/reports/TaxReportsPage';
 import { DeliveryRoutesPage } from './pages/logistics/DeliveryRoutesPage';
 import { DeliveryRunsPage } from './pages/logistics/DeliveryRunsPage';
@@ -95,7 +99,12 @@ export default function App() {
           <Route path="accounting/coa" element={<ChartOfAccountsPage />} />
           <Route path="accounting/journals" element={<JournalEntriesPage />} />
           <Route path="accounting/reports" element={<FinancialReportsPage />} />
-          <Route path="reports/tax" element={<TaxReportsPage />} />
+          <Route path="reports" element={<ReportsLayout />}>
+            <Route index element={<ReportsHubPage />} />
+            <Route path="operational" element={<OperationalReportsPage />} />
+            <Route path="aging" element={<AgingReportsPage />} />
+            <Route path="tax" element={<TaxReportsPage />} />
+          </Route>
           <Route path="logistics" element={<Navigate to="/logistics/routes" replace />} />
           <Route path="logistics/routes" element={<DeliveryRoutesPage />} />
           <Route path="logistics/runs" element={<DeliveryRunsPage />} />

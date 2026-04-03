@@ -40,11 +40,11 @@ const menuItems: Array<{
   },
   { path: '/accounting/coa', label: 'Accounting', icon: '📒', permission: 'accounting:read' },
   {
-    path: '/reports/tax',
-    label: 'Tax reports',
+    path: '/reports',
+    label: 'Reports',
     icon: '📑',
     permission: null,
-    anyOf: ['sales:read', 'purchases.reports:read'],
+    anyOf: ['sales:read', 'purchases.reports:read', 'accounting:read', 'inventory:read'],
   },
   {
     path: '/logistics/routes',
