@@ -39,6 +39,13 @@ const menuItems: Array<{
     ],
   },
   { path: '/accounting/coa', label: 'Accounting', icon: '📒', permission: 'accounting:read' },
+  {
+    path: '/reports/tax',
+    label: 'Tax reports',
+    icon: '📑',
+    permission: null,
+    anyOf: ['sales:read', 'purchases.reports:read'],
+  },
 ];
 
 export function Sidebar() {

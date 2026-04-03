@@ -1,7 +1,21 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import { dataSource } from '@tradeflow/db';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { resolveBranchId } from '../utils/branchScope';
+
+function requireTaxSummaryAccess(req: Request, res: Response, next: NextFunction) {
+  const p = req.auth?.permissions ?? [];
+  const ok =
+    p.includes('*') || p.includes('sales:read') || p.includes('purchases.reports:read');
+  if (!ok) {
+    res.status(403).json({
+      error: 'Forbidden',
+      message: 'Permission sales:read or purchases.reports:read required',
+    });
+    return;
+  }
+  next();
+}
 
 export const reportsRouter = Router();
 reportsRouter.use(authMiddleware, loadUser);
@@ -302,6 +316,276 @@ reportsRouter.get('/balance-sheet', requirePermission('accounting', 'read'), asy
       totalLiabilities: liabilities.toFixed(4),
       totalEquity: equity.toFixed(4),
       liabilitiesPlusEquity: (liabilities + equity).toFixed(4),
+    },
+  });
+});
+
+/** Posted sales invoice lines with tax (audit trail). */
+reportsRouter.get('/tax-collected', requirePermission('sales', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const taxProfileId = (req.query.taxProfileId as string)?.trim() || null;
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      il.id AS "lineId",
+      i.id AS "invoiceId",
+      i.invoice_date AS "invoiceDate",
+      i.customer_id AS "customerId",
+      c.name AS "customerName",
+      il.tax_profile_id AS "taxProfileId",
+      tp.name AS "taxProfileName",
+      tp.rate::text AS "taxProfileRate",
+      tp.is_inclusive AS "taxProfileIsInclusive",
+      il.product_id AS "productId",
+      p.sku AS "productSku",
+      p.name AS "productName",
+      il.quantity::text AS "quantity",
+      il.unit_price::text AS "unitPrice",
+      il.discount_amount::text AS "discountAmount",
+      il.tax_amount::text AS "taxAmount",
+      (il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric)::text AS "lineNetBeforeTax"
+    FROM invoice_lines il
+    INNER JOIN invoices i ON i.id = il.invoice_id
+    INNER JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
+    INNER JOIN products p ON p.id = il.product_id AND p.deleted_at IS NULL
+    LEFT JOIN tax_profiles tp ON tp.id = il.tax_profile_id
+    WHERE i.status = 'posted'
+      AND i.invoice_date >= $1::date
+      AND i.invoice_date <= $2::date
+      AND ($3::uuid IS NULL OR il.tax_profile_id = $3::uuid)
+      AND ($4::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $4::uuid)
+    ORDER BY i.invoice_date, i.id, il.id
+    `,
+    [dateFrom, dateTo, taxProfileId, branchId || null]
+  );
+
+  let totalTax = 0;
+  for (const r of rows) {
+    totalTax += parseFloat(r.taxAmount);
+  }
+
+  res.json({
+    data: rows,
+    meta: { dateFrom, dateTo, taxProfileId, totalTax: totalTax.toFixed(4) },
+  });
+});
+
+/** Posted supplier invoice lines with tax (audit trail). */
+reportsRouter.get('/tax-paid', requirePermission('purchases.reports', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const taxProfileId = (req.query.taxProfileId as string)?.trim() || null;
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      sil.id AS "lineId",
+      si.id AS "supplierInvoiceId",
+      si.invoice_number AS "supplierInvoiceNumber",
+      si.invoice_date AS "invoiceDate",
+      si.supplier_id AS "supplierId",
+      s.name AS "supplierName",
+      sil.tax_profile_id AS "taxProfileId",
+      tp.name AS "taxProfileName",
+      tp.rate::text AS "taxProfileRate",
+      tp.is_inclusive AS "taxProfileIsInclusive",
+      sil.product_id AS "productId",
+      p.sku AS "productSku",
+      p.name AS "productName",
+      sil.quantity::text AS "quantity",
+      sil.unit_price::text AS "unitPrice",
+      sil.discount_amount::text AS "discountAmount",
+      sil.tax_amount::text AS "taxAmount",
+      (sil.quantity::numeric * sil.unit_price::numeric - sil.discount_amount::numeric)::text AS "lineNetBeforeTax"
+    FROM supplier_invoice_lines sil
+    INNER JOIN supplier_invoices si ON si.id = sil.supplier_invoice_id
+    INNER JOIN suppliers s ON s.id = si.supplier_id AND s.deleted_at IS NULL
+    INNER JOIN products p ON p.id = sil.product_id AND p.deleted_at IS NULL
+    LEFT JOIN tax_profiles tp ON tp.id = sil.tax_profile_id
+    WHERE si.status = 'posted'
+      AND si.invoice_date >= $1::date
+      AND si.invoice_date <= $2::date
+      AND ($3::uuid IS NULL OR sil.tax_profile_id = $3::uuid)
+      AND ($4::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $4::uuid)
+    ORDER BY si.invoice_date, si.id, sil.id
+    `,
+    [dateFrom, dateTo, taxProfileId, branchId || null]
+  );
+
+  let totalTax = 0;
+  for (const r of rows) {
+    totalTax += parseFloat(r.taxAmount);
+  }
+
+  res.json({
+    data: rows,
+    meta: { dateFrom, dateTo, taxProfileId, totalTax: totalTax.toFixed(4) },
+  });
+});
+
+/** Collected vs paid tax by tax profile (respects caller permissions per side). */
+reportsRouter.get('/tax-summary', requireTaxSummaryAccess, async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10));
+  const p = req.auth?.permissions ?? [];
+  const all = p.includes('*');
+  const canSales = all || p.includes('sales:read');
+  const canPurch = all || p.includes('purchases.reports:read');
+
+  type AggRow = {
+    taxProfileId: string | null;
+    taxProfileName: string;
+    taxProfileRate: string | null;
+    taxProfileIsInclusive: boolean | null;
+    amount: string;
+  };
+
+  let collected: AggRow[] = [];
+  let paid: AggRow[] = [];
+
+  if (canSales) {
+    collected = await dataSource.query(
+      `
+      SELECT
+        il.tax_profile_id AS "taxProfileId",
+        COALESCE(tp.name, '(No profile)') AS "taxProfileName",
+        tp.rate::text AS "taxProfileRate",
+        tp.is_inclusive AS "taxProfileIsInclusive",
+        SUM(il.tax_amount)::text AS "amount"
+      FROM invoice_lines il
+      INNER JOIN invoices i ON i.id = il.invoice_id
+      LEFT JOIN tax_profiles tp ON tp.id = il.tax_profile_id
+      WHERE i.status = 'posted'
+        AND i.invoice_date >= $1::date
+        AND i.invoice_date <= $2::date
+        AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+      GROUP BY il.tax_profile_id, tp.name, tp.rate, tp.is_inclusive
+      ORDER BY "taxProfileName"
+      `,
+      [dateFrom, dateTo, branchId || null]
+    );
+  }
+
+  if (canPurch) {
+    paid = await dataSource.query(
+      `
+      SELECT
+        sil.tax_profile_id AS "taxProfileId",
+        COALESCE(tp.name, '(No profile)') AS "taxProfileName",
+        tp.rate::text AS "taxProfileRate",
+        tp.is_inclusive AS "taxProfileIsInclusive",
+        SUM(sil.tax_amount)::text AS "amount"
+      FROM supplier_invoice_lines sil
+      INNER JOIN supplier_invoices si ON si.id = sil.supplier_invoice_id
+      LEFT JOIN tax_profiles tp ON tp.id = sil.tax_profile_id
+      WHERE si.status = 'posted'
+        AND si.invoice_date >= $1::date
+        AND si.invoice_date <= $2::date
+        AND ($3::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $3::uuid)
+      GROUP BY sil.tax_profile_id, tp.name, tp.rate, tp.is_inclusive
+      ORDER BY "taxProfileName"
+      `,
+      [dateFrom, dateTo, branchId || null]
+    );
+  }
+
+  const byKey = new Map<
+    string,
+    {
+      taxProfileId: string | null;
+      taxProfileName: string;
+      taxProfileRate: string | null;
+      taxProfileIsInclusive: boolean | null;
+      collected: string;
+      paid: string;
+    }
+  >();
+
+  function keyFor(id: string | null, name: string): string {
+    return id ?? `__none__:${name}`;
+  }
+
+  for (const r of collected) {
+    const k = keyFor(r.taxProfileId, r.taxProfileName);
+    if (!byKey.has(k)) {
+      byKey.set(k, {
+        taxProfileId: r.taxProfileId,
+        taxProfileName: r.taxProfileName,
+        taxProfileRate: r.taxProfileRate,
+        taxProfileIsInclusive: r.taxProfileIsInclusive,
+        collected: '0.0000',
+        paid: '0.0000',
+      });
+    }
+    const e = byKey.get(k)!;
+    e.collected = (parseFloat(e.collected) + parseFloat(r.amount)).toFixed(4);
+  }
+
+  for (const r of paid) {
+    const k = keyFor(r.taxProfileId, r.taxProfileName);
+    if (!byKey.has(k)) {
+      byKey.set(k, {
+        taxProfileId: r.taxProfileId,
+        taxProfileName: r.taxProfileName,
+        taxProfileRate: r.taxProfileRate,
+        taxProfileIsInclusive: r.taxProfileIsInclusive,
+        collected: '0.0000',
+        paid: '0.0000',
+      });
+    }
+    const e = byKey.get(k)!;
+    e.paid = (parseFloat(e.paid) + parseFloat(r.amount)).toFixed(4);
+  }
+
+  const byProfile = [...byKey.values()].sort((a, b) =>
+    a.taxProfileName.localeCompare(b.taxProfileName)
+  );
+
+  let totalCollected = 0;
+  let totalPaid = 0;
+  for (const row of byProfile) {
+    totalCollected += parseFloat(row.collected);
+    totalPaid += parseFloat(row.paid);
+  }
+
+  let collectedInvoiceCount = '0';
+  let paidInvoiceCount = '0';
+  if (canSales) {
+    const cnt = await dataSource.query(
+      `SELECT COUNT(DISTINCT i.id)::text AS c FROM invoices i
+       WHERE i.status = 'posted' AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
+       AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)`,
+      [dateFrom, dateTo, branchId || null]
+    );
+    collectedInvoiceCount = cnt[0]?.c ?? '0';
+  }
+  if (canPurch) {
+    const cnt = await dataSource.query(
+      `SELECT COUNT(DISTINCT si.id)::text AS c FROM supplier_invoices si
+       WHERE si.status = 'posted' AND si.invoice_date >= $1::date AND si.invoice_date <= $2::date
+       AND ($3::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $3::uuid)`,
+      [dateFrom, dateTo, branchId || null]
+    );
+    paidInvoiceCount = cnt[0]?.c ?? '0';
+  }
+
+  res.json({
+    data: {
+      byProfile,
+      breakdown: { collectedInvoiceCount, paidInvoiceCount },
+    },
+    meta: {
+      dateFrom,
+      dateTo,
+      totalCollected: totalCollected.toFixed(4),
+      totalPaid: totalPaid.toFixed(4),
+      netTax: (totalCollected - totalPaid).toFixed(4),
+      partial: { collected: !canSales, paid: !canPurch },
     },
   });
 });

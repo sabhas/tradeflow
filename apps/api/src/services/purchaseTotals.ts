@@ -1,6 +1,6 @@
 import { EntityManager, IsNull } from 'typeorm';
 import { Supplier, TaxProfile } from '@tradeflow/db';
-import { money4, parseTaxRate, splitTaxFromGross } from '@tradeflow/shared';
+import { computeLineTax } from '@tradeflow/shared';
 import { moneyAdd, moneySub, moneyIsNegative } from '../utils/money';
 
 export interface PurchaseLineIn {
@@ -41,23 +41,17 @@ export async function computePurchaseDocumentTotals(
 
   for (const line of lines) {
     const tpId = line.taxProfileId ?? supplier.taxProfileId;
-    let rate = 0;
-    let inclusive = false;
+    let profile: { rate: string; isInclusive: boolean } | null = null;
     if (tpId) {
       const tp = await manager.findOne(TaxProfile, { where: { id: tpId } });
-      if (tp) {
-        rate = parseTaxRate(tp.rate);
-        inclusive = tp.isInclusive;
-      }
+      if (tp) profile = { rate: tp.rate, isInclusive: tp.isInclusive };
     }
     const q = parseFloat(line.quantity);
     const p = parseFloat(line.unitPrice);
     const ld = parseFloat(line.discountAmount || '0');
     if (q <= 0) throw new Error('Line quantity must be positive');
     const gross = q * p - ld;
-    const { base, tax } = splitTaxFromGross(gross, rate, inclusive);
-    const taxStr = money4(tax);
-    const baseStr = money4(base);
+    const { baseAmount: baseStr, taxAmount: taxStr } = computeLineTax(gross, profile);
     computed.push({
       ...line,
       discountAmount: line.discountAmount !== undefined ? String(line.discountAmount) : '0.0000',

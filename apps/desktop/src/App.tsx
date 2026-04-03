@@ -30,6 +30,7 @@ import { PurchaseReportsPage } from './pages/purchases/PurchaseReportsPage';
 import { ChartOfAccountsPage } from './pages/accounting/ChartOfAccountsPage';
 import { JournalEntriesPage } from './pages/accounting/JournalEntriesPage';
 import { FinancialReportsPage } from './pages/accounting/FinancialReportsPage';
+import { TaxReportsPage } from './pages/reports/TaxReportsPage';
 import { useAppSelector } from './hooks/useAppSelector';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -90,6 +91,7 @@ export default function App() {
           <Route path="accounting/coa" element={<ChartOfAccountsPage />} />
           <Route path="accounting/journals" element={<JournalEntriesPage />} />
           <Route path="accounting/reports" element={<FinancialReportsPage />} />
+          <Route path="reports/tax" element={<TaxReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
