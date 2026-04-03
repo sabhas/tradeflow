@@ -13,6 +13,7 @@ import { warehousesRouter } from './routes/warehouses';
 import { salespersonsRouter } from './routes/salespersons';
 import { taxProfilesRouter } from './routes/taxProfiles';
 import { paymentTermsRouter } from './routes/paymentTerms';
+import { inventoryRouter } from './routes/inventory';
 
 export const app = express();
 
@@ -32,3 +33,4 @@ app.use('/warehouses', warehousesRouter);
 app.use('/salespersons', salespersonsRouter);
 app.use('/tax-profiles', taxProfilesRouter);
 app.use('/payment-terms', paymentTermsRouter);
+app.use('/inventory', inventoryRouter);

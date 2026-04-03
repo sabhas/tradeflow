@@ -15,3 +15,5 @@ export * from './entities/Customer';
 export * from './entities/Supplier';
 export * from './entities/Warehouse';
 export * from './entities/Salesperson';
+export * from './entities/InventoryMovement';
+export * from './entities/StockBalance';
