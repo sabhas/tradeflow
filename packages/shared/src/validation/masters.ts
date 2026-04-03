@@ -73,6 +73,7 @@ export const createCustomerSchema = z.object({
   paymentTermsId: optionalUuid,
   taxProfileId: optionalUuid,
   branchId: optionalUuid,
+  defaultRouteId: optionalUuid,
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial();

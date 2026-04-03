@@ -91,6 +91,7 @@ function serialize(inv: Invoice, lines?: InvoiceLine[]) {
     paymentType: inv.paymentType,
     warehouseId: inv.warehouseId,
     salesOrderId: inv.salesOrderId,
+    salespersonId: inv.salespersonId,
     subtotal: inv.subtotal,
     taxAmount: inv.taxAmount,
     discountAmount: inv.discountAmount,
@@ -177,6 +178,7 @@ invoicesRouter.post(
           total: totals.total,
           notes: b.notes ?? undefined,
           salesOrderId: b.salesOrderId ?? undefined,
+          salespersonId: b.salespersonId ?? undefined,
           branchId: b.branchId ?? req.user?.branchId ?? undefined,
           createdBy: req.auth?.userId,
         });
@@ -265,6 +267,7 @@ invoicesRouter.patch(
         if (b.paymentType !== undefined) inv.paymentType = b.paymentType;
         if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
         if (b.salesOrderId !== undefined) inv.salesOrderId = b.salesOrderId ?? undefined;
+        if (b.salespersonId !== undefined) inv.salespersonId = b.salespersonId ?? undefined;
         if (b.branchId !== undefined) inv.branchId = b.branchId ?? undefined;
 
         if (b.dueDate !== undefined && b.dueDate !== null) {

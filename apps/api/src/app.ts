@@ -26,6 +26,9 @@ import { supplierPaymentsRouter } from './routes/supplierPayments';
 import { accountsRouter } from './routes/accounts';
 import { journalEntriesRouter } from './routes/journalEntries';
 import { companySettingsRouter } from './routes/companySettings';
+import { deliveryRoutesRouter } from './routes/deliveryRoutes';
+import { deliveryRunsRouter } from './routes/deliveryRuns';
+import { deliveryNotesRouter } from './routes/deliveryNotes';
 
 export const app = express();
 
@@ -58,3 +61,6 @@ app.use('/supplier-payments', supplierPaymentsRouter);
 app.use('/accounts', accountsRouter);
 app.use('/journal-entries', journalEntriesRouter);
 app.use('/settings', companySettingsRouter);
+app.use('/delivery-routes', deliveryRoutesRouter);
+app.use('/delivery-runs', deliveryRunsRouter);
+app.use('/delivery-notes', deliveryNotesRouter);

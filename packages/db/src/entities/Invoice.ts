@@ -14,6 +14,7 @@ import { Customer } from './Customer';
 import { User } from './User';
 import { Warehouse } from './Warehouse';
 import { SalesOrder } from './SalesOrder';
+import { Salesperson } from './Salesperson';
 import { InvoiceLine } from './InvoiceLine';
 
 @Entity('invoices')
@@ -71,6 +72,13 @@ export class Invoice {
   @ManyToOne(() => SalesOrder, { nullable: true })
   @JoinColumn({ name: 'sales_order_id' })
   salesOrder?: SalesOrder;
+
+  @Column({ name: 'salesperson_id', nullable: true })
+  salespersonId?: string;
+
+  @ManyToOne(() => Salesperson, { nullable: true })
+  @JoinColumn({ name: 'salesperson_id' })
+  salesperson?: Salesperson;
 
   @Column({ name: 'branch_id', nullable: true })
   branchId?: string;

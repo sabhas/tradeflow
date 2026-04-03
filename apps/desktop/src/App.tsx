@@ -31,6 +31,10 @@ import { ChartOfAccountsPage } from './pages/accounting/ChartOfAccountsPage';
 import { JournalEntriesPage } from './pages/accounting/JournalEntriesPage';
 import { FinancialReportsPage } from './pages/accounting/FinancialReportsPage';
 import { TaxReportsPage } from './pages/reports/TaxReportsPage';
+import { DeliveryRoutesPage } from './pages/logistics/DeliveryRoutesPage';
+import { DeliveryRunsPage } from './pages/logistics/DeliveryRunsPage';
+import { DeliveryNotesPage } from './pages/logistics/DeliveryNotesPage';
+import { LogisticsReportsPage } from './pages/logistics/LogisticsReportsPage';
 import { useAppSelector } from './hooks/useAppSelector';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -92,6 +96,11 @@ export default function App() {
           <Route path="accounting/journals" element={<JournalEntriesPage />} />
           <Route path="accounting/reports" element={<FinancialReportsPage />} />
           <Route path="reports/tax" element={<TaxReportsPage />} />
+          <Route path="logistics" element={<Navigate to="/logistics/routes" replace />} />
+          <Route path="logistics/routes" element={<DeliveryRoutesPage />} />
+          <Route path="logistics/runs" element={<DeliveryRunsPage />} />
+          <Route path="logistics/delivery-notes" element={<DeliveryNotesPage />} />
+          <Route path="logistics/reports" element={<LogisticsReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

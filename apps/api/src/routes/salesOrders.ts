@@ -36,6 +36,7 @@ function serialize(o: SalesOrder, lines?: Array<SalesOrderLine & { product?: Pro
     total: o.total,
     notes: o.notes,
     branchId: o.branchId,
+    salespersonId: o.salespersonId,
     createdBy: o.createdBy,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
@@ -111,6 +112,7 @@ salesOrdersRouter.post(
           orderDate: b.orderDate.slice(0, 10),
           status: 'draft',
           warehouseId: b.warehouseId ?? undefined,
+          salespersonId: b.salespersonId ?? undefined,
           subtotal: totals.subtotal,
           taxAmount: totals.taxAmount,
           discountAmount: totals.discountAmount,
@@ -169,6 +171,7 @@ salesOrdersRouter.patch(
         if (b.customerId !== undefined) o.customerId = b.customerId;
         if (b.orderDate !== undefined) o.orderDate = b.orderDate.slice(0, 10);
         if (b.warehouseId !== undefined) o.warehouseId = b.warehouseId ?? undefined;
+        if (b.salespersonId !== undefined) o.salespersonId = b.salespersonId ?? undefined;
         if (b.notes !== undefined) o.notes = b.notes ?? undefined;
         if (b.branchId !== undefined) o.branchId = b.branchId ?? undefined;
 
@@ -370,6 +373,7 @@ salesOrdersRouter.post(
           total: totals.total,
           notes: o.notes,
           salesOrderId: o.id,
+          salespersonId: o.salespersonId,
           branchId: o.branchId,
           createdBy: req.auth?.userId,
         });
@@ -405,6 +409,7 @@ salesOrdersRouter.post(
           paymentType: inv.paymentType,
           warehouseId: inv.warehouseId,
           salesOrderId: inv.salesOrderId,
+          salespersonId: inv.salespersonId,
           subtotal: inv.subtotal,
           taxAmount: inv.taxAmount,
           discountAmount: inv.discountAmount,

@@ -12,6 +12,7 @@ interface Row {
   creditLimit: string;
   paymentTermsId?: string | null;
   taxProfileId?: string | null;
+  defaultRouteId?: string | null;
 }
 
 interface Opt {
@@ -23,6 +24,7 @@ export function CustomersPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
   const canRead = hasPermission(permissions, 'masters.customers:read');
   const canWrite = hasPermission(permissions, 'masters.customers:write');
+  const canPickRoute = hasPermission(permissions, 'logistics.routes:read');
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -51,6 +53,14 @@ export function CustomersPage() {
   const [creditLimit, setCreditLimit] = useState('0');
   const [paymentTermsId, setPaymentTermsId] = useState('');
   const [taxProfileId, setTaxProfileId] = useState('');
+  const [defaultRouteId, setDefaultRouteId] = useState('');
+
+  const deliveryRoutes = useQuery({
+    queryKey: ['delivery-routes', 'customer-dd'],
+    enabled: canRead && canWrite && canPickRoute && open,
+    queryFn: () =>
+      apiFetch<{ data: Array<{ id: string; name: string; code: string }> }>('/delivery-routes').then((r) => r.data),
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -60,6 +70,7 @@ export function CustomersPage() {
         creditLimit,
         paymentTermsId: paymentTermsId || null,
         taxProfileId: taxProfileId || null,
+        defaultRouteId: canPickRoute ? defaultRouteId || null : undefined,
       };
       if (editing) {
         await apiFetch(`/customers/${editing.id}`, {
@@ -101,6 +112,7 @@ export function CustomersPage() {
               setCreditLimit('0');
               setPaymentTermsId('');
               setTaxProfileId('');
+              setDefaultRouteId('');
               setOpen(true);
             }}
           >
@@ -143,6 +155,7 @@ export function CustomersPage() {
                         setCreditLimit(r.creditLimit);
                         setPaymentTermsId(r.paymentTermsId || '');
                         setTaxProfileId(r.taxProfileId || '');
+                        setDefaultRouteId(r.defaultRouteId || '');
                         setOpen(true);
                       }}
                     >
@@ -231,6 +244,23 @@ export function CustomersPage() {
               ))}
             </select>
           </div>
+          {canPickRoute && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Default delivery route</label>
+              <select
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={defaultRouteId}
+                onChange={(e) => setDefaultRouteId(e.target.value)}
+              >
+                <option value="">— None —</option>
+                {(deliveryRoutes.data ?? []).map((rt) => (
+                  <option key={rt.id} value={rt.id}>
+                    {rt.code} — {rt.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <button type="button" className="rounded-md border px-4 py-2 text-sm" onClick={() => setOpen(false)}>
               Cancel

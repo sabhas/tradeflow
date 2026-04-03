@@ -52,11 +52,18 @@ const PERMISSIONS: Array<{ resource: string; action: string; code: string }> = [
   { resource: 'purchases.payments', action: 'read', code: 'purchases.payments:read' },
   { resource: 'purchases.payments', action: 'write', code: 'purchases.payments:write' },
   { resource: 'purchases.reports', action: 'read', code: 'purchases.reports:read' },
+  { resource: 'logistics.routes', action: 'read', code: 'logistics.routes:read' },
+  { resource: 'logistics.routes', action: 'write', code: 'logistics.routes:write' },
+  { resource: 'logistics.deliveries', action: 'read', code: 'logistics.deliveries:read' },
+  { resource: 'logistics.deliveries', action: 'write', code: 'logistics.deliveries:write' },
+  { resource: 'logistics.pod', action: 'write', code: 'logistics.pod:write' },
+  { resource: 'reports.logistics', action: 'read', code: 'reports.logistics:read' },
 ];
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   Admin: PERMISSIONS.map((p) => p.code),
   Accountant: [
+    'reports.logistics:read',
     'accounting:read',
     'accounting:write',
     'sales:read',
@@ -96,6 +103,12 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'masters.salespersons:read',
     'masters.payment_terms:read',
     'masters.tax:read',
+    'logistics.routes:read',
+    'logistics.routes:write',
+    'logistics.deliveries:read',
+    'logistics.deliveries:write',
+    'logistics.pod:write',
+    'reports.logistics:read',
   ],
   Storekeeper: [
     'inventory:read',

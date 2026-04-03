@@ -7,3 +7,4 @@ export * from './validation/inventory';
 export * from './validation/sales';
 export * from './validation/purchases';
 export * from './validation/accounting';
+export * from './validation/logistics';

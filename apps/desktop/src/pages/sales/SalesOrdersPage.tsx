@@ -64,6 +64,7 @@ export function SalesOrdersPage() {
   const [customerId, setCustomerId] = useState('');
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [warehouseId, setWarehouseId] = useState('');
+  const [salespersonId, setSalespersonId] = useState('');
   const [notes, setNotes] = useState('');
   const [headerDiscount, setHeaderDiscount] = useState('0');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
@@ -90,6 +91,7 @@ export function SalesOrdersPage() {
           lines: OrderLine[];
           notes?: string;
           warehouseId?: string | null;
+          salespersonId?: string | null;
           discountAmount: string;
         };
       }>(`/sales-orders/${editingId}`).then((r) => r.data),
@@ -108,6 +110,7 @@ export function SalesOrdersPage() {
     setCustomerId(d.customerId);
     setOrderDate(d.orderDate);
     setWarehouseId(d.warehouseId ?? '');
+    setSalespersonId(d.salespersonId ?? '');
     setNotes(d.notes ?? '');
     setHeaderDiscount(d.discountAmount);
     setLines(
@@ -160,6 +163,12 @@ export function SalesOrdersPage() {
     queryFn: () => apiFetchData<TaxOpt[]>('/tax-profiles'),
   });
 
+  const salespersons = useQuery({
+    queryKey: ['salespersons', 'so-panel'],
+    enabled: canRead && panelOpen,
+    queryFn: () => apiFetch<{ data: Array<{ id: string; name: string }> }>('/salespersons').then((r) => r.data),
+  });
+
   const save = useMutation({
     mutationFn: async () => {
       setError(null);
@@ -170,6 +179,7 @@ export function SalesOrdersPage() {
         customerId,
         orderDate,
         warehouseId: warehouseId || null,
+        salespersonId: salespersonId || null,
         notes: notes || null,
         discountAmount: headerDiscount,
         lines: cleaned.map((l) => ({
@@ -249,6 +259,7 @@ export function SalesOrdersPage() {
               setCustomerId('');
               setOrderDate(new Date().toISOString().slice(0, 10));
               setWarehouseId('');
+              setSalespersonId('');
               setNotes('');
               setHeaderDiscount('0');
               setLines([emptyLine()]);
@@ -378,6 +389,21 @@ export function SalesOrdersPage() {
                   {(warehouses.data ?? []).map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600">Salesperson</span>
+                <select
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                  value={salespersonId}
+                  onChange={(e) => setSalespersonId(e.target.value)}
+                >
+                  <option value="">—</option>
+                  {(salespersons.data ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
                     </option>
                   ))}
                 </select>

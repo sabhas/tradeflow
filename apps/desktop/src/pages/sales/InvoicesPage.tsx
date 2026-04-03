@@ -53,6 +53,7 @@ export function InvoicesPage() {
   const [dueDate, setDueDate] = useState('');
   const [paymentType, setPaymentType] = useState<'credit' | 'cash'>('credit');
   const [warehouseId, setWarehouseId] = useState('');
+  const [salespersonId, setSalespersonId] = useState('');
   const [notes, setNotes] = useState('');
   const [headerDiscount, setHeaderDiscount] = useState('0');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
@@ -80,7 +81,8 @@ export function InvoicesPage() {
             taxProfileId?: string | null;
           }>;
           notes?: string;
-          discountAmount: string
+          discountAmount: string;
+          salespersonId?: string | null;
         };
       }>(`/invoices/${editingId}`).then((r) => r.data),
   });
@@ -93,6 +95,7 @@ export function InvoicesPage() {
     setDueDate(d.dueDate);
     setPaymentType(d.paymentType as 'credit' | 'cash');
     setWarehouseId(d.warehouseId);
+    setSalespersonId(d.salespersonId ?? '');
     setNotes(d.notes ?? '');
     setHeaderDiscount(d.discountAmount);
     setLines(
@@ -130,6 +133,12 @@ export function InvoicesPage() {
     queryKey: ['tax-profiles'],
     enabled: canRead && panelOpen,
     queryFn: () => apiFetchData<TaxOpt[]>('/tax-profiles'),
+  });
+
+  const salespersons = useQuery({
+    queryKey: ['salespersons', 'inv-panel'],
+    enabled: canRead && panelOpen,
+    queryFn: () => apiFetch<{ data: Array<{ id: string; name: string }> }>('/salespersons').then((r) => r.data),
   });
 
   useEffect(() => {
@@ -187,6 +196,7 @@ export function InvoicesPage() {
         dueDate: dueDate || null,
         paymentType,
         warehouseId,
+        salespersonId: salespersonId || null,
         notes: notes || null,
         discountAmount: headerDiscount,
         lines: cleaned.map((l) => ({
@@ -243,6 +253,7 @@ export function InvoicesPage() {
               setPaymentType('credit');
               setNotes('');
               setHeaderDiscount('0');
+              setSalespersonId('');
               setLines([emptyLine()]);
               setError(null);
               setPanelOpen(true);
@@ -386,6 +397,21 @@ export function InvoicesPage() {
                   {(warehouses.data ?? []).map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600">Salesperson</span>
+                <select
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                  value={salespersonId}
+                  onChange={(e) => setSalespersonId(e.target.value)}
+                >
+                  <option value="">—</option>
+                  {(salespersons.data ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
                     </option>
                   ))}
                 </select>

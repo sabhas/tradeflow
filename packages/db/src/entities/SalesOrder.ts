@@ -12,6 +12,7 @@ import { Branch } from './Branch';
 import { Customer } from './Customer';
 import { User } from './User';
 import { Warehouse } from './Warehouse';
+import { Salesperson } from './Salesperson';
 import { SalesOrderLine } from './SalesOrderLine';
 
 @Entity('sales_orders')
@@ -38,6 +39,13 @@ export class SalesOrder {
   @ManyToOne(() => Warehouse, { nullable: true })
   @JoinColumn({ name: 'warehouse_id' })
   warehouse?: Warehouse;
+
+  @Column({ name: 'salesperson_id', nullable: true })
+  salespersonId?: string;
+
+  @ManyToOne(() => Salesperson, { nullable: true })
+  @JoinColumn({ name: 'salesperson_id' })
+  salesperson?: Salesperson;
 
   @Column({ type: 'decimal', precision: 14, scale: 4, default: 0 })
   subtotal!: string;

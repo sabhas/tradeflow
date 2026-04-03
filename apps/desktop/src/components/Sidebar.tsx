@@ -46,6 +46,17 @@ const menuItems: Array<{
     permission: null,
     anyOf: ['sales:read', 'purchases.reports:read'],
   },
+  {
+    path: '/logistics/routes',
+    label: 'Logistics',
+    icon: '🚚',
+    permission: null,
+    anyOf: [
+      'logistics.routes:read',
+      'logistics.deliveries:read',
+      'reports.logistics:read',
+    ],
+  },
 ];
 
 export function Sidebar() {

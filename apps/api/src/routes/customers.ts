@@ -20,6 +20,7 @@ function serialize(c: Customer) {
     paymentTermsId: c.paymentTermsId,
     taxProfileId: c.taxProfileId,
     branchId: c.branchId,
+    defaultRouteId: c.defaultRouteId,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
     deletedAt: c.deletedAt,
@@ -173,6 +174,7 @@ customersRouter.post(
       creditLimit: b.creditLimit ?? '0',
       paymentTermsId: b.paymentTermsId ?? undefined,
       taxProfileId: b.taxProfileId ?? undefined,
+      defaultRouteId: b.defaultRouteId ?? undefined,
       branchId: b.branchId ?? req.user?.branchId ?? undefined,
     });
     await repo.save(row);
@@ -212,6 +214,7 @@ customersRouter.patch(
     if (b.paymentTermsId !== undefined) row.paymentTermsId = b.paymentTermsId ?? undefined;
     if (b.taxProfileId !== undefined) row.taxProfileId = b.taxProfileId ?? undefined;
     if (b.branchId !== undefined) row.branchId = b.branchId ?? undefined;
+    if (b.defaultRouteId !== undefined) row.defaultRouteId = b.defaultRouteId ?? undefined;
     await repo.save(row);
     res.json({ data: serialize(row) });
   }

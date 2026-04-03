@@ -589,3 +589,104 @@ reportsRouter.get('/tax-summary', requireTaxSummaryAccess, async (req, res) => {
     },
   });
 });
+
+/** Posted sales by salesperson (invoice header). */
+reportsRouter.get('/sales-by-salesperson', requirePermission('reports.logistics', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      i.salesperson_id AS "salespersonId",
+      COALESCE(sp.name, '(Unassigned)') AS "salespersonName",
+      COALESCE(sp.code, '') AS "salespersonCode",
+      COUNT(*)::int AS "invoiceCount",
+      SUM(i.total::numeric)::text AS "totalValue",
+      COALESCE(SUM(q.line_qty), 0)::text AS "totalQuantity"
+    FROM invoices i
+    LEFT JOIN salespersons sp ON sp.id = i.salesperson_id
+    LEFT JOIN LATERAL (
+      SELECT SUM(il.quantity::numeric) AS line_qty
+      FROM invoice_lines il
+      WHERE il.invoice_id = i.id
+    ) q ON true
+    WHERE i.status = 'posted'
+      AND i.invoice_date >= $1::date
+      AND i.invoice_date <= $2::date
+      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+    GROUP BY i.salesperson_id, sp.name, sp.code
+    ORDER BY SUM(i.total::numeric) DESC NULLS LAST
+    `,
+    [dateFrom, dateTo, branchId || null]
+  );
+
+  let grandTotal = 0;
+  let grandQty = 0;
+  for (const r of rows) {
+    grandTotal += parseFloat(r.totalValue);
+    grandQty += parseFloat(r.totalQuantity);
+  }
+
+  res.json({
+    data: rows,
+    meta: {
+      dateFrom,
+      dateTo,
+      grandTotal: grandTotal.toFixed(4),
+      grandQuantity: grandQty.toFixed(4),
+    },
+  });
+});
+
+/** Posted sales by customer default delivery route. */
+reportsRouter.get('/sales-by-route', requirePermission('reports.logistics', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      dr.id AS "routeId",
+      COALESCE(dr.name, '(No route)') AS "routeName",
+      COALESCE(dr.code, '') AS "routeCode",
+      COUNT(i.id)::int AS "invoiceCount",
+      SUM(i.total::numeric)::text AS "totalValue",
+      COALESCE(SUM(q.line_qty), 0)::text AS "totalQuantity"
+    FROM invoices i
+    INNER JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
+    LEFT JOIN delivery_routes dr ON dr.id = c.default_route_id
+    LEFT JOIN LATERAL (
+      SELECT SUM(il.quantity::numeric) AS line_qty
+      FROM invoice_lines il
+      WHERE il.invoice_id = i.id
+    ) q ON true
+    WHERE i.status = 'posted'
+      AND i.invoice_date >= $1::date
+      AND i.invoice_date <= $2::date
+      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+    GROUP BY dr.id, dr.name, dr.code
+    ORDER BY SUM(i.total::numeric) DESC NULLS LAST
+    `,
+    [dateFrom, dateTo, branchId || null]
+  );
+
+  let grandTotal = 0;
+  let grandQty = 0;
+  for (const r of rows) {
+    grandTotal += parseFloat(r.totalValue);
+    grandQty += parseFloat(r.totalQuantity);
+  }
+
+  res.json({
+    data: rows,
+    meta: {
+      dateFrom,
+      dateTo,
+      grandTotal: grandTotal.toFixed(4),
+      grandQuantity: grandQty.toFixed(4),
+    },
+  });
+});
