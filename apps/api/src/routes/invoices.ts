@@ -15,7 +15,7 @@ invoicesRouter.use(authMiddleware, loadUser);
 
 async function pdfHandler(req: express.Request, res: express.Response) {
   const inv = await dataSource.getRepository(Invoice).findOne({
-    where: { id: req.params.id },
+    where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines', 'lines.product', 'customer', 'warehouse'],
   });
   if (!inv) {
@@ -101,6 +101,7 @@ function serialize(inv: Invoice, lines?: InvoiceLine[]) {
     createdBy: inv.createdBy,
     createdAt: inv.createdAt,
     updatedAt: inv.updatedAt,
+    deletedAt: inv.deletedAt ?? null,
     lines:
       lines?.map((l) => ({
         id: l.id,
@@ -121,6 +122,7 @@ invoicesRouter.get('/', requirePermission('sales', 'read'), async (req, res) => 
   const qb = dataSource
     .getRepository(Invoice)
     .createQueryBuilder('i')
+    .where('i.deleted_at IS NULL')
     .orderBy('i.invoice_date', 'DESC')
     .take(limit)
     .skip(offset);
@@ -216,7 +218,7 @@ invoicesRouter.post(
     try {
       const inv = await postInvoice(req.params.id, req.auth?.userId, branchId);
       const full = await dataSource.getRepository(Invoice).findOne({
-        where: { id: inv.id },
+        where: { id: inv.id, deletedAt: IsNull() },
         relations: ['lines'],
       });
       res.json({ data: serialize(full!, full!.lines) });
@@ -228,7 +230,7 @@ invoicesRouter.post(
 
 invoicesRouter.get('/:id', requirePermission('sales', 'read'), async (req, res) => {
   const row = await dataSource.getRepository(Invoice).findOne({
-    where: { id: req.params.id },
+    where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines', 'lines.product', 'customer', 'warehouse'],
   });
   if (!row) {
@@ -255,7 +257,7 @@ invoicesRouter.patch(
     try {
       const out = await runInTransaction(async (manager) => {
         const inv = await manager.findOne(Invoice, {
-          where: { id: req.params.id },
+          where: { id: req.params.id, deletedAt: IsNull() },
           relations: ['lines'],
         });
         if (!inv) throw new Error('Not found');
@@ -342,7 +344,10 @@ invoicesRouter.patch(
           }
         }
         await manager.save(inv);
-        return manager.findOneOrFail(Invoice, { where: { id: inv.id }, relations: ['lines'] });
+        return manager.findOneOrFail(Invoice, {
+          where: { id: inv.id, deletedAt: IsNull() },
+          relations: ['lines'],
+        });
       });
       res.json({ data: serialize(out, out.lines) });
     } catch (e) {
@@ -355,9 +360,21 @@ invoicesRouter.patch(
 invoicesRouter.delete(
   '/:id',
   requirePermission('sales', 'update'),
-  auditMiddleware({ entity: 'Invoice', getEntityId: (req) => req.params.id }),
+  auditMiddleware({
+    entity: 'Invoice',
+    getEntityId: (req) => req.params.id,
+    getOldValue: async (req) => {
+      const row = await dataSource.getRepository(Invoice).findOne({
+        where: { id: req.params.id, deletedAt: IsNull() },
+        relations: ['lines'],
+      });
+      return row ? serialize(row, row.lines) : undefined;
+    },
+  }),
   async (req, res) => {
-    const inv = await dataSource.getRepository(Invoice).findOne({ where: { id: req.params.id } });
+    const inv = await dataSource.getRepository(Invoice).findOne({
+      where: { id: req.params.id, deletedAt: IsNull() },
+    });
     if (!inv) {
       res.status(404).json({ error: 'Not found' });
       return;
@@ -366,7 +383,8 @@ invoicesRouter.delete(
       res.status(400).json({ error: 'Only draft invoices can be deleted' });
       return;
     }
-    await dataSource.getRepository(Invoice).delete({ id: inv.id });
+    inv.deletedAt = new Date();
+    await dataSource.getRepository(Invoice).save(inv);
     res.json({ data: { id: inv.id, deleted: true } });
   }
 );

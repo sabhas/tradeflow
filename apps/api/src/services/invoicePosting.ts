@@ -14,7 +14,7 @@ export async function postInvoice(
 ): Promise<Invoice> {
   return runInTransaction(async (manager) => {
     const inv = await manager.findOne(Invoice, {
-      where: { id: invoiceId },
+      where: { id: invoiceId, deletedAt: IsNull() },
       relations: ['lines'],
     });
     if (!inv) throw new Error('Invoice not found');
@@ -124,7 +124,7 @@ export async function validateReceiptAllocations(
   let sum = 0;
   for (const a of allocations) {
     sum += parseFloat(a.amount);
-    const inv = await manager.findOne(Invoice, { where: { id: a.invoiceId } });
+    const inv = await manager.findOne(Invoice, { where: { id: a.invoiceId, deletedAt: IsNull() } });
     if (!inv) throw new Error(`Invoice ${a.invoiceId} not found`);
     if (inv.customerId !== customerId) throw new Error('Invoice belongs to another customer');
     if (inv.status !== 'posted') throw new Error('Can only allocate to posted invoices');

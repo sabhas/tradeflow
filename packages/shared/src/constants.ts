@@ -9,6 +9,9 @@ export const PERMISSIONS = {
   // Audit
   'audit:read': 'audit:read',
 
+  'recycle_bin:read': 'recycle_bin:read',
+  'recycle_bin:restore': 'recycle_bin:restore',
+
   // Inventory (future)
   'inventory:read': 'inventory:read',
   'inventory:write': 'inventory:write',

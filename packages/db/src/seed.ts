@@ -18,6 +18,8 @@ import { ProductCategory } from './entities/ProductCategory';
 
 const PERMISSIONS: Array<{ resource: string; action: string; code: string }> = [
   { resource: 'audit', action: 'read', code: 'audit:read' },
+  { resource: 'recycle_bin', action: 'read', code: 'recycle_bin:read' },
+  { resource: 'recycle_bin', action: 'restore', code: 'recycle_bin:restore' },
   { resource: 'inventory', action: 'read', code: 'inventory:read' },
   { resource: 'inventory', action: 'write', code: 'inventory:write' },
   { resource: 'sales', action: 'read', code: 'sales:read' },

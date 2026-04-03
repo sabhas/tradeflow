@@ -87,6 +87,7 @@ accountsRouter.get('/:id/balance', requirePermission('accounting', 'read'), asyn
       COALESCE(SUM(jl.credit), 0)::text AS credit
     FROM journal_lines jl
     INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+      AND je.deleted_at IS NULL
     WHERE jl.account_id = $1
       AND je.status = 'posted'
       AND je.entry_date <= $2::date

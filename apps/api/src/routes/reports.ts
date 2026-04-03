@@ -36,6 +36,7 @@ reportsRouter.get('/daily-sales', requirePermission('sales', 'read'), async (req
       SUM(i.total::numeric)::text AS "totalAmount"
     FROM invoices i
     WHERE i.status = 'posted'
+      AND i.deleted_at IS NULL
       AND i.invoice_date >= $1::date
       AND i.invoice_date <= $2::date
       AND ($3::uuid IS NULL OR i.customer_id = $3::uuid)
@@ -121,7 +122,7 @@ reportsRouter.get('/fast-moving', requirePermission('sales', 'read'), async (req
       SUM(il.quantity::numeric)::text AS "quantitySold",
       SUM((il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric))::text AS "lineValue"
     FROM invoice_lines il
-    INNER JOIN invoices i ON i.id = il.invoice_id
+    INNER JOIN invoices i ON i.id = il.invoice_id AND i.deleted_at IS NULL
     INNER JOIN products p ON p.id = il.product_id AND p.deleted_at IS NULL
     WHERE i.status = 'posted'
       AND i.invoice_date >= $1::date
@@ -155,6 +156,7 @@ reportsRouter.get('/expense-analysis', requirePermission('accounting', 'read'), 
     FROM accounts a
     INNER JOIN journal_lines jl ON jl.account_id = a.id
     INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+      AND je.deleted_at IS NULL
       AND je.status = 'posted'
       AND je.entry_date >= $1::date
       AND je.entry_date <= $2::date
@@ -205,6 +207,7 @@ async function receivablesAgingHandler(req: Request, res: Response) {
     FROM invoices i
     INNER JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
     WHERE i.status = 'posted'
+      AND i.deleted_at IS NULL
       AND i.payment_type = 'credit'
       AND ($1::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $1::uuid)
     `,
@@ -351,6 +354,7 @@ reportsRouter.get('/trial-balance', requirePermission('accounting', 'read'), asy
     FROM accounts a
     INNER JOIN journal_lines jl ON jl.account_id = a.id
     INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+      AND je.deleted_at IS NULL
       AND je.status = 'posted'
       AND je.entry_date >= $1::date
       AND je.entry_date <= $2::date
@@ -394,6 +398,7 @@ reportsRouter.get('/profit-loss', requirePermission('accounting', 'read'), async
     FROM accounts a
     INNER JOIN journal_lines jl ON jl.account_id = a.id
     INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+      AND je.deleted_at IS NULL
       AND je.status = 'posted'
       AND je.entry_date >= $1::date
       AND je.entry_date <= $2::date
@@ -446,6 +451,7 @@ reportsRouter.get('/balance-sheet', requirePermission('accounting', 'read'), asy
     FROM accounts a
     INNER JOIN journal_lines jl ON jl.account_id = a.id
     INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+      AND je.deleted_at IS NULL
       AND je.status = 'posted'
       AND je.entry_date <= $1::date
       AND ($2::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $2::uuid)
@@ -509,7 +515,7 @@ reportsRouter.get('/tax-collected', requirePermission('sales', 'read'), async (r
       il.tax_amount::text AS "taxAmount",
       (il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric)::text AS "lineNetBeforeTax"
     FROM invoice_lines il
-    INNER JOIN invoices i ON i.id = il.invoice_id
+    INNER JOIN invoices i ON i.id = il.invoice_id AND i.deleted_at IS NULL
     INNER JOIN customers c ON c.id = i.customer_id AND c.deleted_at IS NULL
     INNER JOIN products p ON p.id = il.product_id AND p.deleted_at IS NULL
     LEFT JOIN tax_profiles tp ON tp.id = il.tax_profile_id
@@ -619,7 +625,7 @@ reportsRouter.get('/tax-summary', requireTaxSummaryAccess, async (req, res) => {
         tp.is_inclusive AS "taxProfileIsInclusive",
         SUM(il.tax_amount)::text AS "amount"
       FROM invoice_lines il
-      INNER JOIN invoices i ON i.id = il.invoice_id
+      INNER JOIN invoices i ON i.id = il.invoice_id AND i.deleted_at IS NULL
       LEFT JOIN tax_profiles tp ON tp.id = il.tax_profile_id
       WHERE i.status = 'posted'
         AND i.invoice_date >= $1::date
@@ -719,7 +725,8 @@ reportsRouter.get('/tax-summary', requireTaxSummaryAccess, async (req, res) => {
   if (canSales) {
     const cnt = await dataSource.query(
       `SELECT COUNT(DISTINCT i.id)::text AS c FROM invoices i
-       WHERE i.status = 'posted' AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
+       WHERE i.status = 'posted' AND i.deleted_at IS NULL
+       AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
        AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)`,
       [dateFrom, dateTo, branchId || null]
     );
@@ -774,6 +781,7 @@ reportsRouter.get('/sales-by-salesperson', requirePermission('reports.logistics'
       WHERE il.invoice_id = i.id
     ) q ON true
     WHERE i.status = 'posted'
+      AND i.deleted_at IS NULL
       AND i.invoice_date >= $1::date
       AND i.invoice_date <= $2::date
       AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
@@ -825,6 +833,7 @@ reportsRouter.get('/sales-by-route', requirePermission('reports.logistics', 'rea
       WHERE il.invoice_id = i.id
     ) q ON true
     WHERE i.status = 'posted'
+      AND i.deleted_at IS NULL
       AND i.invoice_date >= $1::date
       AND i.invoice_date <= $2::date
       AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)

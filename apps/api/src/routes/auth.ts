@@ -9,6 +9,44 @@ import { auditMiddleware } from '../middleware/audit';
 
 export const authRouter = Router();
 
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 8;
+
+type LoginAttemptState = { count: number; resetAt: number };
+const loginAttempts = new Map<string, LoginAttemptState>();
+
+function loginKey(email: string): string {
+  return email.toLowerCase().trim();
+}
+
+function isLoginBlocked(key: string): { blocked: boolean; retryAfterSec?: number } {
+  const now = Date.now();
+  const s = loginAttempts.get(key);
+  if (!s || now > s.resetAt) return { blocked: false };
+  if (s.count >= LOGIN_MAX_ATTEMPTS) {
+    return { blocked: true, retryAfterSec: Math.max(1, Math.ceil((s.resetAt - now) / 1000)) };
+  }
+  return { blocked: false };
+}
+
+function registerFailedLogin(key: string): { blocked: boolean; retryAfterSec?: number } {
+  const now = Date.now();
+  let s = loginAttempts.get(key);
+  if (!s || now > s.resetAt) {
+    s = { count: 0, resetAt: now + LOGIN_WINDOW_MS };
+    loginAttempts.set(key, s);
+  }
+  s.count += 1;
+  if (s.count >= LOGIN_MAX_ATTEMPTS) {
+    return { blocked: true, retryAfterSec: Math.max(1, Math.ceil((s.resetAt - now) / 1000)) };
+  }
+  return { blocked: false };
+}
+
+function clearLoginAttempts(key: string): void {
+  loginAttempts.delete(key);
+}
+
 authRouter.post('/login', async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -17,6 +55,14 @@ authRouter.post('/login', async (req, res) => {
   }
 
   const { email, password } = parsed.data;
+  const key = loginKey(email);
+  const blocked = isLoginBlocked(key);
+  if (blocked.blocked && blocked.retryAfterSec) {
+    res.setHeader('Retry-After', String(blocked.retryAfterSec));
+    res.status(429).json({ error: 'Too many login attempts', message: 'Try again later' });
+    return;
+  }
+
   const userRepo = dataSource.getRepository(User);
 
   const user = await userRepo.findOne({
@@ -25,9 +71,17 @@ authRouter.post('/login', async (req, res) => {
   });
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    const fail = registerFailedLogin(key);
+    if (fail.blocked && fail.retryAfterSec) {
+      res.setHeader('Retry-After', String(fail.retryAfterSec));
+      res.status(429).json({ error: 'Too many login attempts', message: 'Try again later' });
+      return;
+    }
     res.status(401).json({ error: 'Invalid credentials' });
     return;
   }
+
+  clearLoginAttempts(key);
 
   const permissions = [
     ...new Set(

@@ -1,5 +1,5 @@
 import { Request, Router } from 'express';
-import { In } from 'typeorm';
+import { In, IsNull } from 'typeorm';
 import {
   dataSource,
   DeliveryNote,
@@ -149,7 +149,7 @@ deliveryNotesRouter.post(
       const saved = await dataSource.transaction(async (manager) => {
         if (b.invoiceId) {
           const inv = await manager.findOne(Invoice, {
-            where: { id: b.invoiceId },
+            where: { id: b.invoiceId, deletedAt: IsNull() },
             relations: ['lines'],
           });
           if (!inv) throw new Error('Invoice not found');

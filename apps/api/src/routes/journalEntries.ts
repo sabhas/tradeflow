@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { EntityManager } from 'typeorm';
+import { EntityManager, IsNull } from 'typeorm';
 import { dataSource, JournalEntry, JournalLine } from '@tradeflow/db';
 import { createJournalEntrySchema, updateJournalEntrySchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
@@ -35,6 +35,7 @@ function serializeEntry(e: JournalEntry, lines?: JournalLine[]) {
     createdBy: e.createdBy ?? null,
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
+    deletedAt: e.deletedAt ?? null,
     lines:
       lines?.map((l) => ({
         id: l.id,
@@ -89,6 +90,7 @@ journalEntriesRouter.get('/', requirePermission('accounting', 'read'), async (re
   const qb = dataSource
     .getRepository(JournalEntry)
     .createQueryBuilder('je')
+    .where('je.deleted_at IS NULL')
     .orderBy('je.entry_date', 'DESC')
     .addOrderBy('je.created_at', 'DESC')
     .take(limit)
@@ -107,7 +109,7 @@ journalEntriesRouter.get('/', requirePermission('accounting', 'read'), async (re
 
 journalEntriesRouter.get('/:id', requirePermission('accounting', 'read'), async (req, res) => {
   const row = await dataSource.getRepository(JournalEntry).findOne({
-    where: { id: req.params.id },
+    where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines', 'lines.account'],
   });
   if (!row) {
@@ -145,7 +147,7 @@ journalEntriesRouter.post(
         await manager.save(entry);
         await replaceLines(manager, entry.id, lines);
         return manager.findOneOrFail(JournalEntry, {
-          where: { id: entry.id },
+          where: { id: entry.id, deletedAt: IsNull() },
           relations: ['lines'],
         });
       });
@@ -171,7 +173,9 @@ journalEntriesRouter.patch(
       return;
     }
     const b = parsed.data;
-    const row = await dataSource.getRepository(JournalEntry).findOne({ where: { id: req.params.id } });
+    const row = await dataSource
+      .getRepository(JournalEntry)
+      .findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
     if (!row) {
       res.status(404).json({ error: 'Not found' });
       return;
@@ -187,7 +191,9 @@ journalEntriesRouter.patch(
 
     try {
       const full = await runInTransaction(async (manager) => {
-        const cur = await manager.findOne(JournalEntry, { where: { id: row.id } });
+        const cur = await manager.findOne(JournalEntry, {
+          where: { id: row.id, deletedAt: IsNull() },
+        });
         if (!cur) throw new Error('Not found');
         if (b.entryDate !== undefined) cur.entryDate = b.entryDate.slice(0, 10);
         if (b.reference !== undefined) cur.reference = b.reference ?? undefined;
@@ -204,7 +210,7 @@ journalEntriesRouter.patch(
         }
 
         return manager.findOneOrFail(JournalEntry, {
-          where: { id: row.id },
+          where: { id: row.id, deletedAt: IsNull() },
           relations: ['lines'],
         });
       });
@@ -215,27 +221,45 @@ journalEntriesRouter.patch(
   }
 );
 
-journalEntriesRouter.delete('/:id', requirePermission('accounting', 'write'), async (req, res) => {
-  const row = await dataSource.getRepository(JournalEntry).findOne({ where: { id: req.params.id } });
-  if (!row) {
-    res.status(404).json({ error: 'Not found' });
-    return;
+journalEntriesRouter.delete(
+  '/:id',
+  requirePermission('accounting', 'write'),
+  auditMiddleware({
+    entity: 'JournalEntry',
+    getEntityId: (req) => req.params.id,
+    getOldValue: async (req) => {
+      const row = await dataSource.getRepository(JournalEntry).findOne({
+        where: { id: req.params.id, deletedAt: IsNull() },
+        relations: ['lines'],
+      });
+      return row ? serializeEntry(row, row.lines) : undefined;
+    },
+  }),
+  async (req, res) => {
+    const row = await dataSource.getRepository(JournalEntry).findOne({
+      where: { id: req.params.id, deletedAt: IsNull() },
+    });
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    if (row.status !== 'draft') {
+      res.status(400).json({ error: 'Only draft entries can be deleted' });
+      return;
+    }
+    if (row.sourceType) {
+      res.status(400).json({ error: 'System-sourced entries cannot be deleted here' });
+      return;
+    }
+    row.deletedAt = new Date();
+    await dataSource.getRepository(JournalEntry).save(row);
+    res.json({ data: { id: row.id, deleted: true } });
   }
-  if (row.status !== 'draft') {
-    res.status(400).json({ error: 'Only draft entries can be deleted' });
-    return;
-  }
-  if (row.sourceType) {
-    res.status(400).json({ error: 'System-sourced entries cannot be deleted here' });
-    return;
-  }
-  await dataSource.getRepository(JournalEntry).remove(row);
-  res.status(204).send();
-});
+);
 
 journalEntriesRouter.post('/:id/post', requirePermission('accounting', 'write'), async (req, res) => {
   const row = await dataSource.getRepository(JournalEntry).findOne({
-    where: { id: req.params.id },
+    where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines'],
   });
   if (!row) {
@@ -265,7 +289,7 @@ journalEntriesRouter.post('/:id/post', requirePermission('accounting', 'write'),
   row.status = 'posted';
   await dataSource.getRepository(JournalEntry).save(row);
   const full = await dataSource.getRepository(JournalEntry).findOneOrFail({
-    where: { id: row.id },
+    where: { id: row.id, deletedAt: IsNull() },
     relations: ['lines'],
   });
   res.json({ data: serializeEntry(full, full.lines) });

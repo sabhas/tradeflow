@@ -3,6 +3,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ProtectedLayout } from './layouts/ProtectedLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
+import { RecycleBinPage } from './pages/RecycleBinPage';
 import { ProductCategoriesPage } from './pages/masters/ProductCategoriesPage';
 import { ProductsPage } from './pages/masters/ProductsPage';
 import { UnitsPage } from './pages/masters/UnitsPage';
@@ -68,6 +69,7 @@ export default function App() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
+          <Route path="recycle-bin" element={<RecycleBinPage />} />
           <Route path="masters/product-categories" element={<ProductCategoriesPage />} />
           <Route path="masters/products" element={<ProductsPage />} />
           <Route path="masters/units" element={<UnitsPage />} />

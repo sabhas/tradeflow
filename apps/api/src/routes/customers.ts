@@ -59,12 +59,13 @@ customersRouter.get('/:id/statement', requirePermission('sales', 'read'), async 
     SELECT (
       (SELECT COALESCE(SUM(i.total::numeric), 0) FROM invoices i
        WHERE i.customer_id = $1 AND i.status = 'posted' AND i.payment_type = 'credit'
+         AND i.deleted_at IS NULL
          AND i.invoice_date < $2::date)
       -
       (SELECT COALESCE(SUM(ra.amount::numeric), 0)
        FROM receipt_allocations ra
        INNER JOIN receipts r ON r.id = ra.receipt_id
-       INNER JOIN invoices i ON i.id = ra.invoice_id
+       INNER JOIN invoices i ON i.id = ra.invoice_id AND i.deleted_at IS NULL
        WHERE i.customer_id = $1 AND i.status = 'posted' AND i.payment_type = 'credit'
          AND r.receipt_date < $2::date)
     )::text AS opening
@@ -78,6 +79,7 @@ customersRouter.get('/:id/statement', requirePermission('sales', 'read'), async 
     SELECT i.id, i.invoice_date AS date, i.total::text AS amount, i.due_date AS "dueDate"
     FROM invoices i
     WHERE i.customer_id = $1 AND i.status = 'posted' AND i.payment_type = 'credit'
+      AND i.deleted_at IS NULL
       AND i.invoice_date >= $2::date AND i.invoice_date <= $3::date
     ORDER BY i.invoice_date ASC, i.id ASC
     `,
