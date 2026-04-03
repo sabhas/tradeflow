@@ -19,6 +19,10 @@ import { salesOrdersRouter } from './routes/salesOrders';
 import { invoicesRouter } from './routes/invoices';
 import { receiptsRouter } from './routes/receipts';
 import { reportsRouter } from './routes/reports';
+import { purchaseOrdersRouter } from './routes/purchaseOrders';
+import { grnsRouter } from './routes/grns';
+import { supplierInvoicesRouter } from './routes/supplierInvoices';
+import { supplierPaymentsRouter } from './routes/supplierPayments';
 
 export const app = express();
 
@@ -44,3 +48,7 @@ app.use('/sales-orders', salesOrdersRouter);
 app.use('/invoices', invoicesRouter);
 app.use('/receipts', receiptsRouter);
 app.use('/reports', reportsRouter);
+app.use('/purchase-orders', purchaseOrdersRouter);
+app.use('/grns', grnsRouter);
+app.use('/supplier-invoices', supplierInvoicesRouter);
+app.use('/supplier-payments', supplierPaymentsRouter);

@@ -5,3 +5,4 @@ export * from './validation';
 export * from './validation/masters';
 export * from './validation/inventory';
 export * from './validation/sales';
+export * from './validation/purchases';

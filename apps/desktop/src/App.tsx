@@ -22,6 +22,11 @@ import { SalesOrdersPage } from './pages/sales/SalesOrdersPage';
 import { InvoicesPage } from './pages/sales/InvoicesPage';
 import { ReceiptsPage } from './pages/sales/ReceiptsPage';
 import { SalesReportsPage } from './pages/sales/SalesReportsPage';
+import { PurchaseOrdersPage } from './pages/purchases/PurchaseOrdersPage';
+import { GrnsPage } from './pages/purchases/GrnsPage';
+import { SupplierInvoicesPage } from './pages/purchases/SupplierInvoicesPage';
+import { SupplierPaymentsPage } from './pages/purchases/SupplierPaymentsPage';
+import { PurchaseReportsPage } from './pages/purchases/PurchaseReportsPage';
 import { useAppSelector } from './hooks/useAppSelector';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -72,6 +77,12 @@ export default function App() {
           <Route path="sales/invoices" element={<InvoicesPage />} />
           <Route path="sales/receipts" element={<ReceiptsPage />} />
           <Route path="sales/reports" element={<SalesReportsPage />} />
+          <Route path="purchases" element={<Navigate to="/purchases/orders" replace />} />
+          <Route path="purchases/orders" element={<PurchaseOrdersPage />} />
+          <Route path="purchases/grns" element={<GrnsPage />} />
+          <Route path="purchases/invoices" element={<SupplierInvoicesPage />} />
+          <Route path="purchases/payments" element={<SupplierPaymentsPage />} />
+          <Route path="purchases/reports" element={<PurchaseReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

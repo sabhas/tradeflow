@@ -83,3 +83,77 @@ reportsRouter.get('/aging', requirePermission('sales', 'read'), async (req, res)
 
   res.json({ data, meta: { asOf } });
 });
+
+/** Payables aging by supplier (posted supplier invoices with open balance). */
+reportsRouter.get('/payables-aging', requirePermission('purchases.reports', 'read'), async (req, res) => {
+  const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const branchId = resolveBranchId(req);
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      si.id AS "invoiceId",
+      si.supplier_id AS "supplierId",
+      s.name AS "supplierName",
+      si.due_date AS "dueDate",
+      si.invoice_date AS "invoiceDate",
+      si.total::text AS total,
+      COALESCE((
+        SELECT SUM(spa.amount)::text
+        FROM supplier_payment_allocations spa
+        WHERE spa.supplier_invoice_id = si.id
+      ), '0') AS allocated,
+      (si.total::numeric - COALESCE((
+        SELECT SUM(spa.amount)
+        FROM supplier_payment_allocations spa
+        WHERE spa.supplier_invoice_id = si.id
+      ), 0))::text AS "openAmount"
+    FROM supplier_invoices si
+    INNER JOIN suppliers s ON s.id = si.supplier_id AND s.deleted_at IS NULL
+    WHERE si.status = 'posted'
+      AND ($1::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $1::uuid)
+    `,
+    [branchId || null]
+  );
+
+  const asOfMs = new Date(`${asOf}T12:00:00.000Z`).getTime();
+  type Bucket = { current: string; d1_30: string; d31_60: string; d61_90: string; d90p: string };
+  const bySupplier = new Map<string, { supplierName: string; buckets: Bucket; totalOpen: number }>();
+
+  function emptyBucket(): Bucket {
+    return { current: '0.0000', d1_30: '0.0000', d31_60: '0.0000', d61_90: '0.0000', d90p: '0.0000' };
+  }
+
+  function addToBucket(b: Bucket, key: keyof Bucket, amt: number): void {
+    const cur = parseFloat(b[key]);
+    b[key] = (cur + amt).toFixed(4);
+  }
+
+  for (const r of rows) {
+    const open = parseFloat(r.openAmount);
+    if (open <= 0.00005) continue;
+    const dueMs = new Date(`${r.dueDate}T12:00:00.000Z`).getTime();
+    const daysPast = Math.floor((asOfMs - dueMs) / (24 * 3600 * 1000));
+    let key: keyof Bucket = 'current';
+    if (daysPast >= 1 && daysPast <= 30) key = 'd1_30';
+    else if (daysPast >= 31 && daysPast <= 60) key = 'd31_60';
+    else if (daysPast >= 61 && daysPast <= 90) key = 'd61_90';
+    else if (daysPast > 90) key = 'd90p';
+
+    if (!bySupplier.has(r.supplierId)) {
+      bySupplier.set(r.supplierId, { supplierName: r.supplierName, buckets: emptyBucket(), totalOpen: 0 });
+    }
+    const agg = bySupplier.get(r.supplierId)!;
+    agg.totalOpen += open;
+    addToBucket(agg.buckets, key, open);
+  }
+
+  const data = [...bySupplier.entries()].map(([supplierId, v]) => ({
+    supplierId,
+    supplierName: v.supplierName,
+    totalOpen: v.totalOpen.toFixed(4),
+    buckets: v.buckets,
+  }));
+
+  res.json({ data, meta: { asOf } });
+});

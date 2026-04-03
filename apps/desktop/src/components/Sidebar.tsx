@@ -9,6 +9,7 @@ const menuItems: Array<{
   label: string;
   icon: string;
   permission: string | null;
+  anyOf?: string[];
 }> = [
   { path: '/', label: 'Dashboard', icon: '📊', permission: null },
   { path: '/audit-logs', label: 'Audit Logs', icon: '📋', permission: 'audit:read' },
@@ -24,6 +25,19 @@ const menuItems: Array<{
   { path: '/masters/payment-terms', label: 'Payment terms', icon: '📅', permission: 'masters.payment_terms:read' },
   { path: '/inventory/stock', label: 'Inventory', icon: '🗃️', permission: 'inventory:read' },
   { path: '/sales/quotations', label: 'Sales', icon: '🧾', permission: 'sales:read' },
+  {
+    path: '/purchases/orders',
+    label: 'Purchases',
+    icon: '📥',
+    permission: null,
+    anyOf: [
+      'purchases.orders:read',
+      'purchases.grn:read',
+      'purchases.supplier_invoices:read',
+      'purchases.payments:read',
+      'purchases.reports:read',
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -32,6 +46,7 @@ export function Sidebar() {
   const dispatch = useAppDispatch();
 
   const filtered = menuItems.filter((item) => {
+    if (item.anyOf?.length) return item.anyOf.some((c) => hasPermission(permissions, c));
     if (!item.permission) return true;
     return hasPermission(permissions, item.permission);
   });

@@ -8,6 +8,7 @@ import {
   Index,
 } from 'typeorm';
 import { Branch } from './Branch';
+import { GrnLine } from './GrnLine';
 import { Product } from './Product';
 import { User } from './User';
 import { Warehouse } from './Warehouse';
@@ -71,6 +72,13 @@ export class InventoryMovement {
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @Column({ name: 'grn_line_id', type: 'uuid', nullable: true })
+  grnLineId?: string;
+
+  @ManyToOne(() => GrnLine, { nullable: true })
+  @JoinColumn({ name: 'grn_line_id' })
+  grnLine?: GrnLine;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

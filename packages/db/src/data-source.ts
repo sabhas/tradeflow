@@ -31,6 +31,14 @@ import { Invoice } from './entities/Invoice';
 import { InvoiceLine } from './entities/InvoiceLine';
 import { Receipt } from './entities/Receipt';
 import { ReceiptAllocation } from './entities/ReceiptAllocation';
+import { PurchaseOrder } from './entities/PurchaseOrder';
+import { PurchaseOrderLine } from './entities/PurchaseOrderLine';
+import { Grn } from './entities/Grn';
+import { GrnLine } from './entities/GrnLine';
+import { SupplierInvoice } from './entities/SupplierInvoice';
+import { SupplierInvoiceLine } from './entities/SupplierInvoiceLine';
+import { SupplierPayment } from './entities/SupplierPayment';
+import { SupplierPaymentAllocation } from './entities/SupplierPaymentAllocation';
 
 export const dataSource = new DataSource({
   type: 'postgres',
@@ -67,6 +75,14 @@ export const dataSource = new DataSource({
     InvoiceLine,
     Receipt,
     ReceiptAllocation,
+    PurchaseOrder,
+    PurchaseOrderLine,
+    Grn,
+    GrnLine,
+    SupplierInvoice,
+    SupplierInvoiceLine,
+    SupplierPayment,
+    SupplierPaymentAllocation,
   ],
   // Use globs so TypeORM can discover migrations both in dev (ts-node) and in prod (compiled js).
   migrations: [

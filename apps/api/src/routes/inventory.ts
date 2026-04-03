@@ -36,6 +36,7 @@ function serializeMovement(m: InventoryMovement) {
     quantityDelta: m.quantityDelta,
     refType: m.refType,
     refId: m.refId,
+    grnLineId: m.grnLineId ?? null,
     unitCost: m.unitCost,
     movementDate: formatMovementDate(m.movementDate),
     branchId: m.branchId,

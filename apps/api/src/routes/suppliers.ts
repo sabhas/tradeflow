@@ -46,6 +46,126 @@ suppliersRouter.get('/', requirePermission('masters.suppliers', 'read'), async (
   res.json({ data: rows.map(serialize), meta: { total, limit, offset } });
 });
 
+suppliersRouter.get('/:id/statement', requirePermission('purchases.reports', 'read'), async (req, res) => {
+  const { id } = req.params;
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+
+  const op = await dataSource.query(
+    `
+    SELECT (
+      (SELECT COALESCE(SUM(si.total::numeric), 0) FROM supplier_invoices si
+       WHERE si.supplier_id = $1 AND si.status = 'posted'
+         AND si.invoice_date < $2::date)
+      -
+      (SELECT COALESCE(SUM(spa.amount::numeric), 0)
+       FROM supplier_payment_allocations spa
+       INNER JOIN supplier_payments sp ON sp.id = spa.supplier_payment_id
+       INNER JOIN supplier_invoices si ON si.id = spa.supplier_invoice_id
+       WHERE si.supplier_id = $1 AND si.status = 'posted'
+         AND sp.payment_date < $2::date)
+    )::text AS opening
+    `,
+    [id, dateFrom]
+  );
+  const opening = op[0]?.opening ?? '0.0000';
+
+  const invoices = await dataSource.query(
+    `
+    SELECT si.id, si.invoice_date AS date, si.total::text AS amount
+    FROM supplier_invoices si
+    WHERE si.supplier_id = $1 AND si.status = 'posted'
+      AND si.invoice_date >= $2::date AND si.invoice_date <= $3::date
+    ORDER BY si.invoice_date ASC, si.id ASC
+    `,
+    [id, dateFrom, dateTo]
+  );
+
+  const payments = await dataSource.query(
+    `
+    SELECT sp.id, sp.payment_date AS date, sp.amount::text AS amount, sp.reference AS reference
+    FROM supplier_payments sp
+    WHERE sp.supplier_id = $1
+      AND sp.payment_date >= $2::date AND sp.payment_date <= $3::date
+    ORDER BY sp.payment_date ASC, sp.id ASC
+    `,
+    [id, dateFrom, dateTo]
+  );
+
+  type Row =
+    | { kind: 'invoice'; date: string; id: string; debit: string; credit: string; ref: string }
+    | { kind: 'payment'; date: string; id: string; debit: string; credit: string; ref: string };
+
+  const merged: Row[] = [
+    ...invoices.map(
+      (i: { id: string; date: string; amount: string }) =>
+        ({
+          kind: 'invoice',
+          date: i.date,
+          id: i.id,
+          debit: i.amount,
+          credit: '0.0000',
+          ref: `Invoice ${i.id.slice(0, 8)}`,
+        }) satisfies Row
+    ),
+    ...payments.map(
+      (p: { id: string; date: string; amount: string; reference: string | null }) =>
+        ({
+          kind: 'payment',
+          date: p.date,
+          id: p.id,
+          debit: '0.0000',
+          credit: p.amount,
+          ref: p.reference || `Payment ${p.id.slice(0, 8)}`,
+        }) satisfies Row
+    ),
+  ];
+  merged.sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
+
+  let balance = parseFloat(opening);
+  const lines = merged.map((row) => {
+    balance += parseFloat(row.debit) - parseFloat(row.credit);
+    return { ...row, balance: balance.toFixed(4) };
+  });
+
+  res.json({
+    data: {
+      supplierId: id,
+      dateFrom,
+      dateTo,
+      openingBalance: opening,
+      lines,
+      closingBalance: balance.toFixed(4),
+    },
+  });
+});
+
+suppliersRouter.get('/:id/pricing-history', requirePermission('purchases.reports', 'read'), async (req, res) => {
+  const { id } = req.params;
+  const limit = Math.min(parseInt(String(req.query.limit || '200'), 10) || 200, 500);
+  const rows = await dataSource.query(
+    `
+    SELECT * FROM (
+      SELECT pol.id::text AS "lineId", 'purchase_order' AS source, po.order_date AS date,
+        pol.product_id AS "productId", pol.unit_price::text AS "unitPrice", po.id AS "documentId"
+      FROM purchase_order_lines pol
+      INNER JOIN purchase_orders po ON po.id = pol.purchase_order_id
+      WHERE po.supplier_id = $1 AND po.status IN ('sent', 'closed')
+      UNION ALL
+      SELECT sil.id::text AS "lineId", 'supplier_invoice' AS source, si.invoice_date AS date,
+        sil.product_id AS "productId", sil.unit_price::text AS "unitPrice", si.id AS "documentId"
+      FROM supplier_invoice_lines sil
+      INNER JOIN supplier_invoices si ON si.id = sil.supplier_invoice_id
+      WHERE si.supplier_id = $1 AND si.status = 'posted'
+    ) u
+    ORDER BY date DESC, source DESC
+    LIMIT $2
+    `,
+    [id, limit]
+  );
+  res.json({ data: rows });
+});
+
 suppliersRouter.get('/:id', requirePermission('masters.suppliers', 'read'), async (req, res) => {
   const row = await dataSource.getRepository(Supplier).findOne({
     where: { id: req.params.id, deletedAt: IsNull() },

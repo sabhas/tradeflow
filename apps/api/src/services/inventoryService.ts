@@ -70,6 +70,7 @@ export interface ApplyMovementParams {
   branchId?: string;
   notes?: string;
   userId?: string;
+  grnLineId?: string;
 }
 
 export async function applyMovement(
@@ -100,6 +101,7 @@ export async function applyMovement(
     branchId: params.branchId,
     notes: params.notes,
     userId: params.userId,
+    grnLineId: params.grnLineId,
   });
   return manager.save(mov);
 }
