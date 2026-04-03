@@ -4,10 +4,23 @@ export function getApiBase(): string {
   return API_BASE;
 }
 
+function branchIdFromStorage(): string | undefined {
+  try {
+    const u = localStorage.getItem('tradeflow_user');
+    if (!u) return undefined;
+    const j = JSON.parse(u) as { branchId?: string };
+    return j.branchId || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('tradeflow_token');
   const h: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) h['Authorization'] = `Bearer ${token}`;
+  const bid = branchIdFromStorage();
+  if (bid) h['X-Branch-Id'] = bid;
   return h;
 }
 
@@ -53,6 +66,8 @@ export async function downloadAuthenticatedFile(path: string, filename: string):
   const token = localStorage.getItem('tradeflow_token');
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  const bid = branchIdFromStorage();
+  if (bid) headers['X-Branch-Id'] = bid;
   const res = await fetch(`${API_BASE}${path}`, { headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));

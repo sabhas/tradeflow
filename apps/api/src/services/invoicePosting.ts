@@ -1,11 +1,12 @@
 import { EntityManager, IsNull } from 'typeorm';
-import { Customer, Invoice, SalesOrderLine } from '@tradeflow/db';
+import { Customer, InventoryMovement, Invoice, SalesOrderLine } from '@tradeflow/db';
 import { applyMovement, assertProductInScope, assertWarehouseInScope, runInTransaction } from './inventoryService';
 import { decimalAdd } from '../utils/decimal';
 import { moneyCmp, moneySub } from '../utils/money';
 import { getCustomerCreditExposure, getInvoiceAmountAllocated } from './salesCustomerBalance';
 import { postSalesInvoiceJournal } from './accountingPosting';
 import { addDaysIso } from './salesTotals';
+import { assertDateNotPeriodLocked } from './periodLock';
 
 export async function postInvoice(
   invoiceId: string,
@@ -20,6 +21,8 @@ export async function postInvoice(
     if (!inv) throw new Error('Invoice not found');
     if (inv.status !== 'draft') throw new Error('Only draft invoices can be posted');
     if (!inv.lines?.length) throw new Error('Invoice has no lines');
+
+    await assertDateNotPeriodLocked(manager, inv.invoiceDate);
 
     await assertWarehouseInScope(inv.warehouseId, branchId);
     for (const line of inv.lines) {
@@ -78,6 +81,16 @@ export async function postInvoice(
       await manager.save(sol);
     }
 
+    const movs = await manager.find(InventoryMovement, {
+      where: { refId: inv.id, refType: 'sale' },
+    });
+    let cogsTotal = 0;
+    for (const m of movs) {
+      const q = Math.abs(parseFloat(m.quantityDelta));
+      cogsTotal += q * parseFloat(m.unitCost || '0');
+    }
+    const cogsAmount = cogsTotal.toFixed(4);
+
     const revenueExTax = moneySub(inv.subtotal, inv.discountAmount);
     await postSalesInvoiceJournal(manager, {
       entryDate: inv.invoiceDate,
@@ -90,6 +103,7 @@ export async function postInvoice(
       total: inv.total,
       revenueExTax,
       taxAmount: inv.taxAmount,
+      cogsAmount,
     });
 
     inv.status = 'posted';

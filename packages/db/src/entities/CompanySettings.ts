@@ -86,6 +86,14 @@ export class CompanySettings {
   @Column({ name: 'inventory_costing_method', length: 8, default: 'fifo' })
   inventoryCostingMethod!: string;
 
+  /** Inclusive: cannot post transactions on or before this date (YYYY-MM-DD). */
+  @Column({ name: 'period_locked_through', type: 'date', nullable: true })
+  periodLockedThrough?: string;
+
+  /** Optional: manual journal total debit above this amount may require approval (policy). */
+  @Column({ name: 'journal_approval_threshold', type: 'decimal', precision: 14, scale: 4, nullable: true })
+  journalApprovalThreshold?: string;
+
   @Column({ name: 'default_invoice_template_id', nullable: true })
   defaultInvoiceTemplateId?: string;
 

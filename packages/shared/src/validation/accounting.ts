@@ -35,7 +35,24 @@ export const updateJournalEntrySchema = createJournalEntrySchema.partial().exten
   lines: z.array(journalLineInputSchema).min(2).optional(),
 });
 
+/** Legacy: both accounts required. Prefer patchCompanyAccountingSettingsSchema. */
 export const updateCompanyAccountingSettingsSchema = z.object({
   defaultCashAccountId: z.string().uuid(),
   defaultBankAccountId: z.string().uuid(),
 });
+
+export const patchCompanyAccountingSettingsSchema = z
+  .object({
+    defaultCashAccountId: z.string().uuid().optional(),
+    defaultBankAccountId: z.string().uuid().optional(),
+    periodLockedThrough: z.union([z.string().length(10), z.null()]).optional(),
+    journalApprovalThreshold: z.union([z.string().regex(/^\d+(\.\d+)?$/), z.null()]).optional(),
+  })
+  .refine(
+    (d) => {
+      const c = d.defaultCashAccountId !== undefined;
+      const b = d.defaultBankAccountId !== undefined;
+      return c === b;
+    },
+    { message: 'Provide both default cash and bank account IDs, or neither.' }
+  );

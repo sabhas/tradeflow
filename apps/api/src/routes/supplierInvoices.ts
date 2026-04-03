@@ -16,6 +16,7 @@ import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import { computePurchaseDocumentTotals } from '../services/purchaseTotals';
 import { runInTransaction } from '../services/inventoryService';
+import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { assertProductInScope } from '../services/inventoryService';
 import { postSupplierInvoiceJournal } from '../services/accountingPosting';
 import { addDaysIso } from '../services/salesTotals';
@@ -370,6 +371,7 @@ supplierInvoicesRouter.post(
         });
         if (!inv) throw new Error('Not found');
         if (inv.status !== 'draft') throw new Error('Only draft invoices can be posted');
+        await assertDateNotPeriodLocked(manager, inv.invoiceDate);
 
         const linesForCalc =
           inv.lines?.map((l) => ({

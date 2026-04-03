@@ -7,6 +7,9 @@ import { Role } from './entities/Role';
 import { Permission } from './entities/Permission';
 import { AuditLog } from './entities/AuditLog';
 import { Branch } from './entities/Branch';
+import { UserBranch } from './entities/UserBranch';
+import { ApprovalRequest } from './entities/ApprovalRequest';
+import { UserNotification } from './entities/UserNotification';
 import { PaymentTerms } from './entities/PaymentTerms';
 import { TaxProfile } from './entities/TaxProfile';
 import { ProductCategory } from './entities/ProductCategory';
@@ -64,6 +67,9 @@ export const dataSource = new DataSource({
     Permission,
     AuditLog,
     Branch,
+    UserBranch,
+    ApprovalRequest,
+    UserNotification,
     PaymentTerms,
     TaxProfile,
     ProductCategory,

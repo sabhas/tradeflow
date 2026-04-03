@@ -1,6 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { Account, JournalEntry, JournalLine } from '@tradeflow/db';
 import { resolveLiquidAccountId } from './companySettings';
+import { parseDecimalStrict } from '../utils/decimal';
 
 const ACC = {
   AR: '1200',
@@ -9,6 +10,7 @@ const ACC = {
   INVENTORY: '1300',
   AP: '2100',
   INPUT_VAT: '1500',
+  COGS: '5100',
 } as const;
 
 async function accountIdByCode(manager: EntityManager, code: string): Promise<string> {
@@ -43,6 +45,8 @@ export async function postSalesInvoiceJournal(
     total: string;
     revenueExTax: string;
     taxAmount: string;
+    /** Layer-based COGS: Dr COGS, Cr Inventory when > 0 */
+    cogsAmount?: string;
   }
 ): Promise<JournalEntry> {
   const existing = await manager.findOne(JournalEntry, {
@@ -65,6 +69,20 @@ export async function postSalesInvoiceJournal(
   if (parseFloat(params.taxAmount) > 0.00005) {
     lines.push({ accountId: taxId, debit: '0.0000', credit: params.taxAmount });
   }
+
+  const cogsStr =
+    params.cogsAmount && parseFloat(params.cogsAmount) > 0.00005
+      ? parseDecimalStrict(params.cogsAmount)
+      : null;
+  if (cogsStr) {
+    const [cogsId, invId] = await Promise.all([
+      accountIdByCode(manager, ACC.COGS),
+      accountIdByCode(manager, ACC.INVENTORY),
+    ]);
+    lines.push({ accountId: cogsId, debit: cogsStr, credit: '0.0000' });
+    lines.push({ accountId: invId, debit: '0.0000', credit: cogsStr });
+  }
+
   assertBalanced(lines);
 
   const entry = manager.create(JournalEntry, {

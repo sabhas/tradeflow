@@ -2,6 +2,7 @@ import { NextFunction, Request, Response, Router } from 'express';
 import { dataSource } from '@tradeflow/db';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { resolveBranchId } from '../utils/branchScope';
+import { getCompanyAccountingSettings } from '../services/companySettings';
 
 function requireTaxSummaryAccess(req: Request, res: Response, next: NextFunction) {
   const p = req.auth?.permissions ?? [];
@@ -939,4 +940,379 @@ reportsRouter.get('/slow-moving', requirePermission('sales', 'read'), async (req
   );
 
   res.json({ data: rows, meta: { dateFrom, dateTo, limit } });
+});
+
+function hasPerm(req: Request, code: string): boolean {
+  const p = req.auth?.permissions ?? [];
+  return p.includes('*') || p.includes(code);
+}
+
+/** Today / MTD sales & purchases, AR/AP open, quick aging totals (branch-scoped). */
+reportsRouter.get(
+  '/dashboard/kpis',
+  authMiddleware,
+  loadUser,
+  async (req, res) => {
+    const canSales = hasPerm(req, 'sales:read');
+    const canPurch = hasPerm(req, 'purchases.reports:read');
+    if (!canSales && !canPurch) {
+      res.status(403).json({ error: 'Forbidden', message: 'sales:read or purchases.reports:read required' });
+      return;
+    }
+    const branchId = resolveBranchId(req);
+    const today = new Date().toISOString().slice(0, 10);
+    const monthStart = `${today.slice(0, 7)}-01`;
+    const bid = branchId || null;
+
+    let salesToday = '0.0000';
+    let salesMtd = '0.0000';
+    let purchasesToday = '0.0000';
+    let purchasesMtd = '0.0000';
+    let invoicesPostedToday = 0;
+
+    if (canSales) {
+      const s1 = await dataSource.query(
+        `
+        SELECT COALESCE(SUM(i.total::numeric), 0)::text AS t, COUNT(*)::int AS c
+        FROM invoices i
+        WHERE i.status = 'posted' AND i.deleted_at IS NULL
+          AND i.invoice_date = $1::date
+          AND ($2::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $2::uuid)
+        `,
+        [today, bid]
+      );
+      salesToday = s1[0]?.t ?? '0';
+      invoicesPostedToday = Number(s1[0]?.c ?? 0);
+      const s2 = await dataSource.query(
+        `
+        SELECT COALESCE(SUM(i.total::numeric), 0)::text AS t
+        FROM invoices i
+        WHERE i.status = 'posted' AND i.deleted_at IS NULL
+          AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
+          AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+        `,
+        [monthStart, today, bid]
+      );
+      salesMtd = s2[0]?.t ?? '0';
+    }
+
+    if (canPurch) {
+      const p1 = await dataSource.query(
+        `
+        SELECT COALESCE(SUM(si.total::numeric), 0)::text AS t
+        FROM supplier_invoices si
+        WHERE si.status = 'posted'
+          AND si.invoice_date = $1::date
+          AND ($2::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $2::uuid)
+        `,
+        [today, bid]
+      );
+      purchasesToday = p1[0]?.t ?? '0';
+      const p2 = await dataSource.query(
+        `
+        SELECT COALESCE(SUM(si.total::numeric), 0)::text AS t
+        FROM supplier_invoices si
+        WHERE si.status = 'posted'
+          AND si.invoice_date >= $1::date AND si.invoice_date <= $2::date
+          AND ($3::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $3::uuid)
+        `,
+        [monthStart, today, bid]
+      );
+      purchasesMtd = p2[0]?.t ?? '0';
+    }
+
+    let arOpen = '0.0000';
+    let apOpen = '0.0000';
+    let agingQuick = {
+      arCurrent: '0.0000',
+      ar1_30: '0.0000',
+      ar31_60: '0.0000',
+      ar61_90: '0.0000',
+      ar90p: '0.0000',
+    };
+
+    if (canSales) {
+      const ar = await dataSource.query(
+        `
+        SELECT COALESCE(SUM(
+          i.total::numeric - COALESCE((SELECT SUM(ra.amount) FROM receipt_allocations ra WHERE ra.invoice_id = i.id), 0)
+        ), 0)::text AS t
+        FROM invoices i
+        WHERE i.status = 'posted' AND i.deleted_at IS NULL AND i.payment_type = 'credit'
+          AND ($1::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $1::uuid)
+        `,
+        [bid]
+      );
+      arOpen = ar[0]?.t ?? '0';
+
+      const asOf = today;
+      const asOfMs = new Date(`${asOf}T12:00:00.000Z`).getTime();
+      const invRows = await dataSource.query(
+        `
+        SELECT i.due_date AS "dueDate", (i.total::numeric - COALESCE((SELECT SUM(ra.amount) FROM receipt_allocations ra WHERE ra.invoice_id = i.id), 0))::text AS "openAmount"
+        FROM invoices i
+        WHERE i.status = 'posted' AND i.deleted_at IS NULL AND i.payment_type = 'credit'
+          AND ($1::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $1::uuid)
+        `,
+        [bid]
+      );
+      const b = {
+        arCurrent: 0,
+        ar1_30: 0,
+        ar31_60: 0,
+        ar61_90: 0,
+        ar90p: 0,
+      };
+      for (const r of invRows) {
+        const open = parseFloat(r.openAmount);
+        if (open <= 0.00005) continue;
+        const dueMs = new Date(`${r.dueDate}T12:00:00.000Z`).getTime();
+        const daysPast = Math.floor((asOfMs - dueMs) / (24 * 3600 * 1000));
+        if (daysPast < 1) b.arCurrent += open;
+        else if (daysPast <= 30) b.ar1_30 += open;
+        else if (daysPast <= 60) b.ar31_60 += open;
+        else if (daysPast <= 90) b.ar61_90 += open;
+        else b.ar90p += open;
+      }
+      agingQuick = {
+        arCurrent: b.arCurrent.toFixed(4),
+        ar1_30: b.ar1_30.toFixed(4),
+        ar31_60: b.ar31_60.toFixed(4),
+        ar61_90: b.ar61_90.toFixed(4),
+        ar90p: b.ar90p.toFixed(4),
+      };
+    }
+
+    if (canPurch) {
+      const ap = await dataSource.query(
+        `
+        SELECT COALESCE(SUM(
+          si.total::numeric - COALESCE((SELECT SUM(spa.amount) FROM supplier_payment_allocations spa WHERE spa.supplier_invoice_id = si.id), 0)
+        ), 0)::text AS t
+        FROM supplier_invoices si
+        WHERE si.status = 'posted'
+          AND ($1::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $1::uuid)
+        `,
+        [bid]
+      );
+      apOpen = ap[0]?.t ?? '0';
+    }
+
+    res.json({
+      data: {
+        asOfDate: today,
+        monthStart,
+        salesToday,
+        salesMtd,
+        purchasesToday,
+        purchasesMtd,
+        invoicesPostedToday,
+        arOpen,
+        apOpen,
+        agingReceivables: agingQuick,
+      },
+      meta: {
+        branchId: bid,
+        partial: { sales: !canSales, purchases: !canPurch },
+      },
+    });
+  }
+);
+
+/** Posted supplier purchases vs posted sales totals for a range. */
+reportsRouter.get('/purchase-vs-sales', requirePermission('sales', 'read'), async (req, res) => {
+  const canPurch = hasPerm(req, 'purchases.reports:read');
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const bid = branchId || null;
+
+  const sales = await dataSource.query(
+    `
+    SELECT COALESCE(SUM(i.total::numeric), 0)::text AS t, COUNT(*)::int AS c
+    FROM invoices i
+    WHERE i.status = 'posted' AND i.deleted_at IS NULL
+      AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
+      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+    `,
+    [dateFrom, dateTo, bid]
+  );
+
+  let purchasesTotal = '0.0000';
+  let purchaseCount = 0;
+  if (canPurch) {
+    const p = await dataSource.query(
+      `
+      SELECT COALESCE(SUM(si.total::numeric), 0)::text AS t, COUNT(*)::int AS c
+      FROM supplier_invoices si
+      WHERE si.status = 'posted'
+        AND si.invoice_date >= $1::date AND si.invoice_date <= $2::date
+        AND ($3::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $3::uuid)
+      `,
+      [dateFrom, dateTo, bid]
+    );
+    purchasesTotal = p[0]?.t ?? '0';
+    purchaseCount = Number(p[0]?.c ?? 0);
+  }
+
+  res.json({
+    data: {
+      salesTotal: sales[0]?.t ?? '0',
+      salesInvoiceCount: Number(sales[0]?.c ?? 0),
+      purchasesTotal,
+      purchaseInvoiceCount: purchaseCount,
+      netSalesMinusPurchases: (
+        parseFloat(sales[0]?.t ?? '0') - parseFloat(purchasesTotal)
+      ).toFixed(4),
+    },
+    meta: { dateFrom, dateTo, purchasesHidden: !canPurch },
+  });
+});
+
+/** Layer COGS vs line revenue by product (posted sales in range). */
+reportsRouter.get('/profit-by-product', requirePermission('sales', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const bid = branchId || null;
+
+  const rows = await dataSource.query(
+    `
+    WITH rev AS (
+      SELECT il.product_id AS pid,
+        SUM(il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric)::numeric AS revenue
+      FROM invoice_lines il
+      INNER JOIN invoices i ON i.id = il.invoice_id AND i.deleted_at IS NULL
+      WHERE i.status = 'posted'
+        AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
+        AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+      GROUP BY il.product_id
+    ),
+    cog AS (
+      SELECT im.product_id AS pid,
+        SUM(ABS(im.quantity_delta::numeric) * COALESCE(im.unit_cost::numeric, 0))::numeric AS cogs
+      FROM inventory_movements im
+      WHERE im.ref_type = 'sale'
+        AND im.movement_date >= $1::date AND im.movement_date <= $2::date
+        AND ($3::uuid IS NULL OR im.branch_id IS NULL OR im.branch_id = $3::uuid)
+      GROUP BY im.product_id
+    )
+    SELECT
+      p.id AS "productId",
+      p.sku AS "productSku",
+      p.name AS "productName",
+      COALESCE(rev.revenue, 0)::text AS revenue,
+      COALESCE(cog.cogs, 0)::text AS cogs,
+      (COALESCE(rev.revenue, 0) - COALESCE(cog.cogs, 0))::text AS profit
+    FROM products p
+    LEFT JOIN rev ON rev.pid = p.id
+    LEFT JOIN cog ON cog.pid = p.id
+    WHERE p.deleted_at IS NULL
+      AND (COALESCE(rev.revenue, 0) > 0.00001 OR COALESCE(cog.cogs, 0) > 0.00001)
+      AND ($3::uuid IS NULL OR p.branch_id IS NULL OR p.branch_id = $3::uuid)
+    ORDER BY (COALESCE(rev.revenue, 0) - COALESCE(cog.cogs, 0)) DESC NULLS LAST
+    `,
+    [dateFrom, dateTo, bid]
+  );
+
+  res.json({ data: rows, meta: { dateFrom, dateTo } });
+});
+
+/** Layer COGS vs revenue by customer. */
+reportsRouter.get('/profit-by-customer', requirePermission('sales', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const bid = branchId || null;
+
+  const rows = await dataSource.query(
+    `
+    WITH rev AS (
+      SELECT i.customer_id AS cid,
+        SUM(il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric)::numeric AS revenue
+      FROM invoice_lines il
+      INNER JOIN invoices i ON i.id = il.invoice_id AND i.deleted_at IS NULL
+      WHERE i.status = 'posted'
+        AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
+        AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+      GROUP BY i.customer_id
+    ),
+    cog AS (
+      SELECT i.customer_id AS cid,
+        SUM(ABS(im.quantity_delta::numeric) * COALESCE(im.unit_cost::numeric, 0))::numeric AS cogs
+      FROM inventory_movements im
+      INNER JOIN invoices i ON i.id = im.ref_id AND i.deleted_at IS NULL
+      WHERE im.ref_type = 'sale'
+        AND i.status = 'posted'
+        AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
+        AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
+      GROUP BY i.customer_id
+    )
+    SELECT
+      c.id AS "customerId",
+      c.name AS "customerName",
+      COALESCE(rev.revenue, 0)::text AS revenue,
+      COALESCE(cog.cogs, 0)::text AS cogs,
+      (COALESCE(rev.revenue, 0) - COALESCE(cog.cogs, 0))::text AS profit
+    FROM customers c
+    LEFT JOIN rev ON rev.cid = c.id
+    LEFT JOIN cog ON cog.cid = c.id
+    WHERE c.deleted_at IS NULL
+      AND (COALESCE(rev.revenue, 0) > 0.00001 OR COALESCE(cog.cogs, 0) > 0.00001)
+      AND ($3::uuid IS NULL OR c.branch_id IS NULL OR c.branch_id = $3::uuid)
+    ORDER BY (COALESCE(rev.revenue, 0) - COALESCE(cog.cogs, 0)) DESC NULLS LAST
+    `,
+    [dateFrom, dateTo, bid]
+  );
+
+  res.json({ data: rows, meta: { dateFrom, dateTo } });
+});
+
+/** Net change on default cash & bank GL accounts (posted journals). */
+reportsRouter.get('/cash-flow', requirePermission('accounting', 'read'), async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
+  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const bid = branchId || null;
+
+  const { cashId, bankId } = await getCompanyAccountingSettings(dataSource.manager);
+
+  const byDay = await dataSource.query(
+    `
+    SELECT
+      je.entry_date::text AS date,
+      COALESCE(SUM(jl.debit::numeric - jl.credit::numeric), 0)::text AS "netChange"
+    FROM journal_lines jl
+    INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+      AND je.deleted_at IS NULL
+      AND je.status = 'posted'
+      AND je.entry_date >= $1::date
+      AND je.entry_date <= $2::date
+      AND ($3::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $3::uuid)
+    WHERE jl.account_id = ANY($4::uuid[])
+    GROUP BY je.entry_date
+    ORDER BY je.entry_date
+    `,
+    [dateFrom, dateTo, bid, [cashId, bankId]]
+  );
+
+  const total = await dataSource.query(
+    `
+    SELECT COALESCE(SUM(jl.debit::numeric - jl.credit::numeric), 0)::text AS t
+    FROM journal_lines jl
+    INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+      AND je.deleted_at IS NULL
+      AND je.status = 'posted'
+      AND je.entry_date >= $1::date
+      AND je.entry_date <= $2::date
+      AND ($3::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $3::uuid)
+    WHERE jl.account_id = ANY($4::uuid[])
+    `,
+    [dateFrom, dateTo, bid, [cashId, bankId]]
+  );
+
+  res.json({
+    data: { byDay, totalNetLiquid: total[0]?.t ?? '0' },
+    meta: { dateFrom, dateTo, accountIds: { cashId, bankId } },
+  });
 });

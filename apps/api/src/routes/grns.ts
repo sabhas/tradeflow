@@ -18,6 +18,7 @@ import {
   runInTransaction,
 } from '../services/inventoryService';
 import { parseDecimalStrict } from '../utils/decimal';
+import { assertDateNotPeriodLocked } from '../services/periodLock';
 
 export const grnsRouter = Router();
 grnsRouter.use(authMiddleware, loadUser);
@@ -183,6 +184,7 @@ grnsRouter.post(
         });
         if (!grn) throw new Error('Not found');
         if (grn.status !== 'draft') throw new Error('Only draft GRNs can be posted');
+        await assertDateNotPeriodLocked(manager, grn.grnDate);
 
         for (const line of grn.lines ?? []) {
           await assertProductInScope(line.productId, grn.branchId ?? undefined);

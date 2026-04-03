@@ -8,6 +8,7 @@ import { getPagination } from '../utils/pagination';
 import { postSupplierPaymentJournal } from '../services/accountingPosting';
 import { validateSupplierPaymentAllocations } from '../services/supplierPayables';
 import { runInTransaction } from '../services/inventoryService';
+import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { parseDecimalStrict } from '../utils/decimal';
 
 export const supplierPaymentsRouter = Router();
@@ -106,6 +107,7 @@ supplierPaymentsRouter.post(
           );
         }
 
+        await assertDateNotPeriodLocked(manager, p.paymentDate);
         await postSupplierPaymentJournal(manager, {
           entryDate: p.paymentDate,
           reference: p.reference || `PAY-${p.id.slice(0, 8)}`,

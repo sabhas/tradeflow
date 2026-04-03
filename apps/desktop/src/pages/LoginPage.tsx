@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useDispatch } from 'react-redux';
-import { setCredentials } from '../store/slices/authSlice';
+import { BranchOption, setCredentials } from '../store/slices/authSlice';
 import { apiFetch } from '../api/client';
 
 export function LoginPage() {
@@ -13,7 +13,12 @@ export function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: async (body: { email: string; password: string }) =>
-      apiFetch<{ accessToken: string; user: unknown; permissions: string[] }>('/auth/login', {
+      apiFetch<{
+        accessToken: string;
+        user: unknown;
+        permissions: string[];
+        branches?: BranchOption[];
+      }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify(body),
       }),
@@ -23,6 +28,7 @@ export function LoginPage() {
           user: data.user,
           token: data.accessToken,
           permissions: data.permissions,
+          branches: data.branches ?? [],
         })
       );
       navigate('/');

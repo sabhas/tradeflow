@@ -8,6 +8,7 @@ import { getPagination } from '../utils/pagination';
 import { runInTransaction } from '../services/inventoryService';
 import { validateReceiptAllocations } from '../services/invoicePosting';
 import { postReceiptJournal } from '../services/accountingPosting';
+import { assertDateNotPeriodLocked } from '../services/periodLock';
 
 export const receiptsRouter = Router();
 receiptsRouter.use(authMiddleware, loadUser);
@@ -101,6 +102,7 @@ receiptsRouter.post(
             })
           );
         }
+        await assertDateNotPeriodLocked(manager, rec.receiptDate);
         await postReceiptJournal(manager, {
           entryDate: rec.receiptDate,
           reference: `RCPT-${rec.id.slice(0, 8)}`,

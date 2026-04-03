@@ -132,6 +132,15 @@ export function JournalEntriesPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['journal-entries'] }),
   });
 
+  const reverseMut = useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/journal-entries/${id}/reverse`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['journal-entries'] }),
+  });
+
   const delMut = useMutation({
     mutationFn: (id: string) => apiFetch(`/journal-entries/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
@@ -398,6 +407,19 @@ export function JournalEntriesPage() {
                           </button>
                         </>
                       )}
+                      {j.status === 'posted' && (
+                        <button
+                          type="button"
+                          className="text-sm text-slate-700 hover:underline"
+                          onClick={() => {
+                            if (confirm('Create a reversing journal entry (today’s date)?')) {
+                              reverseMut.mutate(j.id);
+                            }
+                          }}
+                        >
+                          Reverse
+                        </button>
+                      )}
                     </div>
                   </td>
                 )}
@@ -406,8 +428,10 @@ export function JournalEntriesPage() {
           </tbody>
         </table>
       </div>
-      {postMut.isError && (
-        <p className="mt-2 text-sm text-red-600">{(postMut.error as Error).message}</p>
+      {(postMut.isError || reverseMut.isError) && (
+        <p className="mt-2 text-sm text-red-600">
+          {((postMut.error || reverseMut.error) as Error).message}
+        </p>
       )}
     </div>
   );

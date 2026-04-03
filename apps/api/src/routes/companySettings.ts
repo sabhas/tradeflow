@@ -3,7 +3,7 @@ import { dataSource, Account, CompanySettings, InvoiceTemplate } from '@tradeflo
 import {
   patchCompanyProfileSchema,
   patchGeneralSettingsSchema,
-  updateCompanyAccountingSettingsSchema,
+  patchCompanyAccountingSettingsSchema,
 } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
@@ -184,6 +184,8 @@ function serialize(cs: CompanySettings) {
     id: cs.id,
     defaultCashAccountId: cs.defaultCashAccountId,
     defaultBankAccountId: cs.defaultBankAccountId,
+    periodLockedThrough: cs.periodLockedThrough ?? null,
+    journalApprovalThreshold: cs.journalApprovalThreshold ?? null,
     updatedAt: cs.updatedAt,
   };
 }
@@ -221,33 +223,43 @@ companySettingsRouter.patch(
   requirePermission('accounting', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
   async (req, res) => {
-    const parsed = updateCompanyAccountingSettingsSchema.safeParse(req.body);
+    const parsed = patchCompanyAccountingSettingsSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
       return;
     }
-    const { defaultCashAccountId, defaultBankAccountId } = parsed.data;
-
-    const [cashAcc, bankAcc] = await Promise.all([
-      dataSource.getRepository(Account).findOne({ where: { id: defaultCashAccountId } }),
-      dataSource.getRepository(Account).findOne({ where: { id: defaultBankAccountId } }),
-    ]);
-    if (!cashAcc || !bankAcc) {
-      res.status(400).json({ error: 'Account not found' });
-      return;
-    }
-    if (cashAcc.type !== 'asset' || bankAcc.type !== 'asset') {
-      res.status(400).json({ error: 'Cash and bank accounts must be asset accounts' });
-      return;
-    }
+    const b = parsed.data;
 
     let row = await dataSource.getRepository(CompanySettings).findOne({ order: { id: 'ASC' } });
     if (!row) {
       res.status(500).json({ error: 'Company settings not initialized' });
       return;
     }
-    row.defaultCashAccountId = defaultCashAccountId;
-    row.defaultBankAccountId = defaultBankAccountId;
+
+    if (b.defaultCashAccountId !== undefined && b.defaultBankAccountId !== undefined) {
+      const [cashAcc, bankAcc] = await Promise.all([
+        dataSource.getRepository(Account).findOne({ where: { id: b.defaultCashAccountId } }),
+        dataSource.getRepository(Account).findOne({ where: { id: b.defaultBankAccountId } }),
+      ]);
+      if (!cashAcc || !bankAcc) {
+        res.status(400).json({ error: 'Account not found' });
+        return;
+      }
+      if (cashAcc.type !== 'asset' || bankAcc.type !== 'asset') {
+        res.status(400).json({ error: 'Cash and bank accounts must be asset accounts' });
+        return;
+      }
+      row.defaultCashAccountId = b.defaultCashAccountId;
+      row.defaultBankAccountId = b.defaultBankAccountId;
+    }
+
+    if (b.periodLockedThrough !== undefined) {
+      row.periodLockedThrough = b.periodLockedThrough ?? undefined;
+    }
+    if (b.journalApprovalThreshold !== undefined) {
+      row.journalApprovalThreshold = b.journalApprovalThreshold ?? undefined;
+    }
+
     await dataSource.getRepository(CompanySettings).save(row);
     row = await dataSource.getRepository(CompanySettings).findOneOrFail({
       where: { id: row.id },

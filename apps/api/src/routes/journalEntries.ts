@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { EntityManager, IsNull } from 'typeorm';
 import { dataSource, JournalEntry, JournalLine } from '@tradeflow/db';
 import { createJournalEntrySchema, updateJournalEntrySchema } from '@tradeflow/shared';
@@ -8,6 +9,7 @@ import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import { parseDecimalStrict } from '../utils/decimal';
 import { runInTransaction } from '../services/inventoryService';
+import { assertDateNotPeriodLocked } from '../services/periodLock';
 
 export const journalEntriesRouter = Router();
 journalEntriesRouter.use(authMiddleware, loadUser);
@@ -286,11 +288,88 @@ journalEntriesRouter.post('/:id/post', requirePermission('accounting', 'write'),
     return;
   }
 
-  row.status = 'posted';
-  await dataSource.getRepository(JournalEntry).save(row);
-  const full = await dataSource.getRepository(JournalEntry).findOneOrFail({
-    where: { id: row.id, deletedAt: IsNull() },
+  try {
+    const full = await runInTransaction(async (manager) => {
+      const cur = await manager.findOne(JournalEntry, {
+        where: { id: row.id, deletedAt: IsNull() },
+        relations: ['lines'],
+      });
+      if (!cur || cur.status !== 'draft') throw new Error('Entry state changed');
+      await assertDateNotPeriodLocked(manager, cur.entryDate);
+      cur.status = 'posted';
+      await manager.save(cur);
+      return manager.findOneOrFail(JournalEntry, {
+        where: { id: cur.id, deletedAt: IsNull() },
+        relations: ['lines'],
+      });
+    });
+    res.json({ data: serializeEntry(full, full.lines) });
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message });
+  }
+});
+
+const reverseJournalBodySchema = z.object({
+  entryDate: z.string().optional(),
+});
+
+journalEntriesRouter.post('/:id/reverse', requirePermission('accounting', 'write'), async (req, res) => {
+  const parsed = reverseJournalBodySchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
+    return;
+  }
+  const original = await dataSource.getRepository(JournalEntry).findOne({
+    where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines'],
   });
-  res.json({ data: serializeEntry(full, full.lines) });
+  if (!original) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+  if (original.status !== 'posted') {
+    res.status(400).json({ error: 'Only posted entries can be reversed' });
+    return;
+  }
+  if (!original.lines?.length) {
+    res.status(400).json({ error: 'Entry has no lines' });
+    return;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const reversalDate = (parsed.data.entryDate ?? today).slice(0, 10);
+
+  try {
+    const full = await runInTransaction(async (manager) => {
+      await assertDateNotPeriodLocked(manager, reversalDate);
+
+      const revLines = original.lines.map((l) => ({
+        accountId: l.accountId,
+        debit: l.credit,
+        credit: l.debit,
+      }));
+      assertBalanced(revLines);
+
+      const ref = original.reference?.trim() || original.id.slice(0, 8);
+      const entry = manager.create(JournalEntry, {
+        entryDate: reversalDate,
+        reference: `REV-${ref}`.slice(0, 120),
+        description: `Reversal of journal ${ref}`,
+        status: 'posted',
+        sourceType: 'journal_reversal',
+        sourceId: original.id,
+        branchId: original.branchId ?? undefined,
+        createdBy: req.auth?.userId,
+      });
+      await manager.save(entry);
+      await replaceLines(manager, entry.id, revLines);
+      return manager.findOneOrFail(JournalEntry, {
+        where: { id: entry.id, deletedAt: IsNull() },
+        relations: ['lines'],
+      });
+    });
+    res.status(201).json({ data: serializeEntry(full, full.lines) });
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message });
+  }
 });

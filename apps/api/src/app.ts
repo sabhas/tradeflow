@@ -34,10 +34,18 @@ import { deliveryRunsRouter } from './routes/deliveryRuns';
 import { deliveryNotesRouter } from './routes/deliveryNotes';
 import { importRouter } from './routes/import';
 import { exportRouter } from './routes/export';
+import { notificationsRouter } from './routes/notifications';
+import { approvalsRouter } from './routes/approvals';
 
 export const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Branch-Id'],
+  })
+);
 app.use(express.json());
 
 app.use('/health', healthRouter);
@@ -74,3 +82,5 @@ app.use('/delivery-runs', deliveryRunsRouter);
 app.use('/delivery-notes', deliveryNotesRouter);
 app.use('/import', importRouter);
 app.use('/export', exportRouter);
+app.use('/notifications', notificationsRouter);
+app.use('/approvals', approvalsRouter);

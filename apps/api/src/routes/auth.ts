@@ -2,8 +2,8 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { dataSource } from '@tradeflow/db';
-import { User } from '@tradeflow/db';
-import { loginSchema } from '@tradeflow/shared';
+import { Branch, User, UserBranch } from '@tradeflow/db';
+import { loginSchema, patchAuthMeSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
 
@@ -45,6 +45,35 @@ function registerFailedLogin(key: string): { blocked: boolean; retryAfterSec?: n
 
 function clearLoginAttempts(key: string): void {
   loginAttempts.delete(key);
+}
+
+async function loadBranchesForUser(
+  userId: string,
+  fallbackBranchId?: string | null
+): Promise<
+  Array<{ branchId: string; name: string; code: string; isDefault: boolean }>
+> {
+  const rows = await dataSource.getRepository(UserBranch).find({
+    where: { userId },
+    relations: ['branch'],
+    order: { isDefault: 'DESC' },
+  });
+  const mapped = rows
+    .filter((r) => r.branch)
+    .map((r) => ({
+      branchId: r.branchId,
+      name: r.branch!.name,
+      code: r.branch!.code,
+      isDefault: r.isDefault,
+    }));
+  if (mapped.length > 0) return mapped;
+  if (fallbackBranchId) {
+    const b = await dataSource.getRepository(Branch).findOne({ where: { id: fallbackBranchId } });
+    if (b) {
+      return [{ branchId: fallbackBranchId, name: b.name, code: b.code, isDefault: true }];
+    }
+  }
+  return [];
 }
 
 authRouter.post('/login', async (req, res) => {
@@ -95,6 +124,8 @@ authRouter.post('/login', async (req, res) => {
   };
   const accessToken = jwt.sign({ userId: user.id, email: user.email, permissions }, secret, signOptions);
 
+  const branches = await loadBranchesForUser(user.id, user.branchId);
+
   res.json({
     accessToken,
     user: {
@@ -105,11 +136,12 @@ authRouter.post('/login', async (req, res) => {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     },
+    branches,
     permissions,
   });
 });
 
-authRouter.get('/me', authMiddleware, loadUser, (req, res) => {
+authRouter.get('/me', authMiddleware, loadUser, async (req, res) => {
   if (!req.user || !req.auth) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
@@ -119,6 +151,7 @@ authRouter.get('/me', authMiddleware, loadUser, (req, res) => {
       (req.user.roles || []).flatMap((r) => (r.permissions || []).map((p) => p.code))
     ),
   ];
+  const branches = await loadBranchesForUser(req.user.id, req.user.branchId);
   res.json({
     user: {
       id: req.user.id,
@@ -128,6 +161,7 @@ authRouter.get('/me', authMiddleware, loadUser, (req, res) => {
       createdAt: req.user.createdAt,
       updatedAt: req.user.updatedAt,
     },
+    branches,
     permissions,
   });
 });
@@ -150,11 +184,45 @@ authRouter.patch(
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
-    const { name } = req.body as { name?: string };
-    if (name && typeof name === 'string' && name.trim()) {
-      req.user.name = name.trim();
+    const parsed = patchAuthMeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
+      return;
+    }
+    const b = parsed.data;
+
+    if (b.name !== undefined) {
+      req.user.name = b.name.trim();
+    }
+
+    if (b.branchId !== undefined && b.branchId !== null) {
+      const allowed = await dataSource.getRepository(UserBranch).findOne({
+        where: { userId: req.user.id, branchId: b.branchId },
+      });
+      if (!allowed) {
+        res.status(403).json({ error: 'You do not have access to this branch' });
+        return;
+      }
+      req.user.branchId = b.branchId;
+      await dataSource.transaction(async (manager) => {
+        await manager.getRepository(User).save(req.user!);
+        await manager
+          .createQueryBuilder()
+          .update(UserBranch)
+          .set({ isDefault: false })
+          .where('user_id = :uid', { uid: req.user!.id })
+          .execute();
+        await manager
+          .createQueryBuilder()
+          .update(UserBranch)
+          .set({ isDefault: true })
+          .where('user_id = :uid AND branch_id = :bid', { uid: req.user!.id, bid: b.branchId })
+          .execute();
+      });
+    } else if (b.name !== undefined) {
       await dataSource.getRepository(User).save(req.user);
     }
+
     const permissions = [
       ...new Set(
         (req.user.roles || []).flatMap((r) =>
@@ -162,6 +230,7 @@ authRouter.patch(
         ),
       ),
     ];
+    const branches = await loadBranchesForUser(req.user.id, req.user.branchId);
     res.json({
       user: {
         id: req.user.id,
@@ -171,6 +240,7 @@ authRouter.patch(
         createdAt: req.user.createdAt,
         updatedAt: req.user.updatedAt,
       },
+      branches,
       permissions,
     });
   }
