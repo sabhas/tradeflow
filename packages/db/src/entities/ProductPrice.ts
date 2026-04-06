@@ -1,17 +1,18 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Product } from './Product';
 import { PriceLevel } from './PriceLevel';
 
 @Entity('product_prices')
-export class ProductPrice {
+export class ProductPrice extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

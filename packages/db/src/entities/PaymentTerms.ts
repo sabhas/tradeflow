@@ -1,16 +1,17 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 
 @Entity('payment_terms')
-export class PaymentTerms {
+export class PaymentTerms extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

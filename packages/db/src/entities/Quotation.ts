@@ -1,11 +1,12 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
@@ -14,7 +15,7 @@ import { User } from './User';
 import { QuotationLine } from './QuotationLine';
 
 @Entity('quotations')
-export class Quotation {
+export class Quotation extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

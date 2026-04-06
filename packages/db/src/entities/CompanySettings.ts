@@ -1,16 +1,17 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Account } from './Account';
 import { InvoiceTemplate } from './InvoiceTemplate';
 
 @Entity('company_settings')
-export class CompanySettings {
+export class CompanySettings extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

@@ -1,10 +1,11 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
@@ -12,7 +13,7 @@ import { PaymentTerms } from './PaymentTerms';
 import { TaxProfile } from './TaxProfile';
 
 @Entity('customers')
-export class Customer {
+export class Customer extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

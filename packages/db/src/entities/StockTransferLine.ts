@@ -1,9 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Product } from './Product';
 import { StockTransfer } from './StockTransfer';
 
 @Entity('stock_transfer_lines')
-export class StockTransferLine {
+export class StockTransferLine extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

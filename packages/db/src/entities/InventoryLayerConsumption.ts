@@ -1,9 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { InventoryMovement } from './InventoryMovement';
 import { StockLayer } from './StockLayer';
 
 @Entity('inventory_layer_consumptions')
-export class InventoryLayerConsumption {
+export class InventoryLayerConsumption extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

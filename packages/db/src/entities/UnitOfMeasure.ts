@@ -1,16 +1,17 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 
 @Entity('units_of_measure')
-export class UnitOfMeasure {
+export class UnitOfMeasure extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

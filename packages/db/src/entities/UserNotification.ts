@@ -1,8 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import { BaseEntity, Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './User';
 
 @Entity('user_notifications')
-export class UserNotification {
+export class UserNotification extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

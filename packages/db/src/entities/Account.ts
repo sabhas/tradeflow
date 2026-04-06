@@ -2,6 +2,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  BaseEntity,
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
@@ -12,7 +13,7 @@ import { Branch } from './Branch';
 export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
 
 @Entity('accounts')
-export class Account {
+export class Account extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

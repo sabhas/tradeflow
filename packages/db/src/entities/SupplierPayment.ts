@@ -1,12 +1,13 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
-  Index,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 import { Supplier } from './Supplier';
@@ -15,7 +16,7 @@ import { SupplierPaymentAllocation } from './SupplierPaymentAllocation';
 
 @Entity('supplier_payments')
 @Index(['supplierId'])
-export class SupplierPayment {
+export class SupplierPayment extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

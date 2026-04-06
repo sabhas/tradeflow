@@ -1,12 +1,13 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
-  Index,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 import { PurchaseOrder } from './PurchaseOrder';
@@ -17,7 +18,7 @@ import { GrnLine } from './GrnLine';
 
 @Entity('grns')
 @Index(['purchaseOrderId'])
-export class Grn {
+export class Grn extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

@@ -1,18 +1,19 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 import { RouteStop } from './RouteStop';
 
 @Entity('delivery_routes')
-export class DeliveryRoute {
+export class DeliveryRoute extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

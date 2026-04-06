@@ -1,9 +1,9 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 import { Branch } from './Branch';
 import { User } from './User';
 
 @Entity('user_branches')
-export class UserBranch {
+export class UserBranch extends BaseEntity {
   @PrimaryColumn('uuid', { name: 'user_id' })
   userId!: string;
 

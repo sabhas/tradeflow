@@ -1,11 +1,12 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 import { GrnLine } from './GrnLine';
@@ -25,7 +26,7 @@ export type InventoryRefType =
 
 @Entity('inventory_movements')
 @Index(['productId', 'warehouseId', 'movementDate'])
-export class InventoryMovement {
+export class InventoryMovement extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

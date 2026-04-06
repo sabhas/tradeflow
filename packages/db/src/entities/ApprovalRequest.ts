@@ -1,16 +1,17 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 import { User } from './User';
 
 @Entity('approval_requests')
-export class ApprovalRequest {
+export class ApprovalRequest extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

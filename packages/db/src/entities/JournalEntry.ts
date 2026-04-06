@@ -1,11 +1,12 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
@@ -13,7 +14,7 @@ import { User } from './User';
 import { JournalLine } from './JournalLine';
 
 @Entity('journal_entries')
-export class JournalEntry {
+export class JournalEntry extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

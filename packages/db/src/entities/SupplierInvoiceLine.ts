@@ -1,11 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { GrnLine } from './GrnLine';
 import { Product } from './Product';
 import { SupplierInvoice } from './SupplierInvoice';
 import { TaxProfile } from './TaxProfile';
 
 @Entity('supplier_invoice_lines')
-export class SupplierInvoiceLine {
+export class SupplierInvoiceLine extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

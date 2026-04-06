@@ -1,10 +1,11 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
@@ -18,7 +19,7 @@ export type InvoiceTemplateConfig = {
 };
 
 @Entity('invoice_templates')
-export class InvoiceTemplate {
+export class InvoiceTemplate extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

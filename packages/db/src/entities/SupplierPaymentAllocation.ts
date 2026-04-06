@@ -1,9 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { SupplierInvoice } from './SupplierInvoice';
 import { SupplierPayment } from './SupplierPayment';
 
 @Entity('supplier_payment_allocations')
-export class SupplierPaymentAllocation {
+export class SupplierPaymentAllocation extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

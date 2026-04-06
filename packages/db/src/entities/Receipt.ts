@@ -1,12 +1,13 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
-  Index,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 import { Customer } from './Customer';
@@ -15,7 +16,7 @@ import { ReceiptAllocation } from './ReceiptAllocation';
 
 @Entity('receipts')
 @Index(['customerId'])
-export class Receipt {
+export class Receipt extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

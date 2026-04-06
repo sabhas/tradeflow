@@ -1,11 +1,12 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
@@ -16,7 +17,7 @@ import { Salesperson } from './Salesperson';
 import { SalesOrderLine } from './SalesOrderLine';
 
 @Entity('sales_orders')
-export class SalesOrder {
+export class SalesOrder extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

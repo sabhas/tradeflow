@@ -1,16 +1,17 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 
 @Entity('tax_profiles')
-export class TaxProfile {
+export class TaxProfile extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

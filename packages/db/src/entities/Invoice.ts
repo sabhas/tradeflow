@@ -1,13 +1,14 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
-  Index,
 } from 'typeorm';
 import { Branch } from './Branch';
 import { Customer } from './Customer';
@@ -21,7 +22,7 @@ import { InvoiceTemplate } from './InvoiceTemplate';
 @Entity('invoices')
 @Index(['customerId', 'status'])
 @Index(['invoiceDate'])
-export class Invoice {
+export class Invoice extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

@@ -1,11 +1,12 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
@@ -14,7 +15,7 @@ import { Warehouse } from './Warehouse';
 import { StockTransferLine } from './StockTransferLine';
 
 @Entity('stock_transfers')
-export class StockTransfer {
+export class StockTransfer extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

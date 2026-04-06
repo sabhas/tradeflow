@@ -1,10 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { BaseEntity, Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Invoice } from './Invoice';
 import { Receipt } from './Receipt';
 
 @Entity('receipt_allocations')
 @Index(['receiptId', 'invoiceId'])
-export class ReceiptAllocation {
+export class ReceiptAllocation extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

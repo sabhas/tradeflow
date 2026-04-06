@@ -1,10 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Product } from './Product';
 import { Quotation } from './Quotation';
 import { TaxProfile } from './TaxProfile';
 
 @Entity('quotation_lines')
-export class QuotationLine {
+export class QuotationLine extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

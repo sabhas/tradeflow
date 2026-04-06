@@ -1,11 +1,12 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
   CreateDateColumn,
+  Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
 import { GrnLine } from './GrnLine';
@@ -14,7 +15,7 @@ import { Warehouse } from './Warehouse';
 
 @Entity('stock_layers')
 @Index(['productId', 'warehouseId'])
-export class StockLayer {
+export class StockLayer extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

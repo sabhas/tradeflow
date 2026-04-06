@@ -1,12 +1,13 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
-  ManyToOne,
-  JoinColumn,
-  UpdateDateColumn,
+  Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   Unique,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Product } from './Product';
 import { Warehouse } from './Warehouse';
@@ -14,7 +15,7 @@ import { Warehouse } from './Warehouse';
 @Entity('stock_balances')
 @Unique(['productId', 'warehouseId'])
 @Index(['productId', 'warehouseId'])
-export class StockBalance {
+export class StockBalance extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

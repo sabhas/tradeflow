@@ -1,11 +1,12 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  BaseEntity,
   Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  CreateDateColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Branch } from './Branch';
@@ -15,7 +16,7 @@ import { User } from './User';
 import { DeliveryRunItem } from './DeliveryRunItem';
 
 @Entity('delivery_runs')
-export class DeliveryRun {
+export class DeliveryRun extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

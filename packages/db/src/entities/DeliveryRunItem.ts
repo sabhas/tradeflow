@@ -1,9 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { DeliveryNote } from './DeliveryNote';
 import { DeliveryRun } from './DeliveryRun';
 
 @Entity('delivery_run_items')
-export class DeliveryRunItem {
+export class DeliveryRunItem extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

@@ -1,9 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Account } from './Account';
 import { JournalEntry } from './JournalEntry';
 
 @Entity('journal_lines')
-export class JournalLine {
+export class JournalLine extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
