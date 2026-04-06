@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
 import { createSalespersonSchema, updateSalespersonSchema } from '@tradeflow/shared';
-import { dataSource, Salesperson } from '@tradeflow/db';
+import { Salesperson } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -23,7 +23,7 @@ function serialize(s: Salesperson) {
 
 export async function listSalespersons(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
-  const rows = await dataSource.getRepository(Salesperson).find({
+  const rows = await Salesperson.find({
     where: branchId ? [{ branchId: IsNull() }, { branchId }] : {},
     order: { name: 'ASC' },
   });
@@ -31,7 +31,7 @@ export async function listSalespersons(req: Request): Promise<ControllerResult> 
 }
 
 export async function createSalesperson(req: Request, body: CreateSalespersonInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Salesperson);
+  const repo = Salesperson.getRepository();
   const row = repo.create({
     name: body.name,
     code: body.code,
@@ -42,7 +42,7 @@ export async function createSalesperson(req: Request, body: CreateSalespersonInp
 }
 
 export async function updateSalesperson(req: Request, body: UpdateSalespersonInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Salesperson);
+  const repo = Salesperson.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -55,7 +55,7 @@ export async function updateSalesperson(req: Request, body: UpdateSalespersonInp
 }
 
 export async function deleteSalesperson(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Salesperson);
+  const repo = Salesperson.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -65,6 +65,6 @@ export async function deleteSalesperson(req: Request): Promise<ControllerResult>
 }
 
 export async function getSalespersonSnapshotForAudit(id: string) {
-  const s = await dataSource.getRepository(Salesperson).findOne({ where: { id } });
+  const s = await Salesperson.findOne({ where: { id } });
   return s ? serialize(s) : undefined;
 }

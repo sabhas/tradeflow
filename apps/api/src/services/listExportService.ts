@@ -9,8 +9,7 @@ import {
 } from '@tradeflow/db';
 
 export async function buildProductsXlsx(branchId: string | undefined, categoryId?: string, search?: string) {
-  const qb = dataSource
-    .getRepository(Product)
+  const qb = Product
     .createQueryBuilder('p')
     .leftJoinAndSelect('p.category', 'cat')
     .leftJoinAndSelect('p.unit', 'u')
@@ -40,7 +39,7 @@ export async function buildProductsXlsx(branchId: string | undefined, categoryId
   const ids = rows.map((r) => r.id);
   const priceRows =
     ids.length > 0
-      ? await dataSource.getRepository(ProductPrice).find({
+      ? await ProductPrice.find({
           where: { productId: In(ids) },
         })
       : [];
@@ -92,8 +91,7 @@ export async function buildProductsXlsx(branchId: string | undefined, categoryId
 }
 
 export async function buildCustomersXlsx(branchId: string | undefined, search?: string) {
-  const qb = dataSource
-    .getRepository(Customer)
+  const qb = Customer
     .createQueryBuilder('c')
     .leftJoinAndSelect('c.paymentTerms', 'pt')
     .leftJoinAndSelect('c.taxProfile', 'tp')
@@ -143,8 +141,7 @@ export async function buildInvoicesXlsx(
   branchId: string | undefined,
   filters: { customerId?: string; status?: string; dateFrom?: string; dateTo?: string }
 ) {
-  const qb = dataSource
-    .getRepository(Invoice)
+  const qb = Invoice
     .createQueryBuilder('i')
     .leftJoinAndSelect('i.customer', 'cust')
     .where('i.deleted_at IS NULL')

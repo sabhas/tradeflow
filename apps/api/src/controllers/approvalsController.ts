@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import { dataSource, ApprovalRequest } from '@tradeflow/db';
+import { ApprovalRequest } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import { ok, type ControllerResult } from '../utils/controllerResult';
@@ -29,8 +29,7 @@ export async function listApprovalRequests(req: Request): Promise<ControllerResu
   const status = (req.query.status as string | undefined)?.trim() || 'pending';
   const { limit, offset } = getPagination(req);
 
-  const qb = dataSource
-    .getRepository(ApprovalRequest)
+  const qb = ApprovalRequest
     .createQueryBuilder('a')
     .where('1=1')
     .orderBy('a.created_at', 'DESC')
@@ -49,7 +48,7 @@ export async function listApprovalRequests(req: Request): Promise<ControllerResu
 }
 
 export async function approveApprovalRequest(req: Request, body: ReviewBody): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(ApprovalRequest).findOne({
+  const row = await ApprovalRequest.findOne({
     where: { id: req.params.id },
   });
   if (!row) {
@@ -62,12 +61,12 @@ export async function approveApprovalRequest(req: Request, body: ReviewBody): Pr
   row.reviewedBy = req.auth?.userId;
   row.reviewNote = body.note ?? undefined;
   row.reviewedAt = new Date();
-  await dataSource.getRepository(ApprovalRequest).save(row);
+  await ApprovalRequest.save(row);
   return ok({ data: serialize(row) });
 }
 
 export async function rejectApprovalRequest(req: Request, body: ReviewBody): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(ApprovalRequest).findOne({
+  const row = await ApprovalRequest.findOne({
     where: { id: req.params.id },
   });
   if (!row) {
@@ -80,6 +79,6 @@ export async function rejectApprovalRequest(req: Request, body: ReviewBody): Pro
   row.reviewedBy = req.auth?.userId;
   row.reviewNote = body.note ?? undefined;
   row.reviewedAt = new Date();
-  await dataSource.getRepository(ApprovalRequest).save(row);
+  await ApprovalRequest.save(row);
   return ok({ data: serialize(row) });
 }

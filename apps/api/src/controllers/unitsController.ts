@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
 import { createUnitSchema, updateUnitSchema } from '@tradeflow/shared';
-import { dataSource, UnitOfMeasure } from '@tradeflow/db';
+import { UnitOfMeasure } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -23,7 +23,7 @@ export function serializeUnit(u: UnitOfMeasure) {
 
 export async function listUnits(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
-  const rows = await dataSource.getRepository(UnitOfMeasure).find({
+  const rows = await UnitOfMeasure.find({
     where: branchId ? [{ branchId: IsNull() }, { branchId }] : {},
     order: { name: 'ASC' },
   });
@@ -31,7 +31,7 @@ export async function listUnits(req: Request): Promise<ControllerResult> {
 }
 
 export async function createUnit(req: Request, body: CreateUnitInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(UnitOfMeasure);
+  const repo = UnitOfMeasure.getRepository();
   const row = repo.create({
     code: body.code,
     name: body.name,
@@ -42,7 +42,7 @@ export async function createUnit(req: Request, body: CreateUnitInput): Promise<C
 }
 
 export async function updateUnit(req: Request, body: UpdateUnitInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(UnitOfMeasure);
+  const repo = UnitOfMeasure.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -55,7 +55,7 @@ export async function updateUnit(req: Request, body: UpdateUnitInput): Promise<C
 }
 
 export async function deleteUnit(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(UnitOfMeasure);
+  const repo = UnitOfMeasure.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -65,6 +65,6 @@ export async function deleteUnit(req: Request): Promise<ControllerResult> {
 }
 
 export async function getUnitSnapshotForAudit(id: string) {
-  const u = await dataSource.getRepository(UnitOfMeasure).findOne({ where: { id } });
+  const u = await UnitOfMeasure.findOne({ where: { id } });
   return u ? serializeUnit(u) : undefined;
 }

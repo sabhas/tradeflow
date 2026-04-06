@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
 import { createPriceLevelSchema, updatePriceLevelSchema } from '@tradeflow/shared';
-import { dataSource, PriceLevel } from '@tradeflow/db';
+import { PriceLevel } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -22,7 +22,7 @@ function serialize(p: PriceLevel) {
 
 export async function listPriceLevels(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
-  const rows = await dataSource.getRepository(PriceLevel).find({
+  const rows = await PriceLevel.find({
     where: branchId ? [{ branchId: IsNull() }, { branchId }] : {},
     order: { name: 'ASC' },
   });
@@ -30,7 +30,7 @@ export async function listPriceLevels(req: Request): Promise<ControllerResult> {
 }
 
 export async function createPriceLevel(req: Request, body: CreatePriceLevelInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(PriceLevel);
+  const repo = PriceLevel.getRepository();
   const row = repo.create({
     name: body.name,
     branchId: body.branchId ?? req.user?.branchId ?? undefined,
@@ -40,7 +40,7 @@ export async function createPriceLevel(req: Request, body: CreatePriceLevelInput
 }
 
 export async function updatePriceLevel(req: Request, body: UpdatePriceLevelInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(PriceLevel);
+  const repo = PriceLevel.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -52,6 +52,6 @@ export async function updatePriceLevel(req: Request, body: UpdatePriceLevelInput
 }
 
 export async function getPriceLevelSnapshotForAudit(id: string) {
-  const p = await dataSource.getRepository(PriceLevel).findOne({ where: { id } });
+  const p = await PriceLevel.findOne({ where: { id } });
   return p ? serialize(p) : undefined;
 }

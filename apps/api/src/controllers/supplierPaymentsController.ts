@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { createSupplierPaymentSchema } from '@tradeflow/shared';
-import { dataSource, SupplierPayment, SupplierPaymentAllocation } from '@tradeflow/db';
+import { SupplierPayment, SupplierPaymentAllocation } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import { postSupplierPaymentJournal } from '../services/accountingPosting';
@@ -38,8 +38,7 @@ function serialize(p: SupplierPayment, allocations?: SupplierPaymentAllocation[]
 export async function listSupplierPayments(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(SupplierPayment)
+  const qb = SupplierPayment
     .createQueryBuilder('p')
     .leftJoinAndSelect('p.supplier', 's')
     .where('1=1');
@@ -51,7 +50,7 @@ export async function listSupplierPayments(req: Request): Promise<ControllerResu
 }
 
 export async function getSupplierPayment(req: Request): Promise<ControllerResult> {
-  const p = await dataSource.getRepository(SupplierPayment).findOne({
+  const p = await SupplierPayment.findOne({
     where: { id: req.params.id },
     relations: ['allocations', 'supplier'],
   });

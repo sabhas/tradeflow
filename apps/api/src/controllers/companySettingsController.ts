@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import type { FindOptionsRelations } from 'typeorm';
 import type { z } from 'zod';
-import { dataSource, Account, CompanySettings, InvoiceTemplate } from '@tradeflow/db';
+import { Account, CompanySettings, InvoiceTemplate } from '@tradeflow/db';
 import {
   patchCompanyAccountingSettingsSchema,
   patchCompanyProfileSchema,
@@ -19,7 +19,7 @@ type PatchAccountingInput = z.infer<typeof patchCompanyAccountingSettingsSchema>
 async function getSingletonCompanySettings(
   relations?: FindOptionsRelations<CompanySettings>
 ): Promise<CompanySettings | null> {
-  const repo = dataSource.getRepository(CompanySettings);
+  const repo = CompanySettings.getRepository();
   const rows = await repo.find({
     take: 1,
     order: { id: 'ASC' },
@@ -87,7 +87,7 @@ export async function patchGeneral(_req: Request, b: PatchGeneralInput): Promise
     throw new HttpError(500, { error: 'Company settings not initialized' });
   }
   if (b.defaultInvoiceTemplateId !== undefined && b.defaultInvoiceTemplateId !== null) {
-    const t = await dataSource.getRepository(InvoiceTemplate).findOne({
+    const t = await InvoiceTemplate.findOne({
       where: { id: b.defaultInvoiceTemplateId },
     });
     if (!t) {
@@ -116,8 +116,8 @@ export async function patchGeneral(_req: Request, b: PatchGeneralInput): Promise
   if (b.defaultInvoiceTemplateId !== undefined)
     row.defaultInvoiceTemplateId = b.defaultInvoiceTemplateId ?? undefined;
   if (b.inventoryCostingMethod !== undefined) row.inventoryCostingMethod = b.inventoryCostingMethod;
-  await dataSource.getRepository(CompanySettings).save(row);
-  row = await dataSource.getRepository(CompanySettings).findOneOrFail({ where: { id: row.id } });
+  await CompanySettings.save(row);
+  row = await CompanySettings.findOneOrFail({ where: { id: row.id } });
   return ok({ data: serializeGeneral(row) });
 }
 
@@ -161,8 +161,8 @@ export async function patchCompanyProfile(_req: Request, b: PatchCompanyProfileI
   if (b.email !== undefined) row.email = b.email ?? undefined;
   if (b.taxRegistrationNumber !== undefined) row.taxRegistrationNumber = b.taxRegistrationNumber ?? undefined;
   if (b.logoUrl !== undefined) row.logoUrl = b.logoUrl ?? undefined;
-  await dataSource.getRepository(CompanySettings).save(row);
-  row = await dataSource.getRepository(CompanySettings).findOneOrFail({ where: { id: row.id } });
+  await CompanySettings.save(row);
+  row = await CompanySettings.findOneOrFail({ where: { id: row.id } });
   return ok({
     data: {
       companyName: row.companyName,
@@ -216,8 +216,8 @@ export async function patchAccounting(_req: Request, b: PatchAccountingInput): P
 
   if (b.defaultCashAccountId !== undefined && b.defaultBankAccountId !== undefined) {
     const [cashAcc, bankAcc] = await Promise.all([
-      dataSource.getRepository(Account).findOne({ where: { id: b.defaultCashAccountId } }),
-      dataSource.getRepository(Account).findOne({ where: { id: b.defaultBankAccountId } }),
+      Account.findOne({ where: { id: b.defaultCashAccountId } }),
+      Account.findOne({ where: { id: b.defaultBankAccountId } }),
     ]);
     if (!cashAcc || !bankAcc) {
       throw new HttpError(400, { error: 'Account not found' });
@@ -236,8 +236,8 @@ export async function patchAccounting(_req: Request, b: PatchAccountingInput): P
     row.journalApprovalThreshold = b.journalApprovalThreshold ?? undefined;
   }
 
-  await dataSource.getRepository(CompanySettings).save(row);
-  row = await dataSource.getRepository(CompanySettings).findOneOrFail({
+  await CompanySettings.save(row);
+  row = await CompanySettings.findOneOrFail({
     where: { id: row.id },
     relations: ['defaultCashAccount', 'defaultBankAccount'],
   });

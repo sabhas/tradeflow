@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { dataSource } from '@tradeflow/db';
 import { User } from '@tradeflow/db';
 
 export interface AuthPayload {
@@ -92,7 +91,7 @@ export function requirePermission(resource: string, action: string) {
 export async function loadUser(req: Request, _res: Response, next: NextFunction) {
   if (!req.auth?.userId) return next();
   try {
-    const userRepo = dataSource.getRepository(User);
+    const userRepo = User.getRepository();
     const user = await userRepo.findOne({
       where: { id: req.auth.userId },
       relations: ['roles', 'roles.permissions'],

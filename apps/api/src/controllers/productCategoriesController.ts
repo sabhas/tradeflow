@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
 import { createProductCategorySchema, updateProductCategorySchema } from '@tradeflow/shared';
-import { dataSource, ProductCategory } from '@tradeflow/db';
+import { ProductCategory } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -33,14 +33,14 @@ function buildTree(flat: ProductCategory[], parentId: string | null | undefined)
 }
 
 export async function getProductCategorySnapshotForAudit(id: string) {
-  const c = await dataSource.getRepository(ProductCategory).findOne({ where: { id } });
+  const c = await ProductCategory.findOne({ where: { id } });
   return c ? serializeCategory(c) : undefined;
 }
 
 export async function listProductCategories(req: Request): Promise<ControllerResult> {
   const tree = req.query.tree === 'true' || req.query.tree === '1';
   const branchId = resolveBranchId(req);
-  const repo = dataSource.getRepository(ProductCategory);
+  const repo = ProductCategory.getRepository();
   const flat = await repo.find({
     where: branchId ? [{ branchId: IsNull() }, { branchId }] : {},
     order: { name: 'ASC' },
@@ -56,7 +56,7 @@ export async function createProductCategory(
   req: Request,
   body: CreateProductCategoryInput
 ): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(ProductCategory);
+  const repo = ProductCategory.getRepository();
   const branchId = body.branchId ?? req.user?.branchId;
   const row = repo.create({
     parentId: body.parentId ?? undefined,
@@ -72,7 +72,7 @@ export async function updateProductCategory(
   req: Request,
   body: UpdateProductCategoryInput
 ): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(ProductCategory);
+  const repo = ProductCategory.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -86,7 +86,7 @@ export async function updateProductCategory(
 }
 
 export async function deleteProductCategory(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(ProductCategory);
+  const repo = ProductCategory.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });

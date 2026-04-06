@@ -51,7 +51,7 @@ function serializeProduct(p: Product, prices?: ProductPrice[]) {
 }
 
 async function loadProductPrices(productId: string) {
-  return dataSource.getRepository(ProductPrice).find({
+  return ProductPrice.find({
     where: { productId },
     relations: ['priceLevel'],
   });
@@ -63,8 +63,7 @@ export async function listProducts(req: Request): Promise<ControllerResult> {
   const categoryId = req.query.categoryId as string | undefined;
   const search = (req.query.search as string | undefined)?.trim();
 
-  const qb = dataSource
-    .getRepository(Product)
+  const qb = Product
     .createQueryBuilder('p')
     .leftJoinAndSelect('p.supplier', 'supplier')
     .where('p.deleted_at IS NULL');
@@ -92,7 +91,7 @@ export async function listProducts(req: Request): Promise<ControllerResult> {
   const ids = rows.map((r) => r.id);
   const priceRows =
     ids.length > 0
-      ? await dataSource.getRepository(ProductPrice).find({
+      ? await ProductPrice.find({
           where: { productId: In(ids) },
         })
       : [];
@@ -115,8 +114,7 @@ export async function lookupProductByBarcode(req: Request): Promise<ControllerRe
     throw new HttpError(400, { error: 'Barcode required' });
   }
   const branchId = resolveBranchId(req);
-  const qb = dataSource
-    .getRepository(Product)
+  const qb = Product
     .createQueryBuilder('p')
     .leftJoinAndSelect('p.supplier', 'supplier')
     .where('p.deleted_at IS NULL AND p.barcode = :code', { code });
@@ -130,7 +128,7 @@ export async function lookupProductByBarcode(req: Request): Promise<ControllerRe
 }
 
 export async function getProductPrices(req: Request): Promise<ControllerResult> {
-  const p = await dataSource.getRepository(Product).findOne({
+  const p = await Product.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
   });
   if (!p) {
@@ -143,7 +141,7 @@ export async function getProductPrices(req: Request): Promise<ControllerResult> 
 }
 
 export async function replaceProductPrices(req: Request, body: ReplaceProductPricesInput): Promise<ControllerResult> {
-  const p = await dataSource.getRepository(Product).findOne({
+  const p = await Product.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
   });
   if (!p) {
@@ -171,7 +169,7 @@ export async function replaceProductPrices(req: Request, body: ReplaceProductPri
 }
 
 export async function getProduct(req: Request): Promise<ControllerResult> {
-  const p = await dataSource.getRepository(Product).findOne({
+  const p = await Product.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['category', 'unit', 'supplier'],
   });
@@ -183,17 +181,17 @@ export async function getProduct(req: Request): Promise<ControllerResult> {
 }
 
 export async function createProduct(req: Request, b: CreateProductInput): Promise<ControllerResult> {
-  const category = await dataSource.getRepository(ProductCategory).findOne({
+  const category = await ProductCategory.findOne({
     where: { id: b.categoryId, deletedAt: IsNull() },
   });
   if (!category) {
     throw new HttpError(400, { error: 'Invalid category' });
   }
-  const unit = await dataSource.getRepository(UnitOfMeasure).findOne({ where: { id: b.unitId } });
+  const unit = await UnitOfMeasure.findOne({ where: { id: b.unitId } });
   if (!unit) {
     throw new HttpError(400, { error: 'Invalid unit' });
   }
-  const supplier = await dataSource.getRepository(Supplier).findOne({
+  const supplier = await Supplier.findOne({
     where: { id: b.supplierId, deletedAt: IsNull() },
   });
   if (!supplier) {
@@ -241,7 +239,7 @@ export async function createProduct(req: Request, b: CreateProductInput): Promis
 
     prices = await em.getRepository(ProductPrice).find({ where: { productId: row.id } });
   });
-  const createdRow = await dataSource.getRepository(Product).findOneOrFail({
+  const createdRow = await Product.findOneOrFail({
     where: { id: row!.id },
     relations: ['supplier'],
   });
@@ -249,13 +247,13 @@ export async function createProduct(req: Request, b: CreateProductInput): Promis
 }
 
 export async function updateProduct(req: Request, b: UpdateProductInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Product);
+  const repo = Product.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
   if (b.categoryId) {
-    const c = await dataSource.getRepository(ProductCategory).findOne({
+    const c = await ProductCategory.findOne({
       where: { id: b.categoryId, deletedAt: IsNull() },
     });
     if (!c) {
@@ -264,14 +262,14 @@ export async function updateProduct(req: Request, b: UpdateProductInput): Promis
     row.categoryId = b.categoryId;
   }
   if (b.unitId) {
-    const u = await dataSource.getRepository(UnitOfMeasure).findOne({ where: { id: b.unitId } });
+    const u = await UnitOfMeasure.findOne({ where: { id: b.unitId } });
     if (!u) {
       throw new HttpError(400, { error: 'Invalid unit' });
     }
     row.unitId = b.unitId;
   }
   if (b.supplierId) {
-    const s = await dataSource.getRepository(Supplier).findOne({
+    const s = await Supplier.findOne({
       where: { id: b.supplierId, deletedAt: IsNull() },
     });
     if (!s) {
@@ -317,7 +315,7 @@ export async function updateProduct(req: Request, b: UpdateProductInput): Promis
 }
 
 export async function deleteProduct(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Product);
+  const repo = Product.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -334,7 +332,7 @@ export async function loadProductPricesForAudit(productId: string) {
 
 /** For audit middleware getOldValue on Product patch/delete */
 export async function getOldProductSnapshotForAudit(req: Request) {
-  const row = await dataSource.getRepository(Product).findOne({ where: { id: req.params.id } });
+  const row = await Product.findOne({ where: { id: req.params.id } });
   if (!row) return undefined;
   return serializeProduct(row, await loadProductPrices(row.id));
 }

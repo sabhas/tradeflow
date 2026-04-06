@@ -79,8 +79,7 @@ function serializeNote(
 export async function listDeliveryNotes(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(DeliveryNote)
+  const qb = DeliveryNote
     .createQueryBuilder('n')
     .orderBy('n.created_at', 'DESC')
     .take(limit)
@@ -103,7 +102,7 @@ export async function listDeliveryNotes(req: Request): Promise<ControllerResult>
   const ids = rows.map((r) => r.id);
   const runByNote = new Map<string, string>();
   if (ids.length) {
-    const links = await dataSource.getRepository(DeliveryRunItem).find({
+    const links = await DeliveryRunItem.find({
       where: { deliveryNoteId: In(ids) },
     });
     for (const l of links) runByNote.set(l.deliveryNoteId, l.deliveryRunId);
@@ -115,14 +114,14 @@ export async function listDeliveryNotes(req: Request): Promise<ControllerResult>
 }
 
 export async function getDeliveryNote(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(DeliveryNote).findOne({
+  const row = await DeliveryNote.findOne({
     where: { id: req.params.id },
     relations: ['lines', 'proofOfDeliveries'],
   });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  const link = await dataSource.getRepository(DeliveryRunItem).findOne({
+  const link = await DeliveryRunItem.findOne({
     where: { deliveryNoteId: row.id },
   });
   return ok({
@@ -262,7 +261,7 @@ export async function createDeliveryNote(req: Request, body: CreateDeliveryNoteI
         relations: ['lines', 'proofOfDeliveries'],
       });
     });
-    const link = await dataSource.getRepository(DeliveryRunItem).findOne({
+    const link = await DeliveryRunItem.findOne({
       where: { deliveryNoteId: saved.id },
     });
     return created({
@@ -280,7 +279,7 @@ export async function createDeliveryNote(req: Request, body: CreateDeliveryNoteI
 
 export async function updateDeliveryNote(req: Request, body: UpdateDeliveryNoteInput): Promise<ControllerResult> {
   const b = body;
-  const repo = dataSource.getRepository(DeliveryNote);
+  const repo = DeliveryNote.getRepository();
   const row = await repo.findOne({
     where: { id: req.params.id },
     relations: ['lines', 'proofOfDeliveries'],
@@ -297,7 +296,7 @@ export async function updateDeliveryNote(req: Request, body: UpdateDeliveryNoteI
   if (b.dispatchComplianceNote !== undefined) row.dispatchComplianceNote = b.dispatchComplianceNote ?? undefined;
   if (b.deliveryComplianceNote !== undefined) row.deliveryComplianceNote = b.deliveryComplianceNote ?? undefined;
   await repo.save(row);
-  const link = await dataSource.getRepository(DeliveryRunItem).findOne({
+  const link = await DeliveryRunItem.findOne({
     where: { deliveryNoteId: row.id },
   });
   return ok({
@@ -316,24 +315,24 @@ export async function addProofOfDelivery(req: Request, body: ProofOfDeliveryInpu
       message: 'logistics.pod:write or logistics.deliveries:write required',
     });
   }
-  const note = await dataSource.getRepository(DeliveryNote).findOne({ where: { id: req.params.id } });
+  const note = await DeliveryNote.findOne({ where: { id: req.params.id } });
   if (!note) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  const pod = dataSource.getRepository(ProofOfDelivery).create({
+  const pod = ProofOfDelivery.create({
     deliveryNoteId: note.id,
     type: body.type,
     reference: body.reference,
     notes: body.notes ?? undefined,
   });
-  await dataSource.getRepository(ProofOfDelivery).save(pod);
+  await ProofOfDelivery.save(pod);
   note.status = 'delivered';
-  await dataSource.getRepository(DeliveryNote).save(note);
-  const full = await dataSource.getRepository(DeliveryNote).findOne({
+  await DeliveryNote.save(note);
+  const full = await DeliveryNote.findOne({
     where: { id: note.id },
     relations: ['lines', 'proofOfDeliveries'],
   });
-  const link = await dataSource.getRepository(DeliveryRunItem).findOne({
+  const link = await DeliveryRunItem.findOne({
     where: { deliveryNoteId: note.id },
   });
   return created({
@@ -349,14 +348,14 @@ export async function addProofOfDelivery(req: Request, body: ProofOfDeliveryInpu
 }
 
 export async function deleteDeliveryNote(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(DeliveryNote).findOne({ where: { id: req.params.id } });
+  const row = await DeliveryNote.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
   if (row.status === 'delivered') {
     throw new HttpError(400, { error: 'Delivered notes cannot be deleted' });
   }
-  await dataSource.getRepository(DeliveryRunItem).delete({ deliveryNoteId: row.id });
-  await dataSource.getRepository(DeliveryNote).delete({ id: row.id });
+  await DeliveryRunItem.delete({ deliveryNoteId: row.id });
+  await DeliveryNote.delete({ id: row.id });
   return ok({ data: { id: row.id, deleted: true } });
 }

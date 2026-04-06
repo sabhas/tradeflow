@@ -189,7 +189,7 @@ export async function applyMovement(
 }
 
 export async function assertWarehouseInScope(warehouseId: string, branchId: string | undefined): Promise<Warehouse> {
-  const w = await dataSource.getRepository(Warehouse).findOne({ where: { id: warehouseId } });
+  const w = await Warehouse.findOne({ where: { id: warehouseId } });
   if (!w) throw new Error('Warehouse not found');
   if (branchId && w.branchId && w.branchId !== branchId) {
     throw new Error('Warehouse is not available for this branch');
@@ -198,7 +198,7 @@ export async function assertWarehouseInScope(warehouseId: string, branchId: stri
 }
 
 export async function assertProductInScope(productId: string, branchId: string | undefined): Promise<Product> {
-  const p = await dataSource.getRepository(Product).findOne({
+  const p = await Product.findOne({
     where: { id: productId, deletedAt: IsNull() },
   });
   if (!p) throw new Error('Product not found');

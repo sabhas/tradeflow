@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { dataSource, PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
+import { PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
 import { createPurchaseOrderSchema, updatePurchaseOrderSchema } from '@tradeflow/shared';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
@@ -46,15 +46,14 @@ export function serializePurchaseOrder(po: PurchaseOrder, lines?: PurchaseOrderL
 }
 
 export async function getPurchaseOrderSnapshotForAudit(id: string) {
-  const po = await dataSource.getRepository(PurchaseOrder).findOne({ where: { id } });
+  const po = await PurchaseOrder.findOne({ where: { id } });
   return po ? serializePurchaseOrder(po) : undefined;
 }
 
 export async function listPurchaseOrders(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(PurchaseOrder)
+  const qb = PurchaseOrder
     .createQueryBuilder('po')
     .leftJoinAndSelect('po.supplier', 's')
     .leftJoinAndSelect('po.warehouse', 'w')
@@ -73,7 +72,7 @@ export async function listPurchaseOrders(req: Request): Promise<ControllerResult
 }
 
 export async function getPurchaseOrderGrnEligible(req: Request): Promise<ControllerResult> {
-  const po = await dataSource.getRepository(PurchaseOrder).findOne({
+  const po = await PurchaseOrder.findOne({
     where: { id: req.params.id },
     relations: ['lines', 'lines.product'],
   });
@@ -104,7 +103,7 @@ export async function getPurchaseOrderGrnEligible(req: Request): Promise<Control
 }
 
 export async function getPurchaseOrder(req: Request): Promise<ControllerResult> {
-  const po = await dataSource.getRepository(PurchaseOrder).findOne({
+  const po = await PurchaseOrder.findOne({
     where: { id: req.params.id },
     relations: ['lines', 'supplier', 'warehouse'],
   });
@@ -298,7 +297,7 @@ export async function updatePurchaseOrder(req: Request, body: UpdatePurchaseOrde
 }
 
 export async function sendPurchaseOrder(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(PurchaseOrder);
+  const repo = PurchaseOrder.getRepository();
   const po = await repo.findOne({ where: { id: req.params.id }, relations: ['lines', 'supplier', 'warehouse'] });
   if (!po) {
     throw new HttpError(404, { error: 'Not found' });
@@ -312,7 +311,7 @@ export async function sendPurchaseOrder(req: Request): Promise<ControllerResult>
 }
 
 export async function deletePurchaseOrder(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(PurchaseOrder);
+  const repo = PurchaseOrder.getRepository();
   const po = await repo.findOne({ where: { id: req.params.id } });
   if (!po) {
     throw new HttpError(404, { error: 'Not found' });

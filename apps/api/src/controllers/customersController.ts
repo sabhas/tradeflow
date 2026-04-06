@@ -33,8 +33,7 @@ export async function listCustomers(req: Request): Promise<ControllerResult> {
   const { limit, offset } = getPagination(req);
   const search = (req.query.search as string | undefined)?.trim();
 
-  const qb = dataSource
-    .getRepository(Customer)
+  const qb = Customer
     .createQueryBuilder('c')
     .where('c.deleted_at IS NULL');
 
@@ -147,7 +146,7 @@ export async function getCustomerStatement(req: Request): Promise<ControllerResu
 }
 
 export async function getCustomer(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(Customer).findOne({
+  const row = await Customer.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['paymentTerms', 'taxProfile'],
   });
@@ -159,7 +158,7 @@ export async function getCustomer(req: Request): Promise<ControllerResult> {
 
 export async function createCustomer(req: Request, body: CreateCustomerInput): Promise<ControllerResult> {
   const b = body;
-  const repo = dataSource.getRepository(Customer);
+  const repo = Customer.getRepository();
   const row = repo.create({
     name: b.name,
     type: b.type,
@@ -175,7 +174,7 @@ export async function createCustomer(req: Request, body: CreateCustomerInput): P
 }
 
 export async function updateCustomer(req: Request, body: UpdateCustomerInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Customer);
+  const repo = Customer.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -194,7 +193,7 @@ export async function updateCustomer(req: Request, body: UpdateCustomerInput): P
 }
 
 export async function deleteCustomer(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Customer);
+  const repo = Customer.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -205,6 +204,6 @@ export async function deleteCustomer(req: Request): Promise<ControllerResult> {
 }
 
 export async function getCustomerSnapshotForAudit(id: string) {
-  const c = await dataSource.getRepository(Customer).findOne({ where: { id } });
+  const c = await Customer.findOne({ where: { id } });
   return c ? serializeCustomer(c) : undefined;
 }

@@ -1,13 +1,6 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import {
-  dataSource,
-  Product,
-  SalesOrder,
-  SalesOrderLine,
-  Invoice,
-  InvoiceLine,
-} from '@tradeflow/db';
+import { Product, SalesOrder, SalesOrderLine, Invoice, InvoiceLine } from '@tradeflow/db';
 import {
   createSalesOrderSchema,
   convertOrderToInvoiceSchema,
@@ -60,8 +53,7 @@ export function serializeSalesOrder(o: SalesOrder, lines?: Array<SalesOrderLine 
 export async function listSalesOrders(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(SalesOrder)
+  const qb = SalesOrder
     .createQueryBuilder('o')
     .orderBy('o.order_date', 'DESC')
     .take(limit)
@@ -73,7 +65,7 @@ export async function listSalesOrders(req: Request): Promise<ControllerResult> {
 }
 
 export async function getSalesOrder(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(SalesOrder).findOne({
+  const row = await SalesOrder.findOne({
     where: { id: req.params.id },
     relations: ['lines', 'lines.product'],
   });
@@ -226,7 +218,7 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
 }
 
 export async function confirmSalesOrder(req: Request): Promise<ControllerResult> {
-  const o = await dataSource.getRepository(SalesOrder).findOne({ where: { id: req.params.id } });
+  const o = await SalesOrder.findOne({ where: { id: req.params.id } });
   if (!o) {
     throw new HttpError(404, { error: 'Not found' });
   }
@@ -234,19 +226,19 @@ export async function confirmSalesOrder(req: Request): Promise<ControllerResult>
     throw new HttpError(400, { error: 'Order is void' });
   }
   o.status = 'confirmed';
-  await dataSource.getRepository(SalesOrder).save(o);
+  await SalesOrder.save(o);
   return ok({ data: serializeSalesOrder(o) });
 }
 
 export async function deleteSalesOrder(req: Request): Promise<ControllerResult> {
-  const o = await dataSource.getRepository(SalesOrder).findOne({ where: { id: req.params.id } });
+  const o = await SalesOrder.findOne({ where: { id: req.params.id } });
   if (!o) {
     throw new HttpError(404, { error: 'Not found' });
   }
   if (o.status !== 'draft') {
     throw new HttpError(400, { error: 'Only draft orders can be deleted' });
   }
-  await dataSource.getRepository(SalesOrder).delete({ id: o.id });
+  await SalesOrder.delete({ id: o.id });
   return ok({ data: { id: o.id, deleted: true } });
 }
 

@@ -8,6 +8,7 @@ console.log('repoRoot', repoRoot);
 dotenv.config({ path: path.join(repoRoot, '.env') });
 dotenv.config({ path: path.join(repoRoot, 'apps/api/.env') });
 
+import { BaseEntity } from 'typeorm';
 import { dataSource } from '@tradeflow/db';
 
 
@@ -16,6 +17,7 @@ const PORT = process.env.PORT || 3001;
 async function main() {
   try {
     await dataSource.initialize();
+    BaseEntity.useDataSource(dataSource);
     console.log('Database connected');
 
     app.listen(PORT, () => {

@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
 import { createTaxProfileSchema, updateTaxProfileSchema } from '@tradeflow/shared';
-import { dataSource, TaxProfile } from '@tradeflow/db';
+import { TaxProfile } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -25,7 +25,7 @@ function serialize(t: TaxProfile) {
 
 export async function listTaxProfiles(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
-  const rows = await dataSource.getRepository(TaxProfile).find({
+  const rows = await TaxProfile.find({
     where: branchId ? [{ branchId: IsNull() }, { branchId }] : {},
     order: { name: 'ASC' },
   });
@@ -33,7 +33,7 @@ export async function listTaxProfiles(req: Request): Promise<ControllerResult> {
 }
 
 export async function createTaxProfile(req: Request, body: CreateTaxProfileInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(TaxProfile);
+  const repo = TaxProfile.getRepository();
   const row = repo.create({
     name: body.name,
     rate: body.rate,
@@ -46,7 +46,7 @@ export async function createTaxProfile(req: Request, body: CreateTaxProfileInput
 }
 
 export async function updateTaxProfile(req: Request, body: UpdateTaxProfileInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(TaxProfile);
+  const repo = TaxProfile.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -61,7 +61,7 @@ export async function updateTaxProfile(req: Request, body: UpdateTaxProfileInput
 }
 
 export async function deleteTaxProfile(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(TaxProfile);
+  const repo = TaxProfile.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -71,6 +71,6 @@ export async function deleteTaxProfile(req: Request): Promise<ControllerResult> 
 }
 
 export async function getTaxProfileSnapshotForAudit(id: string) {
-  const t = await dataSource.getRepository(TaxProfile).findOne({ where: { id } });
+  const t = await TaxProfile.findOne({ where: { id } });
   return t ? serialize(t) : undefined;
 }

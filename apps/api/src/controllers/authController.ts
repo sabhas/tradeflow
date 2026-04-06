@@ -53,7 +53,7 @@ async function loadBranchesForUser(
   userId: string,
   fallbackBranchId?: string | null
 ): Promise<Array<{ branchId: string; name: string; code: string; isDefault: boolean }>> {
-  const rows = await dataSource.getRepository(UserBranch).find({
+  const rows = await UserBranch.find({
     where: { userId },
     relations: ['branch'],
     order: { isDefault: 'DESC' },
@@ -68,7 +68,7 @@ async function loadBranchesForUser(
     }));
   if (mapped.length > 0) return mapped;
   if (fallbackBranchId) {
-    const b = await dataSource.getRepository(Branch).findOne({ where: { id: fallbackBranchId } });
+    const b = await Branch.findOne({ where: { id: fallbackBranchId } });
     if (b) {
       return [{ branchId: fallbackBranchId, name: b.name, code: b.code, isDefault: true }];
     }
@@ -92,7 +92,7 @@ export async function login(body: LoginInput): Promise<ControllerResult> {
     );
   }
 
-  const userRepo = dataSource.getRepository(User);
+  const userRepo = User.getRepository();
 
   const user = await userRepo.findOne({
     where: { email: email.toLowerCase() },
@@ -168,7 +168,7 @@ export async function patchMe(req: Request, b: PatchAuthMeInput): Promise<Contro
   }
 
   if (b.branchId !== undefined && b.branchId !== null) {
-    const allowed = await dataSource.getRepository(UserBranch).findOne({
+    const allowed = await UserBranch.findOne({
       where: { userId: req.user.id, branchId: b.branchId },
     });
     if (!allowed) {
@@ -191,7 +191,7 @@ export async function patchMe(req: Request, b: PatchAuthMeInput): Promise<Contro
         .execute();
     });
   } else if (b.name !== undefined) {
-    await dataSource.getRepository(User).save(req.user);
+    await User.save(req.user);
   }
 
   const permissions = permissionsForUser(req.user);

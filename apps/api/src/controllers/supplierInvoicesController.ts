@@ -73,8 +73,7 @@ function serialize(inv: SupplierInvoice, lines?: SupplierInvoiceLine[]) {
 export async function listSupplierInvoices(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(SupplierInvoice)
+  const qb = SupplierInvoice
     .createQueryBuilder('si')
     .leftJoinAndSelect('si.supplier', 's')
     .where('1=1');
@@ -107,7 +106,7 @@ export async function listOpenSupplierInvoices(req: Request): Promise<Controller
 }
 
 export async function getSupplierInvoice(req: Request): Promise<ControllerResult> {
-  const inv = await dataSource.getRepository(SupplierInvoice).findOne({
+  const inv = await SupplierInvoice.findOne({
     where: { id: req.params.id },
     relations: ['lines', 'supplier'],
   });
@@ -382,7 +381,7 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
       await manager.save(inv);
     });
 
-    const inv = await dataSource.getRepository(SupplierInvoice).findOne({
+    const inv = await SupplierInvoice.findOne({
       where: { id: req.params.id },
       relations: ['lines', 'supplier'],
     });
@@ -396,7 +395,7 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
 }
 
 export async function deleteSupplierInvoice(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(SupplierInvoice);
+  const repo = SupplierInvoice.getRepository();
   const inv = await repo.findOne({ where: { id: req.params.id } });
   if (!inv) {
     throw new HttpError(404, { error: 'Not found' });

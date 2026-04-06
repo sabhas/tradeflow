@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { EntityManager, IsNull } from 'typeorm';
 import type { z } from 'zod';
-import { dataSource, JournalEntry, JournalLine } from '@tradeflow/db';
+import { JournalEntry, JournalLine } from '@tradeflow/db';
 import { createJournalEntrySchema, updateJournalEntrySchema } from '@tradeflow/shared';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
@@ -89,8 +89,7 @@ export async function listJournalEntries(req: Request): Promise<ControllerResult
   const dateFrom = (req.query.dateFrom as string | undefined)?.slice(0, 10);
   const dateTo = (req.query.dateTo as string | undefined)?.slice(0, 10);
 
-  const qb = dataSource
-    .getRepository(JournalEntry)
+  const qb = JournalEntry
     .createQueryBuilder('je')
     .where('je.deleted_at IS NULL')
     .orderBy('je.entry_date', 'DESC')
@@ -110,7 +109,7 @@ export async function listJournalEntries(req: Request): Promise<ControllerResult
 }
 
 export async function getJournalEntry(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(JournalEntry).findOne({
+  const row = await JournalEntry.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines', 'lines.account'],
   });
@@ -152,8 +151,7 @@ export async function createJournalEntry(req: Request, body: CreateJournalEntryI
 
 export async function updateJournalEntry(req: Request, body: UpdateJournalEntryInput): Promise<ControllerResult> {
   const b = body;
-  const row = await dataSource
-    .getRepository(JournalEntry)
+  const row = await JournalEntry
     .findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -198,7 +196,7 @@ export async function updateJournalEntry(req: Request, body: UpdateJournalEntryI
 }
 
 export async function deleteJournalEntry(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(JournalEntry).findOne({
+  const row = await JournalEntry.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
   });
   if (!row) {
@@ -211,12 +209,12 @@ export async function deleteJournalEntry(req: Request): Promise<ControllerResult
     throw new HttpError(400, { error: 'System-sourced entries cannot be deleted here' });
   }
   row.deletedAt = new Date();
-  await dataSource.getRepository(JournalEntry).save(row);
+  await JournalEntry.save(row);
   return ok({ data: { id: row.id, deleted: true } });
 }
 
 export async function postJournalEntry(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(JournalEntry).findOne({
+  const row = await JournalEntry.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines'],
   });
@@ -263,7 +261,7 @@ export async function postJournalEntry(req: Request): Promise<ControllerResult> 
 }
 
 export async function reverseJournalEntry(req: Request, entryDate?: string): Promise<ControllerResult> {
-  const original = await dataSource.getRepository(JournalEntry).findOne({
+  const original = await JournalEntry.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines'],
   });
@@ -317,7 +315,7 @@ export async function reverseJournalEntry(req: Request, entryDate?: string): Pro
 }
 
 export async function getJournalEntrySnapshotForAudit(id: string) {
-  const row = await dataSource.getRepository(JournalEntry).findOne({
+  const row = await JournalEntry.findOne({
     where: { id, deletedAt: IsNull() },
     relations: ['lines'],
   });

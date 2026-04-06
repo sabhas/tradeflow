@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
 import { createWarehouseSchema, updateWarehouseSchema } from '@tradeflow/shared';
-import { dataSource, Warehouse, Branch } from '@tradeflow/db';
+import { Warehouse, Branch } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -23,13 +23,13 @@ export function serializeWarehouse(w: Warehouse) {
 }
 
 async function ensureDefaultWarehouse() {
-  const repo = dataSource.getRepository(Warehouse);
+  const repo = Warehouse.getRepository();
   const count = await repo.count();
   if (count > 0) return;
-  let branch = await dataSource.getRepository(Branch).findOne({ where: { code: 'MAIN' } });
+  let branch = await Branch.findOne({ where: { code: 'MAIN' } });
   if (!branch) {
-    branch = await dataSource.getRepository(Branch).save(
-      dataSource.getRepository(Branch).create({ name: 'Main', code: 'MAIN' })
+    branch = await Branch.save(
+      Branch.create({ name: 'Main', code: 'MAIN' })
     );
   }
   await repo.save(
@@ -43,14 +43,14 @@ async function ensureDefaultWarehouse() {
 }
 
 export async function getWarehouseSnapshotForAudit(id: string) {
-  const w = await dataSource.getRepository(Warehouse).findOne({ where: { id } });
+  const w = await Warehouse.findOne({ where: { id } });
   return w ? serializeWarehouse(w) : undefined;
 }
 
 export async function listWarehouses(req: Request): Promise<ControllerResult> {
   await ensureDefaultWarehouse();
   const branchId = resolveBranchId(req);
-  const rows = await dataSource.getRepository(Warehouse).find({
+  const rows = await Warehouse.find({
     where: branchId ? [{ branchId: IsNull() }, { branchId }] : {},
     order: { name: 'ASC' },
   });
@@ -58,7 +58,7 @@ export async function listWarehouses(req: Request): Promise<ControllerResult> {
 }
 
 export async function getWarehouse(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(Warehouse).findOne({ where: { id: req.params.id } });
+  const row = await Warehouse.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
@@ -66,7 +66,7 @@ export async function getWarehouse(req: Request): Promise<ControllerResult> {
 }
 
 export async function createWarehouse(req: Request, body: CreateWarehouseInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Warehouse);
+  const repo = Warehouse.getRepository();
   if (body.isDefault) {
     await repo.createQueryBuilder().update(Warehouse).set({ isDefault: false }).execute();
   }
@@ -81,7 +81,7 @@ export async function createWarehouse(req: Request, body: CreateWarehouseInput):
 }
 
 export async function updateWarehouse(req: Request, body: UpdateWarehouseInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Warehouse);
+  const repo = Warehouse.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });

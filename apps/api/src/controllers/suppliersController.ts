@@ -30,8 +30,7 @@ export async function listSuppliers(req: Request): Promise<ControllerResult> {
   const { limit, offset } = getPagination(req);
   const search = (req.query.search as string | undefined)?.trim();
 
-  const qb = dataSource
-    .getRepository(Supplier)
+  const qb = Supplier
     .createQueryBuilder('s')
     .where('s.deleted_at IS NULL');
 
@@ -168,7 +167,7 @@ export async function getSupplierPricingHistory(req: Request): Promise<Controlle
 }
 
 export async function getSupplier(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(Supplier).findOne({
+  const row = await Supplier.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['paymentTerms', 'taxProfile'],
   });
@@ -180,7 +179,7 @@ export async function getSupplier(req: Request): Promise<ControllerResult> {
 
 export async function createSupplier(req: Request, body: CreateSupplierInput): Promise<ControllerResult> {
   const b = body;
-  const repo = dataSource.getRepository(Supplier);
+  const repo = Supplier.getRepository();
   const row = repo.create({
     name: b.name,
     contact: b.contact ?? undefined,
@@ -193,7 +192,7 @@ export async function createSupplier(req: Request, body: CreateSupplierInput): P
 }
 
 export async function updateSupplier(req: Request, body: UpdateSupplierInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Supplier);
+  const repo = Supplier.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -209,7 +208,7 @@ export async function updateSupplier(req: Request, body: UpdateSupplierInput): P
 }
 
 export async function deleteSupplier(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(Supplier);
+  const repo = Supplier.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id, deletedAt: IsNull() } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -220,6 +219,6 @@ export async function deleteSupplier(req: Request): Promise<ControllerResult> {
 }
 
 export async function getSupplierSnapshotForAudit(id: string) {
-  const s = await dataSource.getRepository(Supplier).findOne({ where: { id } });
+  const s = await Supplier.findOne({ where: { id } });
   return s ? serializeSupplier(s) : undefined;
 }

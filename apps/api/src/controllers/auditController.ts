@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import { dataSource, AuditLog } from '@tradeflow/db';
+import { AuditLog } from '@tradeflow/db';
 import { getPagination } from '../utils/pagination';
 import { ok, type ControllerResult } from '../utils/controllerResult';
 
@@ -16,7 +16,7 @@ export async function listAuditLogs(req: Request): Promise<ControllerResult> {
     undefined;
 
   const { limit, offset } = getPagination(req);
-  const repo = dataSource.getRepository(AuditLog);
+  const repo = AuditLog.getRepository();
 
   const qb = repo.createQueryBuilder('a');
   if (typeof entity === 'string' && entity.trim()) {

@@ -44,8 +44,7 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
 
   switch (entity) {
     case 'Product': {
-      const qb = dataSource
-        .getRepository(Product)
+      const qb = Product
         .createQueryBuilder('p')
         .where('p.deleted_at IS NOT NULL')
         .orderBy('p.deleted_at', 'DESC')
@@ -63,8 +62,7 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
       });
     }
     case 'Customer': {
-      const qb = dataSource
-        .getRepository(Customer)
+      const qb = Customer
         .createQueryBuilder('c')
         .where('c.deleted_at IS NOT NULL')
         .orderBy('c.deleted_at', 'DESC')
@@ -82,8 +80,7 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
       });
     }
     case 'Supplier': {
-      const qb = dataSource
-        .getRepository(Supplier)
+      const qb = Supplier
         .createQueryBuilder('s')
         .where('s.deleted_at IS NOT NULL')
         .orderBy('s.deleted_at', 'DESC')
@@ -101,8 +98,7 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
       });
     }
     case 'Invoice': {
-      const qb = dataSource
-        .getRepository(Invoice)
+      const qb = Invoice
         .createQueryBuilder('i')
         .where('i.deleted_at IS NOT NULL')
         .orderBy('i.deleted_at', 'DESC')
@@ -120,8 +116,7 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
       });
     }
     case 'JournalEntry': {
-      const qb = dataSource
-        .getRepository(JournalEntry)
+      const qb = JournalEntry
         .createQueryBuilder('je')
         .where('je.deleted_at IS NOT NULL')
         .orderBy('je.deleted_at', 'DESC')
@@ -153,7 +148,7 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
   }
 
   const branchId = resolveBranchId(req);
-  const auditRepo = dataSource.getRepository(AuditLog);
+  const auditRepo = AuditLog.getRepository();
   const userId = req.auth.userId;
 
   async function logRestore(prevDeletedAt: Date | null | undefined) {
@@ -169,7 +164,7 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
 
   switch (entityType) {
     case 'Product': {
-      const row = await dataSource.getRepository(Product).findOne({
+      const row = await Product.findOne({
         where: { id, deletedAt: Not(IsNull()) },
       });
       if (!row) {
@@ -184,7 +179,7 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
       return ok({ data: { id, restored: true } });
     }
     case 'Customer': {
-      const row = await dataSource.getRepository(Customer).findOne({
+      const row = await Customer.findOne({
         where: { id, deletedAt: Not(IsNull()) },
       });
       if (!row) {
@@ -199,7 +194,7 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
       return ok({ data: { id, restored: true } });
     }
     case 'Supplier': {
-      const row = await dataSource.getRepository(Supplier).findOne({
+      const row = await Supplier.findOne({
         where: { id, deletedAt: Not(IsNull()) },
       });
       if (!row) {
@@ -214,7 +209,7 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
       return ok({ data: { id, restored: true } });
     }
     case 'Invoice': {
-      const row = await dataSource.getRepository(Invoice).findOne({
+      const row = await Invoice.findOne({
         where: { id, deletedAt: Not(IsNull()) },
       });
       if (!row) {
@@ -232,7 +227,7 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
       return ok({ data: { id, restored: true } });
     }
     case 'JournalEntry': {
-      const row = await dataSource.getRepository(JournalEntry).findOne({
+      const row = await JournalEntry.findOne({
         where: { id, deletedAt: Not(IsNull()) },
       });
       if (!row) {

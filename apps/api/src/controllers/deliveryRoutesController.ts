@@ -4,7 +4,7 @@ import {
   createDeliveryRouteSchema,
   updateDeliveryRouteSchema,
 } from '@tradeflow/shared';
-import { dataSource, DeliveryRoute, RouteStop } from '@tradeflow/db';
+import { DeliveryRoute, RouteStop } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
@@ -41,8 +41,7 @@ function serializeRoute(r: DeliveryRoute, stops?: RouteStop[]) {
 export async function listDeliveryRoutes(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(DeliveryRoute)
+  const qb = DeliveryRoute
     .createQueryBuilder('r')
     .orderBy('r.code', 'ASC')
     .take(limit)
@@ -56,7 +55,7 @@ export async function createDeliveryRoute(
   req: Request,
   body: CreateDeliveryRouteInput
 ): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(DeliveryRoute);
+  const repo = DeliveryRoute.getRepository();
   const row = repo.create({
     name: body.name,
     code: body.code,
@@ -68,7 +67,7 @@ export async function createDeliveryRoute(
 }
 
 export async function listRouteStops(req: Request): Promise<ControllerResult> {
-  const stops = await dataSource.getRepository(RouteStop).find({
+  const stops = await RouteStop.find({
     where: { routeId: req.params.id },
     order: { sequenceOrder: 'ASC' },
   });
@@ -76,7 +75,7 @@ export async function listRouteStops(req: Request): Promise<ControllerResult> {
 }
 
 export async function getDeliveryRoute(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(DeliveryRoute).findOne({
+  const row = await DeliveryRoute.findOne({
     where: { id: req.params.id },
     relations: ['stops'],
   });
@@ -91,8 +90,8 @@ export async function updateDeliveryRoute(
   req: Request,
   body: UpdateDeliveryRouteInput
 ): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(DeliveryRoute);
-  const stopRepo = dataSource.getRepository(RouteStop);
+  const repo = DeliveryRoute.getRepository();
+  const stopRepo = RouteStop.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -136,11 +135,11 @@ export async function updateDeliveryRoute(
 
 export async function deleteDeliveryRoute(req: Request): Promise<ControllerResult> {
   try {
-    const r = await dataSource.getRepository(DeliveryRoute).findOne({ where: { id: req.params.id } });
+    const r = await DeliveryRoute.findOne({ where: { id: req.params.id } });
     if (!r) {
       throw new HttpError(404, { error: 'Not found' });
     }
-    await dataSource.getRepository(DeliveryRoute).delete({ id: r.id });
+    await DeliveryRoute.delete({ id: r.id });
     return ok({ data: { id: r.id, deleted: true } });
   } catch (e) {
     if (e instanceof HttpError) throw e;

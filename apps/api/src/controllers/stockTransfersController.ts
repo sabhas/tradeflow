@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { createStockTransferSchema } from '@tradeflow/shared';
-import { dataSource, StockTransfer, StockTransferLine } from '@tradeflow/db';
+import { StockTransfer, StockTransferLine } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import {
@@ -46,8 +46,7 @@ function serialize(t: StockTransfer, lines?: StockTransferLine[]) {
 export async function listStockTransfers(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(StockTransfer)
+  const qb = StockTransfer
     .createQueryBuilder('t')
     .leftJoinAndSelect('t.fromWarehouse', 'fw')
     .leftJoinAndSelect('t.toWarehouse', 'tw');
@@ -58,7 +57,7 @@ export async function listStockTransfers(req: Request): Promise<ControllerResult
 }
 
 export async function getStockTransfer(req: Request): Promise<ControllerResult> {
-  const t = await dataSource.getRepository(StockTransfer).findOne({
+  const t = await StockTransfer.findOne({
     where: { id: req.params.id },
     relations: ['lines', 'lines.product', 'fromWarehouse', 'toWarehouse'],
   });

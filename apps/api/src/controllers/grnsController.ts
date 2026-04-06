@@ -1,12 +1,6 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import {
-  dataSource,
-  Grn,
-  GrnLine,
-  PurchaseOrder,
-  PurchaseOrderLine,
-} from '@tradeflow/db';
+import { Grn, GrnLine, PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
 import { createGrnSchema } from '@tradeflow/shared';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
@@ -52,8 +46,7 @@ function serializeGrn(g: Grn, lines?: GrnLine[]) {
 export async function listGrns(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(Grn)
+  const qb = Grn
     .createQueryBuilder('g')
     .leftJoinAndSelect('g.supplier', 's')
     .leftJoinAndSelect('g.warehouse', 'w')
@@ -67,7 +60,7 @@ export async function listGrns(req: Request): Promise<ControllerResult> {
 }
 
 export async function getGrn(req: Request): Promise<ControllerResult> {
-  const g = await dataSource.getRepository(Grn).findOne({
+  const g = await Grn.findOne({
     where: { id: req.params.id },
     relations: ['lines', 'supplier', 'warehouse'],
   });

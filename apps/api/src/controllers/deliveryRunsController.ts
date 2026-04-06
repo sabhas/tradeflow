@@ -70,8 +70,7 @@ function serializeDeliveryRun(
 export async function listDeliveryRuns(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(DeliveryRun)
+  const qb = DeliveryRun
     .createQueryBuilder('r')
     .leftJoinAndSelect('r.route', 'rt')
     .orderBy('r.run_date', 'DESC')
@@ -85,7 +84,7 @@ export async function listDeliveryRuns(req: Request): Promise<ControllerResult> 
   const ids = rows.map((x) => x.id);
   const noteMap = new Map<string, string[]>();
   if (ids.length) {
-    const items = await dataSource.getRepository(DeliveryRunItem).find({
+    const items = await DeliveryRunItem.find({
       where: { deliveryRunId: In(ids) },
     });
     for (const it of items) {
@@ -105,21 +104,21 @@ export async function listDeliveryRuns(req: Request): Promise<ControllerResult> 
 }
 
 export async function getDeliveryRunSheet(req: Request): Promise<ControllerResult> {
-  const run = await dataSource.getRepository(DeliveryRun).findOne({
+  const run = await DeliveryRun.findOne({
     where: { id: req.params.id },
     relations: ['route', 'driverSalesperson'],
   });
   if (!run) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  const items = await dataSource.getRepository(DeliveryRunItem).find({
+  const items = await DeliveryRunItem.find({
     where: { deliveryRunId: run.id },
   });
   const noteIds = items.map((i) => i.deliveryNoteId);
   const notes =
     noteIds.length === 0
       ? []
-      : await dataSource.getRepository(DeliveryNote).find({
+      : await DeliveryNote.find({
           where: { id: In(noteIds) },
           relations: ['invoice', 'invoice.customer', 'salesOrder', 'salesOrder.customer'],
         });
@@ -158,14 +157,14 @@ export async function getDeliveryRunSheet(req: Request): Promise<ControllerResul
 }
 
 export async function getDeliveryRun(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(DeliveryRun).findOne({
+  const row = await DeliveryRun.findOne({
     where: { id: req.params.id },
     relations: ['route', 'driverSalesperson'],
   });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  const items = await dataSource.getRepository(DeliveryRunItem).find({
+  const items = await DeliveryRunItem.find({
     where: { deliveryRunId: row.id },
   });
   return ok({
@@ -180,9 +179,9 @@ export async function getDeliveryRun(req: Request): Promise<ControllerResult> {
 export async function createDeliveryRun(req: Request, body: CreateDeliveryRunInput): Promise<ControllerResult> {
   const b = body;
   try {
-    const route = await dataSource.getRepository(DeliveryRoute).findOne({ where: { id: b.routeId } });
+    const route = await DeliveryRoute.findOne({ where: { id: b.routeId } });
     if (!route) throw new HttpError(400, { error: 'Route not found' });
-    const run = dataSource.getRepository(DeliveryRun).create({
+    const run = DeliveryRun.create({
       runDate: b.runDate.slice(0, 10),
       routeId: b.routeId,
       vehicleInfo: b.vehicleInfo ?? undefined,
@@ -195,15 +194,15 @@ export async function createDeliveryRun(req: Request, body: CreateDeliveryRunInp
       dispatchComplianceNote: b.dispatchComplianceNote ?? undefined,
       deliveryComplianceNote: b.deliveryComplianceNote ?? undefined,
     });
-    await dataSource.getRepository(DeliveryRun).save(run);
+    await DeliveryRun.save(run);
     if (b.deliveryNoteIds?.length) {
       await replaceRunItems(run.id, b.deliveryNoteIds);
     }
-    const full = await dataSource.getRepository(DeliveryRun).findOne({
+    const full = await DeliveryRun.findOne({
       where: { id: run.id },
       relations: ['route'],
     });
-    const items = await dataSource.getRepository(DeliveryRunItem).find({
+    const items = await DeliveryRunItem.find({
       where: { deliveryRunId: run.id },
     });
     return created({
@@ -222,7 +221,7 @@ export async function createDeliveryRun(req: Request, body: CreateDeliveryRunInp
 export async function updateDeliveryRun(req: Request, body: UpdateDeliveryRunInput): Promise<ControllerResult> {
   const b = body;
   try {
-    const repo = dataSource.getRepository(DeliveryRun);
+    const repo = DeliveryRun.getRepository();
     const row = await repo.findOne({ where: { id: req.params.id }, relations: ['route'] });
     if (!row) throw new HttpError(404, { error: 'Not found' });
     if (b.runDate !== undefined) row.runDate = b.runDate.slice(0, 10);
@@ -239,7 +238,7 @@ export async function updateDeliveryRun(req: Request, body: UpdateDeliveryRunInp
     if (b.deliveryNoteIds !== undefined) {
       await replaceRunItems(row.id, b.deliveryNoteIds);
     }
-    const items = await dataSource.getRepository(DeliveryRunItem).find({
+    const items = await DeliveryRunItem.find({
       where: { deliveryRunId: row.id },
     });
     const full = await repo.findOne({ where: { id: row.id }, relations: ['route'] });
@@ -257,14 +256,14 @@ export async function updateDeliveryRun(req: Request, body: UpdateDeliveryRunInp
 }
 
 export async function deleteDeliveryRun(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(DeliveryRun).findOne({ where: { id: req.params.id } });
+  const row = await DeliveryRun.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
   if (row.status !== 'draft' && row.status !== 'cancelled') {
     throw new HttpError(400, { error: 'Only draft or cancelled runs can be deleted' });
   }
-  await dataSource.getRepository(DeliveryRunItem).delete({ deliveryRunId: row.id });
-  await dataSource.getRepository(DeliveryRun).delete({ id: row.id });
+  await DeliveryRunItem.delete({ deliveryRunId: row.id });
+  await DeliveryRun.delete({ id: row.id });
   return ok({ data: { id: row.id, deleted: true } });
 }

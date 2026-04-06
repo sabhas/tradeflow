@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { dataSource } from '@tradeflow/db';
 import { AuditLog } from '@tradeflow/db';
 
 export type AuditAction = 'create' | 'update' | 'delete';
@@ -70,7 +69,7 @@ async function flushAuditQueue() {
   if (auditQueue.length === 0) return;
   const toFlush = auditQueue.splice(0, auditQueue.length);
   try {
-    const repo = dataSource.getRepository(AuditLog);
+    const repo = AuditLog.getRepository();
     for (const entry of toFlush) {
       await repo.save({
         userId: entry.userId,

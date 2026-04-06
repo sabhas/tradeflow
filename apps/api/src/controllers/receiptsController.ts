@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { createReceiptSchema } from '@tradeflow/shared';
-import { dataSource, Receipt, ReceiptAllocation } from '@tradeflow/db';
+import { Receipt, ReceiptAllocation } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import { runInTransaction } from '../services/inventoryService';
@@ -36,8 +36,7 @@ function serialize(r: Receipt, allocations?: ReceiptAllocation[]) {
 export async function listReceipts(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(Receipt)
+  const qb = Receipt
     .createQueryBuilder('r')
     .orderBy('r.receipt_date', 'DESC')
     .take(limit)
@@ -51,7 +50,7 @@ export async function listReceipts(req: Request): Promise<ControllerResult> {
 }
 
 export async function getReceipt(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(Receipt).findOne({
+  const row = await Receipt.findOne({
     where: { id: req.params.id },
     relations: ['allocations'],
   });

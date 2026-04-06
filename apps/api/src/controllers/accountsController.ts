@@ -25,8 +25,7 @@ function serialize(a: Account) {
 }
 
 async function accountHasPostedLines(accountId: string): Promise<boolean> {
-  const n = await dataSource
-    .getRepository(JournalLine)
+  const n = await JournalLine
     .createQueryBuilder('jl')
     .innerJoin(JournalEntry, 'je', 'je.id = jl.journal_entry_id')
     .where('jl.account_id = :aid', { aid: accountId })
@@ -39,7 +38,7 @@ export async function listAccounts(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const format = (req.query.format as string) || 'flat';
 
-  const qb = dataSource.getRepository(Account).createQueryBuilder('a').orderBy('a.code', 'ASC');
+  const qb = Account.createQueryBuilder('a').orderBy('a.code', 'ASC');
   if (branchId) {
     qb.andWhere(
       new Brackets((w) => {
@@ -74,7 +73,7 @@ export async function getAccountBalance(req: Request): Promise<ControllerResult>
   const branchId = resolveBranchId(req);
   const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
-  const acc = await dataSource.getRepository(Account).findOne({ where: { id: req.params.id } });
+  const acc = await Account.findOne({ where: { id: req.params.id } });
   if (!acc) {
     throw new HttpError(404, { error: 'Not found' });
   }
@@ -115,7 +114,7 @@ export async function createAccount(req: Request, body: CreateAccountInput): Pro
 
   try {
     if (body.parentId) {
-      const parent = await dataSource.getRepository(Account).findOne({ where: { id: body.parentId } });
+      const parent = await Account.findOne({ where: { id: body.parentId } });
       if (!parent) {
         throw new HttpError(400, { error: 'Parent account not found' });
       }
@@ -124,8 +123,7 @@ export async function createAccount(req: Request, body: CreateAccountInput): Pro
       }
     }
 
-    const codeQb = dataSource
-      .getRepository(Account)
+    const codeQb = Account
       .createQueryBuilder('a')
       .where('a.code = :code', { code: body.code });
     if (effectiveBranch) {
@@ -137,7 +135,7 @@ export async function createAccount(req: Request, body: CreateAccountInput): Pro
       throw new HttpError(409, { error: 'Account code already exists' });
     }
 
-    const a = dataSource.getRepository(Account).create({
+    const a = Account.create({
       code: body.code,
       name: body.name,
       type: body.type,
@@ -145,7 +143,7 @@ export async function createAccount(req: Request, body: CreateAccountInput): Pro
       branchId: effectiveBranch,
       isSystem: false,
     });
-    const saved = await dataSource.getRepository(Account).save(a);
+    const saved = await Account.save(a);
     return created({ data: serialize(saved) });
   } catch (e) {
     if (e instanceof HttpError) throw e;
@@ -154,7 +152,7 @@ export async function createAccount(req: Request, body: CreateAccountInput): Pro
 }
 
 export async function updateAccount(req: Request, body: UpdateAccountInput): Promise<ControllerResult> {
-  const acc = await dataSource.getRepository(Account).findOne({ where: { id: req.params.id } });
+  const acc = await Account.findOne({ where: { id: req.params.id } });
   if (!acc) {
     throw new HttpError(404, { error: 'Not found' });
   }
@@ -171,7 +169,7 @@ export async function updateAccount(req: Request, body: UpdateAccountInput): Pro
   if (body.parentId !== undefined) acc.parentId = body.parentId ?? undefined;
 
   try {
-    const saved = await dataSource.getRepository(Account).save(acc);
+    const saved = await Account.save(acc);
     return ok({ data: serialize(saved) });
   } catch (e) {
     throw new HttpError(400, { error: (e as Error).message });

@@ -62,8 +62,7 @@ export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
 export async function listInvoices(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(Invoice)
+  const qb = Invoice
     .createQueryBuilder('i')
     .where('i.deleted_at IS NULL')
     .orderBy('i.invoice_date', 'DESC')
@@ -79,7 +78,7 @@ export async function listInvoices(req: Request): Promise<ControllerResult> {
 }
 
 export async function getInvoicePdfHtml(req: Request): Promise<ControllerResult> {
-  const inv = await dataSource.getRepository(Invoice).findOne({
+  const inv = await Invoice.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines', 'lines.product', 'customer', 'customer.paymentTerms', 'warehouse', 'invoiceTemplate'],
   });
@@ -88,12 +87,12 @@ export async function getInvoicePdfHtml(req: Request): Promise<ControllerResult>
   }
   const cust =
     inv.customer ||
-    (await dataSource.getRepository(Customer).findOne({
+    (await Customer.findOne({
       where: { id: inv.customerId, deletedAt: IsNull() },
       relations: ['paymentTerms'],
     }));
   const name = cust?.name ?? 'Customer';
-  const company = await dataSource.getRepository(CompanySettings).findOne({
+  const company = await CompanySettings.findOne({
     order: { id: 'ASC' },
     relations: ['defaultInvoiceTemplate'],
   });
@@ -102,7 +101,7 @@ export async function getInvoicePdfHtml(req: Request): Promise<ControllerResult>
   }
   let template: InvoiceTemplate | null = inv.invoiceTemplate ?? null;
   if (!template && company.defaultInvoiceTemplateId) {
-    template = await dataSource.getRepository(InvoiceTemplate).findOne({
+    template = await InvoiceTemplate.findOne({
       where: { id: company.defaultInvoiceTemplateId },
     });
   }
@@ -198,7 +197,7 @@ export async function postInvoiceAction(req: Request): Promise<ControllerResult>
   const branchId = resolveBranchId(req);
   try {
     const inv = await postInvoice(req.params.id, req.auth?.userId, branchId);
-    const full = await dataSource.getRepository(Invoice).findOne({
+    const full = await Invoice.findOne({
       where: { id: inv.id, deletedAt: IsNull() },
       relations: ['lines'],
     });
@@ -210,7 +209,7 @@ export async function postInvoiceAction(req: Request): Promise<ControllerResult>
 }
 
 export async function getInvoice(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(Invoice).findOne({
+  const row = await Invoice.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
     relations: ['lines', 'lines.product', 'customer', 'warehouse'],
   });
@@ -334,7 +333,7 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
 }
 
 export async function deleteInvoice(req: Request): Promise<ControllerResult> {
-  const inv = await dataSource.getRepository(Invoice).findOne({
+  const inv = await Invoice.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
   });
   if (!inv) {
@@ -344,12 +343,12 @@ export async function deleteInvoice(req: Request): Promise<ControllerResult> {
     throw new HttpError(400, { error: 'Only draft invoices can be deleted' });
   }
   inv.deletedAt = new Date();
-  await dataSource.getRepository(Invoice).save(inv);
+  await Invoice.save(inv);
   return ok({ data: { id: inv.id, deleted: true } });
 }
 
 export async function getInvoiceSnapshotForAudit(id: string) {
-  const row = await dataSource.getRepository(Invoice).findOne({
+  const row = await Invoice.findOne({
     where: { id, deletedAt: IsNull() },
     relations: ['lines'],
   });

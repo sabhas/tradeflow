@@ -21,13 +21,13 @@ export async function listNotifications(req: Request): Promise<ControllerResult>
     throw new HttpError(401, { error: 'Unauthorized' });
   }
   const { limit, offset } = getPagination(req);
-  const [rows, total] = await dataSource.getRepository(UserNotification).findAndCount({
+  const [rows, total] = await UserNotification.findAndCount({
     where: { userId: req.auth.userId },
     order: { createdAt: 'DESC' },
     take: limit,
     skip: offset,
   });
-  const unread = await dataSource.getRepository(UserNotification).count({
+  const unread = await UserNotification.count({
     where: { userId: req.auth.userId, readAt: IsNull() },
   });
   return ok({
@@ -40,14 +40,14 @@ export async function markNotificationRead(req: Request): Promise<ControllerResu
   if (!req.auth?.userId) {
     throw new HttpError(401, { error: 'Unauthorized' });
   }
-  const row = await dataSource.getRepository(UserNotification).findOne({
+  const row = await UserNotification.findOne({
     where: { id: req.params.id, userId: req.auth.userId },
   });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
   row.readAt = new Date();
-  await dataSource.getRepository(UserNotification).save(row);
+  await UserNotification.save(row);
   return ok({ data: serialize(row) });
 }
 

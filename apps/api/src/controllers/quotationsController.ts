@@ -1,12 +1,6 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import {
-  dataSource,
-  Quotation,
-  QuotationLine,
-  SalesOrder,
-  SalesOrderLine,
-} from '@tradeflow/db';
+import { Quotation, QuotationLine, SalesOrder, SalesOrderLine } from '@tradeflow/db';
 import { createQuotationSchema, updateQuotationSchema } from '@tradeflow/shared';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
@@ -50,8 +44,7 @@ export function serializeQuotation(q: Quotation, lines?: QuotationLine[]) {
 export async function listQuotations(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
   const { limit, offset } = getPagination(req);
-  const qb = dataSource
-    .getRepository(Quotation)
+  const qb = Quotation
     .createQueryBuilder('q')
     .orderBy('q.quotation_date', 'DESC')
     .addOrderBy('q.created_at', 'DESC')
@@ -64,7 +57,7 @@ export async function listQuotations(req: Request): Promise<ControllerResult> {
 }
 
 export async function getQuotation(req: Request): Promise<ControllerResult> {
-  const row = await dataSource.getRepository(Quotation).findOne({
+  const row = await Quotation.findOne({
     where: { id: req.params.id },
     relations: ['lines', 'lines.product'],
   });
@@ -212,14 +205,14 @@ export async function updateQuotation(req: Request, body: UpdateQuotationInput):
 }
 
 export async function deleteQuotation(req: Request): Promise<ControllerResult> {
-  const q = await dataSource.getRepository(Quotation).findOne({ where: { id: req.params.id } });
+  const q = await Quotation.findOne({ where: { id: req.params.id } });
   if (!q) {
     throw new HttpError(404, { error: 'Not found' });
   }
   if (q.status !== 'draft') {
     throw new HttpError(400, { error: 'Only draft quotations can be deleted' });
   }
-  await dataSource.getRepository(Quotation).delete({ id: q.id });
+  await Quotation.delete({ id: q.id });
   return ok({ data: { id: q.id, deleted: true } });
 }
 

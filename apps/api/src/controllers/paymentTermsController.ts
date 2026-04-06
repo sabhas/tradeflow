@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
 import { createPaymentTermsSchema, updatePaymentTermsSchema } from '@tradeflow/shared';
-import { dataSource, PaymentTerms } from '@tradeflow/db';
+import { PaymentTerms } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -23,7 +23,7 @@ function serialize(p: PaymentTerms) {
 
 export async function listPaymentTerms(req: Request): Promise<ControllerResult> {
   const branchId = resolveBranchId(req);
-  const rows = await dataSource.getRepository(PaymentTerms).find({
+  const rows = await PaymentTerms.find({
     where: branchId ? [{ branchId: IsNull() }, { branchId }] : {},
     order: { name: 'ASC' },
   });
@@ -31,7 +31,7 @@ export async function listPaymentTerms(req: Request): Promise<ControllerResult> 
 }
 
 export async function createPaymentTerms(req: Request, body: CreatePaymentTermsInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(PaymentTerms);
+  const repo = PaymentTerms.getRepository();
   const row = repo.create({
     name: body.name,
     netDays: body.netDays ?? 0,
@@ -42,7 +42,7 @@ export async function createPaymentTerms(req: Request, body: CreatePaymentTermsI
 }
 
 export async function updatePaymentTerms(req: Request, body: UpdatePaymentTermsInput): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(PaymentTerms);
+  const repo = PaymentTerms.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -55,7 +55,7 @@ export async function updatePaymentTerms(req: Request, body: UpdatePaymentTermsI
 }
 
 export async function deletePaymentTerms(req: Request): Promise<ControllerResult> {
-  const repo = dataSource.getRepository(PaymentTerms);
+  const repo = PaymentTerms.getRepository();
   const row = await repo.findOne({ where: { id: req.params.id } });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -65,6 +65,6 @@ export async function deletePaymentTerms(req: Request): Promise<ControllerResult
 }
 
 export async function getPaymentTermsSnapshotForAudit(id: string) {
-  const p = await dataSource.getRepository(PaymentTerms).findOne({ where: { id } });
+  const p = await PaymentTerms.findOne({ where: { id } });
   return p ? serialize(p) : undefined;
 }

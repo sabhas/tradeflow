@@ -80,8 +80,7 @@ export async function listBalances(req: Request): Promise<ControllerResult> {
   const warehouseId = req.query.warehouseId as string | undefined;
   const productId = req.query.productId as string | undefined;
 
-  const qb = dataSource
-    .getRepository(StockBalance)
+  const qb = StockBalance
     .createQueryBuilder('sb')
     .leftJoinAndSelect('sb.product', 'p')
     .leftJoinAndSelect('sb.warehouse', 'w')
@@ -169,8 +168,7 @@ export async function listMovements(req: Request): Promise<ControllerResult> {
   const dateFrom = req.query.dateFrom as string | undefined;
   const dateTo = req.query.dateTo as string | undefined;
 
-  const qb = dataSource
-    .getRepository(InventoryMovement)
+  const qb = InventoryMovement
     .createQueryBuilder('m')
     .leftJoinAndSelect('m.product', 'p')
     .leftJoinAndSelect('m.warehouse', 'w')
@@ -230,7 +228,7 @@ export async function postOpeningBalance(req: Request, body: PostOpeningBalanceI
       return out;
     });
 
-    const loaded = await dataSource.getRepository(InventoryMovement).find({
+    const loaded = await InventoryMovement.find({
       where: { id: In(movements.map((m) => m.id)) },
       relations: ['product', 'warehouse'],
     });
@@ -286,7 +284,7 @@ export async function postStockAdjustment(req: Request, body: PostStockAdjustmen
       return out;
     });
 
-    const loaded = await dataSource.getRepository(InventoryMovement).find({
+    const loaded = await InventoryMovement.find({
       where: { id: In(movements.map((m) => m.id)) },
       relations: ['product', 'warehouse'],
     });

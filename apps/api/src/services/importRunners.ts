@@ -1,6 +1,5 @@
 import { Brackets, EntityManager, IsNull } from 'typeorm';
 import {
-  dataSource,
   Account,
   Customer,
   JournalEntry,
