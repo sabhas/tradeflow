@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { dataSource } from '@tradeflow/db';
+import { asyncHandler } from '../controllers/asyncHandler';
+import { sendControllerResult } from '../controllers/controllerResult';
+import * as healthController from '../controllers/healthController';
 
 export const healthRouter = Router();
 
-healthRouter.get('/', async (_req, res) => {
-  try {
-    await dataSource.query('SELECT 1');
-    res.json({ status: 'ok', api: 'up', database: 'up' });
-  } catch {
-    res.status(503).json({ status: 'degraded', api: 'up', database: 'down' });
-  }
-});
+healthRouter.get(
+  '/',
+  asyncHandler(async (_req, res) => {
+    sendControllerResult(res, await healthController.getHealth());
+  })
+);

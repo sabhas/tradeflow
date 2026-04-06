@@ -1,298 +1,80 @@
 import { Router } from 'express';
-import type { FindOptionsRelations } from 'typeorm';
-import { dataSource, Account, CompanySettings, InvoiceTemplate } from '@tradeflow/db';
 import {
+  patchCompanyAccountingSettingsSchema,
   patchCompanyProfileSchema,
   patchGeneralSettingsSchema,
-  patchCompanyAccountingSettingsSchema,
 } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
-import { computeFinancialYearLabel } from '../utils/financialYear';
+import { asyncHandler } from '../controllers/asyncHandler';
+import { sendControllerResult } from '../controllers/controllerResult';
+import * as companySettingsController from '../controllers/companySettingsController';
 
 export const companySettingsRouter = Router();
 companySettingsRouter.use(authMiddleware, loadUser);
 
-/** Single-row table; TypeORM 0.3+ requires `where` for findOne — use find + take. */
-async function getSingletonCompanySettings(
-  relations?: FindOptionsRelations<CompanySettings>
-): Promise<CompanySettings | null> {
-  const repo = dataSource.getRepository(CompanySettings);
-  const rows = await repo.find({
-    take: 1,
-    order: { id: 'ASC' },
-    ...(relations ? { relations } : {}),
-  });
-  return rows[0] ?? null;
-}
-
-function serializeGeneral(cs: CompanySettings) {
-  return {
-    id: cs.id,
-    companyName: cs.companyName,
-    legalName: cs.legalName ?? null,
-    addressLine1: cs.addressLine1 ?? null,
-    addressLine2: cs.addressLine2 ?? null,
-    city: cs.city ?? null,
-    state: cs.state ?? null,
-    postalCode: cs.postalCode ?? null,
-    country: cs.country ?? null,
-    phone: cs.phone ?? null,
-    email: cs.email ?? null,
-    taxRegistrationNumber: cs.taxRegistrationNumber ?? null,
-    logoUrl: cs.logoUrl ?? null,
-    financialYearStartMonth: cs.financialYearStartMonth,
-    financialYearLabelOverride: cs.financialYearLabelOverride ?? null,
-    currentFinancialYearLabel: computeFinancialYearLabel(
-      new Date(),
-      cs.financialYearStartMonth,
-      cs.financialYearLabelOverride
-    ),
-    currencyCode: cs.currencyCode,
-    moneyDecimals: cs.moneyDecimals,
-    quantityDecimals: cs.quantityDecimals,
-    roundingMode: cs.roundingMode,
-    inventoryCostingMethod: cs.inventoryCostingMethod ?? 'fifo',
-    defaultInvoiceTemplateId: cs.defaultInvoiceTemplateId ?? null,
-    defaultCashAccountId: cs.defaultCashAccountId,
-    defaultBankAccountId: cs.defaultBankAccountId,
-    updatedAt: cs.updatedAt,
-  };
-}
-
-companySettingsRouter.get('/', requirePermission('settings', 'read'), async (_req, res) => {
-  const row = await getSingletonCompanySettings();
-  if (!row) {
-    res.status(500).json({ error: 'Company settings not initialized' });
-    return;
-  }
-  res.json({ data: serializeGeneral(row) });
-});
+companySettingsRouter.get(
+  '/',
+  requirePermission('settings', 'read'),
+  asyncHandler(async (req, res) => {
+    sendControllerResult(res, await companySettingsController.getGeneral(req));
+  })
+);
 
 companySettingsRouter.patch(
   '/',
   requirePermission('settings', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const parsed = patchGeneralSettingsSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
       return;
     }
-    const b = parsed.data;
-    let row = await getSingletonCompanySettings();
-    if (!row) {
-      res.status(500).json({ error: 'Company settings not initialized' });
-      return;
-    }
-    if (b.defaultInvoiceTemplateId !== undefined && b.defaultInvoiceTemplateId !== null) {
-      const t = await dataSource.getRepository(InvoiceTemplate).findOne({
-        where: { id: b.defaultInvoiceTemplateId },
-      });
-      if (!t) {
-        res.status(400).json({ error: 'Invoice template not found' });
-        return;
-      }
-    }
-    if (b.companyName !== undefined) row.companyName = b.companyName;
-    if (b.legalName !== undefined) row.legalName = b.legalName ?? undefined;
-    if (b.addressLine1 !== undefined) row.addressLine1 = b.addressLine1 ?? undefined;
-    if (b.addressLine2 !== undefined) row.addressLine2 = b.addressLine2 ?? undefined;
-    if (b.city !== undefined) row.city = b.city ?? undefined;
-    if (b.state !== undefined) row.state = b.state ?? undefined;
-    if (b.postalCode !== undefined) row.postalCode = b.postalCode ?? undefined;
-    if (b.country !== undefined) row.country = b.country ?? undefined;
-    if (b.phone !== undefined) row.phone = b.phone ?? undefined;
-    if (b.email !== undefined) row.email = b.email ?? undefined;
-    if (b.taxRegistrationNumber !== undefined) row.taxRegistrationNumber = b.taxRegistrationNumber ?? undefined;
-    if (b.logoUrl !== undefined) row.logoUrl = b.logoUrl ?? undefined;
-    if (b.financialYearStartMonth !== undefined) row.financialYearStartMonth = b.financialYearStartMonth;
-    if (b.financialYearLabelOverride !== undefined) row.financialYearLabelOverride = b.financialYearLabelOverride ?? undefined;
-    if (b.currencyCode !== undefined) row.currencyCode = b.currencyCode;
-    if (b.moneyDecimals !== undefined) row.moneyDecimals = b.moneyDecimals;
-    if (b.quantityDecimals !== undefined) row.quantityDecimals = b.quantityDecimals;
-    if (b.roundingMode !== undefined) row.roundingMode = b.roundingMode;
-    if (b.defaultInvoiceTemplateId !== undefined) row.defaultInvoiceTemplateId = b.defaultInvoiceTemplateId ?? undefined;
-    if (b.inventoryCostingMethod !== undefined) row.inventoryCostingMethod = b.inventoryCostingMethod;
-    await dataSource.getRepository(CompanySettings).save(row);
-    row = await dataSource.getRepository(CompanySettings).findOneOrFail({ where: { id: row.id } });
-    res.json({ data: serializeGeneral(row) });
-  }
+    sendControllerResult(res, await companySettingsController.patchGeneral(req, parsed.data));
+  })
 );
 
-companySettingsRouter.get('/company', requirePermission('settings', 'read'), async (_req, res) => {
-  const row = await getSingletonCompanySettings();
-  if (!row) {
-    res.status(500).json({ error: 'Company settings not initialized' });
-    return;
-  }
-  res.json({
-    data: {
-      companyName: row.companyName,
-      legalName: row.legalName ?? null,
-      addressLine1: row.addressLine1 ?? null,
-      addressLine2: row.addressLine2 ?? null,
-      city: row.city ?? null,
-      state: row.state ?? null,
-      postalCode: row.postalCode ?? null,
-      country: row.country ?? null,
-      phone: row.phone ?? null,
-      email: row.email ?? null,
-      taxRegistrationNumber: row.taxRegistrationNumber ?? null,
-      logoUrl: row.logoUrl ?? null,
-    },
-  });
-});
+companySettingsRouter.get(
+  '/company',
+  requirePermission('settings', 'read'),
+  asyncHandler(async (req, res) => {
+    sendControllerResult(res, await companySettingsController.getCompanyProfile(req));
+  })
+);
 
 companySettingsRouter.patch(
   '/company',
   requirePermission('settings', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const parsed = patchCompanyProfileSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
       return;
     }
-    const b = parsed.data;
-    let row = await getSingletonCompanySettings();
-    if (!row) {
-      res.status(500).json({ error: 'Company settings not initialized' });
-      return;
-    }
-    if (b.companyName !== undefined) row.companyName = b.companyName;
-    if (b.legalName !== undefined) row.legalName = b.legalName ?? undefined;
-    if (b.addressLine1 !== undefined) row.addressLine1 = b.addressLine1 ?? undefined;
-    if (b.addressLine2 !== undefined) row.addressLine2 = b.addressLine2 ?? undefined;
-    if (b.city !== undefined) row.city = b.city ?? undefined;
-    if (b.state !== undefined) row.state = b.state ?? undefined;
-    if (b.postalCode !== undefined) row.postalCode = b.postalCode ?? undefined;
-    if (b.country !== undefined) row.country = b.country ?? undefined;
-    if (b.phone !== undefined) row.phone = b.phone ?? undefined;
-    if (b.email !== undefined) row.email = b.email ?? undefined;
-    if (b.taxRegistrationNumber !== undefined) row.taxRegistrationNumber = b.taxRegistrationNumber ?? undefined;
-    if (b.logoUrl !== undefined) row.logoUrl = b.logoUrl ?? undefined;
-    await dataSource.getRepository(CompanySettings).save(row);
-    row = await dataSource.getRepository(CompanySettings).findOneOrFail({ where: { id: row.id } });
-    res.json({
-      data: {
-        companyName: row.companyName,
-        legalName: row.legalName ?? null,
-        addressLine1: row.addressLine1 ?? null,
-        addressLine2: row.addressLine2 ?? null,
-        city: row.city ?? null,
-        state: row.state ?? null,
-        postalCode: row.postalCode ?? null,
-        country: row.country ?? null,
-        phone: row.phone ?? null,
-        email: row.email ?? null,
-        taxRegistrationNumber: row.taxRegistrationNumber ?? null,
-        logoUrl: row.logoUrl ?? null,
-      },
-    });
-  }
+    sendControllerResult(res, await companySettingsController.patchCompanyProfile(req, parsed.data));
+  })
 );
 
-function serialize(cs: CompanySettings) {
-  return {
-    id: cs.id,
-    defaultCashAccountId: cs.defaultCashAccountId,
-    defaultBankAccountId: cs.defaultBankAccountId,
-    periodLockedThrough: cs.periodLockedThrough ?? null,
-    journalApprovalThreshold: cs.journalApprovalThreshold ?? null,
-    updatedAt: cs.updatedAt,
-  };
-}
-
-companySettingsRouter.get('/accounting', requirePermission('accounting', 'read'), async (_req, res) => {
-  const row = await getSingletonCompanySettings({
-    defaultCashAccount: true,
-    defaultBankAccount: true,
-  });
-  if (!row) {
-    res.status(500).json({ error: 'Company settings not initialized' });
-    return;
-  }
-  res.json({
-    data: {
-      ...serialize(row),
-      defaultCashAccount: {
-        id: row.defaultCashAccount.id,
-        code: row.defaultCashAccount.code,
-        name: row.defaultCashAccount.name,
-        type: row.defaultCashAccount.type,
-      },
-      defaultBankAccount: {
-        id: row.defaultBankAccount.id,
-        code: row.defaultBankAccount.code,
-        name: row.defaultBankAccount.name,
-        type: row.defaultBankAccount.type,
-      },
-    },
-  });
-});
+companySettingsRouter.get(
+  '/accounting',
+  requirePermission('accounting', 'read'),
+  asyncHandler(async (req, res) => {
+    sendControllerResult(res, await companySettingsController.getAccounting(req));
+  })
+);
 
 companySettingsRouter.patch(
   '/accounting',
   requirePermission('accounting', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const parsed = patchCompanyAccountingSettingsSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
       return;
     }
-    const b = parsed.data;
-
-    let row = await getSingletonCompanySettings();
-    if (!row) {
-      res.status(500).json({ error: 'Company settings not initialized' });
-      return;
-    }
-
-    if (b.defaultCashAccountId !== undefined && b.defaultBankAccountId !== undefined) {
-      const [cashAcc, bankAcc] = await Promise.all([
-        dataSource.getRepository(Account).findOne({ where: { id: b.defaultCashAccountId } }),
-        dataSource.getRepository(Account).findOne({ where: { id: b.defaultBankAccountId } }),
-      ]);
-      if (!cashAcc || !bankAcc) {
-        res.status(400).json({ error: 'Account not found' });
-        return;
-      }
-      if (cashAcc.type !== 'asset' || bankAcc.type !== 'asset') {
-        res.status(400).json({ error: 'Cash and bank accounts must be asset accounts' });
-        return;
-      }
-      row.defaultCashAccountId = b.defaultCashAccountId;
-      row.defaultBankAccountId = b.defaultBankAccountId;
-    }
-
-    if (b.periodLockedThrough !== undefined) {
-      row.periodLockedThrough = b.periodLockedThrough ?? undefined;
-    }
-    if (b.journalApprovalThreshold !== undefined) {
-      row.journalApprovalThreshold = b.journalApprovalThreshold ?? undefined;
-    }
-
-    await dataSource.getRepository(CompanySettings).save(row);
-    row = await dataSource.getRepository(CompanySettings).findOneOrFail({
-      where: { id: row.id },
-      relations: ['defaultCashAccount', 'defaultBankAccount'],
-    });
-    res.json({
-      data: {
-        ...serialize(row),
-        defaultCashAccount: {
-          id: row.defaultCashAccount.id,
-          code: row.defaultCashAccount.code,
-          name: row.defaultCashAccount.name,
-        },
-        defaultBankAccount: {
-          id: row.defaultBankAccount.id,
-          code: row.defaultBankAccount.code,
-          name: row.defaultBankAccount.name,
-        },
-      },
-    });
-  }
+    sendControllerResult(res, await companySettingsController.patchAccounting(req, parsed.data));
+  })
 );

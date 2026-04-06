@@ -1,0 +1,67 @@
+import type { Request } from 'express';
+import type { z } from 'zod';
+import { createInvoiceTemplateSchema, updateInvoiceTemplateSchema } from '@tradeflow/shared';
+import { dataSource, InvoiceTemplate } from '@tradeflow/db';
+import { resolveBranchId } from '../utils/branchScope';
+import { created, ok, type ControllerResult } from './controllerResult';
+import { HttpError } from './httpError';
+
+type CreateInvoiceTemplateInput = z.infer<typeof createInvoiceTemplateSchema>;
+type UpdateInvoiceTemplateInput = z.infer<typeof updateInvoiceTemplateSchema>;
+
+function serialize(t: InvoiceTemplate) {
+  return {
+    id: t.id,
+    name: t.name,
+    config: t.config,
+    branchId: t.branchId ?? null,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+  };
+}
+
+export async function listInvoiceTemplates(req: Request): Promise<ControllerResult> {
+  const branchId = resolveBranchId(req);
+  const qb = dataSource.getRepository(InvoiceTemplate).createQueryBuilder('t').orderBy('t.name', 'ASC');
+  if (branchId) {
+    qb.andWhere('(t.branch_id IS NULL OR t.branch_id = :bid)', { bid: branchId });
+  }
+  const rows = await qb.getMany();
+  return ok({ data: rows.map(serialize) });
+}
+
+export async function getInvoiceTemplate(req: Request): Promise<ControllerResult> {
+  const row = await dataSource.getRepository(InvoiceTemplate).findOne({ where: { id: req.params.id } });
+  if (!row) {
+    throw new HttpError(404, { error: 'Not found' });
+  }
+  return ok({ data: serialize(row) });
+}
+
+export async function createInvoiceTemplate(
+  _req: Request,
+  body: CreateInvoiceTemplateInput
+): Promise<ControllerResult> {
+  const row = dataSource.getRepository(InvoiceTemplate).create({
+    name: body.name.trim(),
+    config: body.config,
+    branchId: body.branchId ?? undefined,
+  });
+  await dataSource.getRepository(InvoiceTemplate).save(row);
+  return created({ data: serialize(row) });
+}
+
+export async function updateInvoiceTemplate(
+  req: Request,
+  body: UpdateInvoiceTemplateInput
+): Promise<ControllerResult> {
+  const row = await dataSource.getRepository(InvoiceTemplate).findOne({ where: { id: req.params.id } });
+  if (!row) {
+    throw new HttpError(404, { error: 'Not found' });
+  }
+  if (body.name !== undefined) row.name = body.name.trim();
+  if (body.config !== undefined) row.config = { ...row.config, ...body.config };
+  if (body.branchId !== undefined) row.branchId = body.branchId ?? undefined;
+  await dataSource.getRepository(InvoiceTemplate).save(row);
+  return ok({ data: serialize(row) });
+}
