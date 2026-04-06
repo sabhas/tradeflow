@@ -8,8 +8,8 @@ import {
   patchGeneralSettingsSchema,
 } from '@tradeflow/shared';
 import { computeFinancialYearLabel } from '../utils/financialYear';
-import { ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type PatchGeneralInput = z.infer<typeof patchGeneralSettingsSchema>;
 type PatchCompanyProfileInput = z.infer<typeof patchCompanyProfileSchema>;

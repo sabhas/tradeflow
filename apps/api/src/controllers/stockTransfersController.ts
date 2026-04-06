@@ -11,8 +11,8 @@ import {
 } from '../services/inventoryService';
 import { postStockTransferTx } from '../services/stockTransferPosting';
 import { parseDecimalStrict } from '../utils/decimal';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateStockTransferInput = z.infer<typeof createStockTransferSchema>;
 

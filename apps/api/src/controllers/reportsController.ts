@@ -2,8 +2,8 @@ import type { Request } from 'express';
 import { dataSource } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { getCompanyAccountingSettings } from '../services/companySettings';
-import { ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 function hasPerm(req: Request, code: string): boolean {
   const p = req.auth?.permissions ?? [];

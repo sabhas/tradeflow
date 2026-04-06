@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { loginSchema, patchAuthMeSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
-import { asyncHandler } from '../controllers/asyncHandler';
-import { sendControllerResult } from '../controllers/controllerResult';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendControllerResult } from '../utils/controllerResult';
 import * as authController from '../controllers/authController';
 
 export const authRouter = Router();

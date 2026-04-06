@@ -2,8 +2,8 @@ import type { Request } from 'express';
 import { dataSource, ApprovalRequest } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
-import { ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 export type ReviewBody = {
   note?: string;

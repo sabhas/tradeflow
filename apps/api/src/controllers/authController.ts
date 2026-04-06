@@ -5,8 +5,8 @@ import type { z } from 'zod';
 import { dataSource } from '@tradeflow/db';
 import { Branch, User, UserBranch } from '@tradeflow/db';
 import { loginSchema, patchAuthMeSchema } from '@tradeflow/shared';
-import { ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type LoginInput = z.infer<typeof loginSchema>;
 type PatchAuthMeInput = z.infer<typeof patchAuthMeSchema>;

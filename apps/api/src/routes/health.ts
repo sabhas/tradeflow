@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { asyncHandler } from '../controllers/asyncHandler';
-import { sendControllerResult } from '../controllers/controllerResult';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendControllerResult } from '../utils/controllerResult';
 import * as healthController from '../controllers/healthController';
 
 export const healthRouter = Router();

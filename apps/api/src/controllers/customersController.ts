@@ -5,8 +5,8 @@ import { dataSource, Customer } from '@tradeflow/db';
 import { createCustomerSchema, updateCustomerSchema } from '@tradeflow/shared';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;

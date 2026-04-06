@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
-import { asyncHandler } from '../controllers/asyncHandler';
-import { sendControllerResult } from '../controllers/controllerResult';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendControllerResult } from '../utils/controllerResult';
 import * as recycleBinController from '../controllers/recycleBinController';
 
 export const recycleBinRouter = Router();

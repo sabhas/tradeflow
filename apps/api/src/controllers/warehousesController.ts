@@ -4,8 +4,8 @@ import { IsNull } from 'typeorm';
 import { createWarehouseSchema, updateWarehouseSchema } from '@tradeflow/shared';
 import { dataSource, Warehouse, Branch } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateWarehouseInput = z.infer<typeof createWarehouseSchema>;
 type UpdateWarehouseInput = z.infer<typeof updateWarehouseSchema>;

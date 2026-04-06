@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { resolveBranchId } from '../utils/branchScope';
 import { buildCustomersXlsx, buildInvoicesXlsx, buildProductsXlsx } from '../services/listExportService';
-import { HttpError } from './httpError';
+import { HttpError } from '../utils/httpError';
 
 export async function exportProducts(req: Request): Promise<Buffer> {
   const branchId = resolveBranchId(req);

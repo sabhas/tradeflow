@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { dataSource, AuditLog } from '@tradeflow/db';
 import { getPagination } from '../utils/pagination';
-import { ok, type ControllerResult } from './controllerResult';
+import { ok, type ControllerResult } from '../utils/controllerResult';
 
 export async function listAuditLogs(req: Request): Promise<ControllerResult> {
   const { entity, entityId, userId, from, to, dateFrom, dateTo } = req.query;

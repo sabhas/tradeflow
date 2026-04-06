@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { createTaxProfileSchema, updateTaxProfileSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
-import { asyncHandler } from '../controllers/asyncHandler';
-import { sendControllerResult } from '../controllers/controllerResult';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendControllerResult } from '../utils/controllerResult';
 import * as taxProfilesController from '../controllers/taxProfilesController';
 
 export const taxProfilesRouter = Router();

@@ -4,8 +4,8 @@ import { IsNull } from 'typeorm';
 import { createPaymentTermsSchema, updatePaymentTermsSchema } from '@tradeflow/shared';
 import { dataSource, PaymentTerms } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreatePaymentTermsInput = z.infer<typeof createPaymentTermsSchema>;
 type UpdatePaymentTermsInput = z.infer<typeof updatePaymentTermsSchema>;

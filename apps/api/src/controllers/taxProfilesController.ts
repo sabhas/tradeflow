@@ -4,8 +4,8 @@ import { IsNull } from 'typeorm';
 import { createTaxProfileSchema, updateTaxProfileSchema } from '@tradeflow/shared';
 import { dataSource, TaxProfile } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateTaxProfileInput = z.infer<typeof createTaxProfileSchema>;
 type UpdateTaxProfileInput = z.infer<typeof updateTaxProfileSchema>;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
-import { asyncHandler } from '../controllers/asyncHandler';
+import { asyncHandler } from '../utils/asyncHandler';
 import * as exportController from '../controllers/exportController';
 
 export const exportRouter = Router();

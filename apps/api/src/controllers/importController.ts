@@ -14,8 +14,8 @@ import {
   importOpeningBalancesFromSheets,
   importProductsFromSheets,
 } from '../services/importRunners';
-import { ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 export type TemplateFileDownload = {
   data: Buffer | string;

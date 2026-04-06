@@ -4,8 +4,8 @@ import { IsNull } from 'typeorm';
 import { createProductCategorySchema, updateProductCategorySchema } from '@tradeflow/shared';
 import { dataSource, ProductCategory } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateProductCategoryInput = z.infer<typeof createProductCategorySchema>;
 type UpdateProductCategoryInput = z.infer<typeof updateProductCategorySchema>;

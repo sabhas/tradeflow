@@ -5,8 +5,8 @@ import { dataSource, Supplier } from '@tradeflow/db';
 import { createSupplierSchema, updateSupplierSchema } from '@tradeflow/shared';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateSupplierInput = z.infer<typeof createSupplierSchema>;
 type UpdateSupplierInput = z.infer<typeof updateSupplierSchema>;

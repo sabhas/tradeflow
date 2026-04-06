@@ -2,8 +2,8 @@ import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import { dataSource, UserNotification } from '@tradeflow/db';
 import { getPagination } from '../utils/pagination';
-import { ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 function serialize(n: UserNotification) {
   return {

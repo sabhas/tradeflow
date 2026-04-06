@@ -17,8 +17,8 @@ import { runInTransaction } from '../services/inventoryService';
 import { postInvoice, resolveInvoiceDueDate } from '../services/invoicePosting';
 import { getCompanySettingsRow } from '../services/companySettings';
 import { buildInvoicePrintHtml } from '../services/invoiceHtml';
-import { created, htmlOk, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, htmlOk, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;

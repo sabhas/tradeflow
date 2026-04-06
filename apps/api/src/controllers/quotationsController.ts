@@ -12,8 +12,8 @@ import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import { computeSalesDocumentTotals } from '../services/salesTotals';
 import { runInTransaction } from '../services/inventoryService';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateQuotationInput = z.infer<typeof createQuotationSchema>;
 type UpdateQuotationInput = z.infer<typeof updateQuotationSchema>;

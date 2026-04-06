@@ -6,8 +6,8 @@ import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import { computePurchaseDocumentTotals } from '../services/purchaseTotals';
 import { runInTransaction, assertProductInScope, assertWarehouseInScope } from '../services/inventoryService';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreatePurchaseOrderInput = z.infer<typeof createPurchaseOrderSchema>;
 type UpdatePurchaseOrderInput = z.infer<typeof updatePurchaseOrderSchema>;

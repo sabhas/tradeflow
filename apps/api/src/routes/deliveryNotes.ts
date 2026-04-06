@@ -6,8 +6,8 @@ import {
 } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
-import { asyncHandler } from '../controllers/asyncHandler';
-import { sendControllerResult } from '../controllers/controllerResult';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendControllerResult } from '../utils/controllerResult';
 import * as deliveryNotesController from '../controllers/deliveryNotesController';
 
 export const deliveryNotesRouter = Router();

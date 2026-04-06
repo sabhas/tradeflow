@@ -13,8 +13,8 @@ import {
 import { createProductSchema, replaceProductPricesSchema, updateProductSchema } from '@tradeflow/shared';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateProductInput = z.infer<typeof createProductSchema>;
 type UpdateProductInput = z.infer<typeof updateProductSchema>;

@@ -3,8 +3,8 @@ import type { z } from 'zod';
 import { createInvoiceTemplateSchema, updateInvoiceTemplateSchema } from '@tradeflow/shared';
 import { dataSource, InvoiceTemplate } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateInvoiceTemplateInput = z.infer<typeof createInvoiceTemplateSchema>;
 type UpdateInvoiceTemplateInput = z.infer<typeof updateInvoiceTemplateSchema>;

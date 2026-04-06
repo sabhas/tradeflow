@@ -7,8 +7,8 @@ import { dataSource, Account, JournalEntry, JournalLine } from '@tradeflow/db';
 type CreateAccountInput = z.infer<typeof createAccountSchema>;
 type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 import { resolveBranchId } from '../utils/branchScope';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 function serialize(a: Account) {
   return {

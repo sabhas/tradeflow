@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware, loadUser } from '../middleware/auth';
-import { asyncHandler } from '../controllers/asyncHandler';
-import { sendControllerResult } from '../controllers/controllerResult';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendControllerResult } from '../utils/controllerResult';
 import * as notificationsController from '../controllers/notificationsController';
 
 export const notificationsRouter = Router();

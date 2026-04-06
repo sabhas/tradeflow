@@ -18,8 +18,8 @@ import { getPagination } from '../utils/pagination';
 import { computeSalesDocumentTotals } from '../services/salesTotals';
 import { runInTransaction } from '../services/inventoryService';
 import { resolveInvoiceDueDate } from '../services/invoicePosting';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateSalesOrderInput = z.infer<typeof createSalesOrderSchema>;
 type UpdateSalesOrderInput = z.infer<typeof updateSalesOrderSchema>;

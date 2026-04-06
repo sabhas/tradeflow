@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { requireTaxSummaryAccess } from '../middleware/reportsAccess';
-import { asyncHandler } from '../controllers/asyncHandler';
-import { sendControllerResult } from '../controllers/controllerResult';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendControllerResult } from '../utils/controllerResult';
 import * as reportsController from '../controllers/reportsController';
 
 export const reportsRouter = Router();

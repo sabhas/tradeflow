@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
-import { asyncHandler } from '../controllers/asyncHandler';
-import { sendControllerResult } from '../controllers/controllerResult';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendControllerResult } from '../utils/controllerResult';
 import * as approvalsController from '../controllers/approvalsController';
 
 export const approvalsRouter = Router();

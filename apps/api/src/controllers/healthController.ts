@@ -1,5 +1,5 @@
 import { dataSource } from '@tradeflow/db';
-import { ok, withStatus, type ControllerResult } from './controllerResult';
+import { ok, withStatus, type ControllerResult } from '../utils/controllerResult';
 
 export async function getHealth(): Promise<ControllerResult> {
   try {

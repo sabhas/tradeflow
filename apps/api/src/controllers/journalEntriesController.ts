@@ -8,8 +8,8 @@ import { getPagination } from '../utils/pagination';
 import { parseDecimalStrict } from '../utils/decimal';
 import { runInTransaction } from '../services/inventoryService';
 import { assertDateNotPeriodLocked } from '../services/periodLock';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type CreateJournalEntryInput = z.infer<typeof createJournalEntrySchema>;
 type UpdateJournalEntryInput = z.infer<typeof updateJournalEntrySchema>;

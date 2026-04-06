@@ -13,8 +13,8 @@ import {
   runInTransaction,
 } from '../services/inventoryService';
 import { parseDecimalStrict } from '../utils/decimal';
-import { created, ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { created, ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 type PostOpeningBalanceInput = z.infer<typeof postOpeningBalanceSchema>;
 type PostStockAdjustmentInput = z.infer<typeof postStockAdjustmentSchema>;

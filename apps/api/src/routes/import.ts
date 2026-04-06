@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { importUpload } from '../middleware/upload';
-import { asyncHandler } from '../controllers/asyncHandler';
-import { sendControllerResult } from '../controllers/controllerResult';
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendControllerResult } from '../utils/controllerResult';
 import * as importController from '../controllers/importController';
 
 export const importRouter = Router();

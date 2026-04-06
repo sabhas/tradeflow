@@ -11,8 +11,8 @@ import {
 } from '@tradeflow/db';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
-import { ok, type ControllerResult } from './controllerResult';
-import { HttpError } from './httpError';
+import { ok, type ControllerResult } from '../utils/controllerResult';
+import { HttpError } from '../utils/httpError';
 
 const ENTITY_TYPES = ['Product', 'Customer', 'Supplier', 'Invoice', 'JournalEntry'] as const;
 type RecycleEntityType = (typeof ENTITY_TYPES)[number];
