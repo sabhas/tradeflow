@@ -95,13 +95,20 @@ export async function buildCustomersXlsx(branchId: string | undefined, search?: 
     .createQueryBuilder('c')
     .leftJoinAndSelect('c.paymentTerms', 'pt')
     .leftJoinAndSelect('c.taxProfile', 'tp')
+    .leftJoinAndSelect('c.town', 'town')
+    .leftJoinAndSelect('c.area', 'area')
     .where('c.deleted_at IS NULL');
 
   if (branchId) {
     qb.andWhere('(c.branch_id IS NULL OR c.branch_id = :bid)', { bid: branchId });
   }
   if (search?.trim()) {
-    qb.andWhere('LOWER(c.name) LIKE :term', { term: `%${search.trim().toLowerCase()}%` });
+    const term = `%${search.trim().toLowerCase()}%`;
+    const raw = `%${search.trim()}%`;
+    qb.andWhere(
+      '(LOWER(c.name) LIKE :term OR LOWER(c.long_name) LIKE :term OR c.ntn ILIKE :raw OR c.mobile ILIKE :raw)',
+      { term, raw }
+    );
   }
   qb.orderBy('c.name', 'ASC');
 
@@ -110,10 +117,23 @@ export async function buildCustomersXlsx(branchId: string | undefined, search?: 
   const ws = wb.addWorksheet('Customers');
   ws.addRow([
     'name',
+    'longName',
     'type',
-    'phone',
-    'email',
+    'town',
+    'area',
     'address',
+    'telephone',
+    'mobile',
+    'contactPerson',
+    'contactPhone',
+    'contactEmail',
+    'contactAddress',
+    'ntn',
+    'stn',
+    'salesTaxStatus',
+    'isFiler',
+    'licenseNo',
+    'licenseExpiryDate',
     'creditLimit',
     'paymentTerms',
     'taxProfile',
@@ -121,12 +141,26 @@ export async function buildCustomersXlsx(branchId: string | undefined, search?: 
 
   for (const c of rows) {
     const ct = c.contact as { phone?: string; email?: string; address?: string } | undefined;
+    const lic = c.licenseExpiryDate ? String(c.licenseExpiryDate).slice(0, 10) : '';
     ws.addRow([
       c.name,
+      c.longName ?? '',
       c.type,
+      c.town?.name ?? '',
+      c.area?.name ?? '',
+      c.address ?? '',
+      c.telephone ?? '',
+      c.mobile ?? '',
+      c.contactPerson ?? '',
       ct?.phone ?? '',
       ct?.email ?? '',
       ct?.address ?? '',
+      c.ntn ?? '',
+      c.stn ?? '',
+      c.salesTaxStatus,
+      c.isFiler ? 'yes' : 'no',
+      c.licenseNo ?? '',
+      lic,
       c.creditLimit,
       c.paymentTerms?.name ?? '',
       c.taxProfile?.name ?? '',

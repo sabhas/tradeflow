@@ -8,9 +8,11 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Area } from './Area';
 import { Branch } from './Branch';
 import { PaymentTerms } from './PaymentTerms';
 import { TaxProfile } from './TaxProfile';
+import { Town } from './Town';
 
 @Entity('customers')
 export class Customer extends BaseEntity {
@@ -20,9 +22,57 @@ export class Customer extends BaseEntity {
   @Column()
   name!: string;
 
+  @Column({ name: 'long_name', type: 'varchar', nullable: true })
+  longName?: string;
+
   /** retailer | wholesaler | walk_in */
   @Column()
   type!: string;
+
+  @Column({ type: 'text', nullable: true })
+  address?: string;
+
+  @Column({ name: 'town_id', type: 'uuid', nullable: true })
+  townId?: string | null;
+
+  @ManyToOne(() => Town, { nullable: true })
+  @JoinColumn({ name: 'town_id' })
+  town?: Town;
+
+  @Column({ name: 'area_id', type: 'uuid', nullable: true })
+  areaId?: string | null;
+
+  @ManyToOne(() => Area, { nullable: true })
+  @JoinColumn({ name: 'area_id' })
+  area?: Area;
+
+  @Column({ name: 'telephone', type: 'varchar', nullable: true })
+  telephone?: string;
+
+  @Column({ name: 'mobile', type: 'varchar', nullable: true })
+  mobile?: string;
+
+  @Column({ name: 'contact_person', type: 'varchar', nullable: true })
+  contactPerson?: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  ntn?: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  stn?: string;
+
+  /** unregistered | registered | exempt */
+  @Column({ name: 'sales_tax_status', default: 'unregistered' })
+  salesTaxStatus!: string;
+
+  @Column({ name: 'is_filer', default: false })
+  isFiler!: boolean;
+
+  @Column({ name: 'license_no', type: 'varchar', nullable: true })
+  licenseNo?: string;
+
+  @Column({ name: 'license_expiry_date', type: 'date', nullable: true })
+  licenseExpiryDate?: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
   contact?: Record<string, unknown>;

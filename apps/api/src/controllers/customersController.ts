@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
-import { dataSource, Customer } from '@tradeflow/db';
+import { Area, Customer, dataSource, Town } from '@tradeflow/db';
 import { createCustomerSchema, updateCustomerSchema } from '@tradeflow/shared';
 import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
@@ -11,11 +11,57 @@ import { HttpError } from '../utils/httpError';
 type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 
+function formatLicenseDate(value: string | Date | null | undefined): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  return typeof value === 'string' ? value.slice(0, 10) : null;
+}
+
+async function resolveTownAndAreaIds(
+  townId: string | null,
+  areaId: string | null
+): Promise<{ townId: string | null; areaId: string | null }> {
+  if (!townId || !areaId) {
+    return { townId, areaId };
+  }
+  const [town, area] = await Promise.all([
+    Town.findOne({ where: { id: townId, deletedAt: IsNull() } }),
+    Area.findOne({ where: { id: areaId, deletedAt: IsNull() } }),
+  ]);
+  if (!town) {
+    throw new HttpError(400, { error: 'Unknown or inactive town' });
+  }
+  if (!area) {
+    throw new HttpError(400, { error: 'Unknown or inactive area' });
+  }
+  if (!town.areaId || town.areaId !== area.id) {
+    throw new HttpError(400, { error: 'Selected town does not belong to the selected area' });
+  }
+  return { townId, areaId };
+}
+
 export function serializeCustomer(c: Customer) {
   return {
     id: c.id,
     name: c.name,
+    longName: c.longName ?? null,
     type: c.type,
+    address: c.address ?? null,
+    townId: c.townId ?? null,
+    areaId: c.areaId ?? null,
+    town: c.town ? { id: c.town.id, name: c.town.name } : null,
+    area: c.area ? { id: c.area.id, name: c.area.name } : null,
+    telephone: c.telephone ?? null,
+    mobile: c.mobile ?? null,
+    contactPerson: c.contactPerson ?? null,
+    ntn: c.ntn ?? null,
+    stn: c.stn ?? null,
+    salesTaxStatus: c.salesTaxStatus,
+    isFiler: c.isFiler,
+    licenseNo: c.licenseNo ?? null,
+    licenseExpiryDate: formatLicenseDate(c.licenseExpiryDate ?? null),
     contact: c.contact,
     creditLimit: c.creditLimit,
     paymentTermsId: c.paymentTermsId,
@@ -41,8 +87,14 @@ export async function listCustomers(req: Request): Promise<ControllerResult> {
     qb.andWhere('(c.branch_id IS NULL OR c.branch_id = :bid)', { bid: branchId });
   }
   if (search) {
-    qb.andWhere('LOWER(c.name) LIKE :term', { term: `%${search.toLowerCase()}%` });
+    const term = `%${search.toLowerCase()}%`;
+    const raw = `%${search}%`;
+    qb.andWhere(
+      '(LOWER(c.name) LIKE :term OR LOWER(c.long_name) LIKE :term OR c.ntn ILIKE :raw OR c.mobile ILIKE :raw)',
+      { term, raw }
+    );
   }
+  qb.leftJoinAndSelect('c.town', 'town').leftJoinAndSelect('c.area', 'area');
   qb.orderBy('c.name', 'ASC').take(limit).skip(offset);
 
   const [rows, total] = await qb.getManyAndCount();
@@ -148,7 +200,7 @@ export async function getCustomerStatement(req: Request): Promise<ControllerResu
 export async function getCustomer(req: Request): Promise<ControllerResult> {
   const row = await Customer.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
-    relations: ['paymentTerms', 'taxProfile'],
+    relations: ['paymentTerms', 'taxProfile', 'town', 'area'],
   });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -158,10 +210,47 @@ export async function getCustomer(req: Request): Promise<ControllerResult> {
 
 export async function createCustomer(req: Request, body: CreateCustomerInput): Promise<ControllerResult> {
   const b = body;
+  const t0 = b.townId ?? null;
+  const a0 = b.areaId ?? null;
+  if (!t0 || !a0) {
+    throw new HttpError(400, { error: 'Town and area are required' });
+  }
+  const geo = await resolveTownAndAreaIds(t0, a0);
   const repo = Customer.getRepository();
   const row = repo.create({
     name: b.name,
+    longName:
+      b.longName == null || (typeof b.longName === 'string' && b.longName.trim() === '')
+        ? undefined
+        : b.longName.trim(),
     type: b.type,
+    address:
+      b.address == null || (typeof b.address === 'string' && b.address.trim() === '')
+        ? undefined
+        : b.address.trim(),
+    townId: geo.townId,
+    areaId: geo.areaId,
+    telephone:
+      b.telephone == null || (typeof b.telephone === 'string' && b.telephone.trim() === '')
+        ? undefined
+        : b.telephone.trim(),
+    mobile:
+      b.mobile == null || (typeof b.mobile === 'string' && b.mobile.trim() === '')
+        ? undefined
+        : b.mobile.trim(),
+    contactPerson:
+      b.contactPerson == null || (typeof b.contactPerson === 'string' && b.contactPerson.trim() === '')
+        ? undefined
+        : b.contactPerson.trim(),
+    ntn: b.ntn == null || (typeof b.ntn === 'string' && b.ntn.trim() === '') ? undefined : b.ntn.trim(),
+    stn: b.stn == null || (typeof b.stn === 'string' && b.stn.trim() === '') ? undefined : b.stn.trim(),
+    salesTaxStatus: b.salesTaxStatus ?? 'unregistered',
+    isFiler: b.isFiler ?? false,
+    licenseNo:
+      b.licenseNo == null || (typeof b.licenseNo === 'string' && b.licenseNo.trim() === '')
+        ? undefined
+        : b.licenseNo.trim(),
+    licenseExpiryDate: b.licenseExpiryDate === undefined ? undefined : b.licenseExpiryDate,
     contact: b.contact ?? undefined,
     creditLimit: b.creditLimit ?? '0',
     paymentTermsId: b.paymentTermsId ?? undefined,
@@ -170,7 +259,11 @@ export async function createCustomer(req: Request, body: CreateCustomerInput): P
     branchId: b.branchId ?? req.user?.branchId ?? undefined,
   });
   await repo.save(row);
-  return created({ data: serializeCustomer(row) });
+  const withGeo = await Customer.findOne({
+    where: { id: row.id },
+    relations: ['town', 'area'],
+  });
+  return created({ data: serializeCustomer(withGeo || row) });
 }
 
 export async function updateCustomer(req: Request, body: UpdateCustomerInput): Promise<ControllerResult> {
@@ -180,8 +273,64 @@ export async function updateCustomer(req: Request, body: UpdateCustomerInput): P
     throw new HttpError(404, { error: 'Not found' });
   }
   const b = body;
+  const effTown = b.townId !== undefined ? b.townId : row.townId ?? null;
+  const effArea = b.areaId !== undefined ? b.areaId : row.areaId ?? null;
+  if (!effTown || !effArea) {
+    throw new HttpError(400, { error: 'Town and area are required' });
+  }
+  const geo = await resolveTownAndAreaIds(effTown, effArea);
+  row.townId = geo.townId;
+  row.areaId = geo.areaId;
+
   if (b.name !== undefined) row.name = b.name;
+  if (b.longName !== undefined) {
+    row.longName =
+      b.longName == null || (typeof b.longName === 'string' && b.longName.trim() === '')
+        ? undefined
+        : b.longName.trim();
+  }
   if (b.type !== undefined) row.type = b.type;
+  if (b.address !== undefined) {
+    row.address =
+      b.address == null || (typeof b.address === 'string' && b.address.trim() === '')
+        ? undefined
+        : b.address.trim();
+  }
+  if (b.telephone !== undefined) {
+    row.telephone =
+      b.telephone == null || (typeof b.telephone === 'string' && b.telephone.trim() === '')
+        ? undefined
+        : b.telephone.trim();
+  }
+  if (b.mobile !== undefined) {
+    row.mobile =
+      b.mobile == null || (typeof b.mobile === 'string' && b.mobile.trim() === '')
+        ? undefined
+        : b.mobile.trim();
+  }
+  if (b.contactPerson !== undefined) {
+    row.contactPerson =
+      b.contactPerson == null || (typeof b.contactPerson === 'string' && b.contactPerson.trim() === '')
+        ? undefined
+        : b.contactPerson.trim();
+  }
+  if (b.ntn !== undefined) {
+    row.ntn = b.ntn == null || (typeof b.ntn === 'string' && b.ntn.trim() === '') ? undefined : b.ntn.trim();
+  }
+  if (b.stn !== undefined) {
+    row.stn = b.stn == null || (typeof b.stn === 'string' && b.stn.trim() === '') ? undefined : b.stn.trim();
+  }
+  if (b.salesTaxStatus !== undefined) row.salesTaxStatus = b.salesTaxStatus;
+  if (b.isFiler !== undefined) row.isFiler = b.isFiler;
+  if (b.licenseNo !== undefined) {
+    row.licenseNo =
+      b.licenseNo == null || (typeof b.licenseNo === 'string' && b.licenseNo.trim() === '')
+        ? undefined
+        : b.licenseNo.trim();
+  }
+  if (b.licenseExpiryDate !== undefined) {
+    row.licenseExpiryDate = b.licenseExpiryDate;
+  }
   if (b.contact !== undefined) row.contact = b.contact ?? undefined;
   if (b.creditLimit !== undefined) row.creditLimit = b.creditLimit;
   if (b.paymentTermsId !== undefined) row.paymentTermsId = b.paymentTermsId ?? undefined;
@@ -189,7 +338,11 @@ export async function updateCustomer(req: Request, body: UpdateCustomerInput): P
   if (b.branchId !== undefined) row.branchId = b.branchId ?? undefined;
   if (b.defaultRouteId !== undefined) row.defaultRouteId = b.defaultRouteId ?? undefined;
   await repo.save(row);
-  return ok({ data: serializeCustomer(row) });
+  const refreshed = await Customer.findOne({
+    where: { id: row.id },
+    relations: ['town', 'area'],
+  });
+  return ok({ data: serializeCustomer(refreshed || row) });
 }
 
 export async function deleteCustomer(req: Request): Promise<ControllerResult> {
@@ -204,6 +357,6 @@ export async function deleteCustomer(req: Request): Promise<ControllerResult> {
 }
 
 export async function getCustomerSnapshotForAudit(id: string) {
-  const c = await Customer.findOne({ where: { id } });
+  const c = await Customer.findOne({ where: { id }, relations: ['town', 'area'] });
   return c ? serializeCustomer(c) : undefined;
 }

@@ -27,7 +27,7 @@ export function MastersModal({ title, open, onClose, children }: Props) {
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+      <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-3">
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
           <button

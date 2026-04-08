@@ -5,6 +5,15 @@ const decimal = z.union([z.number(), z.string()]).transform((v) => String(v));
 
 export const customerTypeSchema = z.enum(['retailer', 'wholesaler', 'walk_in']);
 
+export const salesTaxStatusSchema = z.enum(['unregistered', 'registered', 'exempt']);
+
+const optionalDateOnly = z.preprocess((v) => {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v === 'string' && v.trim() === '') return null;
+  return v;
+}, z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()]).optional());
+
 export const contactSchema = z
   .object({
     phone: z.string().optional(),
@@ -71,7 +80,20 @@ export const replaceProductPricesSchema = z.object({
 
 export const createCustomerSchema = z.object({
   name: z.string().min(1),
+  longName: z.string().max(500).optional().nullable(),
   type: customerTypeSchema,
+  address: z.string().max(2000).optional().nullable(),
+  townId: z.string().uuid(),
+  areaId: z.string().uuid(),
+  telephone: z.string().max(64).optional().nullable(),
+  mobile: z.string().max(64).optional().nullable(),
+  contactPerson: z.string().max(256).optional().nullable(),
+  ntn: z.string().max(32).optional().nullable(),
+  stn: z.string().max(32).optional().nullable(),
+  salesTaxStatus: salesTaxStatusSchema,
+  isFiler: z.boolean(),
+  licenseNo: z.string().max(128).optional().nullable(),
+  licenseExpiryDate: optionalDateOnly,
   contact: contactSchema,
   creditLimit: decimal.optional(),
   paymentTermsId: optionalUuid,
@@ -81,6 +103,20 @@ export const createCustomerSchema = z.object({
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial();
+
+export const createTownSchema = z.object({
+  areaId: z.string().uuid(),
+  name: z.string().min(1),
+  branchId: optionalUuid,
+});
+
+export const updateTownSchema = createTownSchema.partial();
+
+export const createAreaSchema = z.object({
+  name: z.string().min(1),
+});
+
+export const updateAreaSchema = createAreaSchema.partial();
 
 export const createSupplierSchema = z.object({
   name: z.string().min(1),
