@@ -8,6 +8,15 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 interface Row {
   id: string;
   name: string;
+  address?: string | null;
+  city?: string | null;
+  telephone?: string | null;
+  mobileNo?: string | null;
+  email?: string | null;
+  website?: string | null;
+  contact?: string | null;
+  ntn?: string | null;
+  stn?: string | null;
   paymentTermsId?: string | null;
   taxProfileId?: string | null;
 }
@@ -44,6 +53,15 @@ export function SuppliersPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [telephone, setTelephone] = useState('');
+  const [mobileNo, setMobileNo] = useState('');
+  const [email, setEmail] = useState('');
+  const [website, setWebsite] = useState('');
+  const [contact, setContact] = useState('');
+  const [ntn, setNtn] = useState('');
+  const [stn, setStn] = useState('');
   const [paymentTermsId, setPaymentTermsId] = useState('');
   const [taxProfileId, setTaxProfileId] = useState('');
 
@@ -51,6 +69,15 @@ export function SuppliersPage() {
     mutationFn: async () => {
       const payload = {
         name,
+        address: address || null,
+        city: city || null,
+        telephone: telephone || null,
+        mobileNo: mobileNo || null,
+        email: email || null,
+        website: website || null,
+        contact: contact || null,
+        ntn: ntn || null,
+        stn: stn || null,
         paymentTermsId: paymentTermsId || null,
         taxProfileId: taxProfileId || null,
       };
@@ -84,6 +111,15 @@ export function SuppliersPage() {
             onClick={() => {
               setEditing(null);
               setName('');
+              setAddress('');
+              setCity('');
+              setTelephone('');
+              setMobileNo('');
+              setEmail('');
+              setWebsite('');
+              setContact('');
+              setNtn('');
+              setStn('');
               setPaymentTermsId('');
               setTaxProfileId('');
               setOpen(true);
@@ -120,6 +156,15 @@ export function SuppliersPage() {
                       onClick={() => {
                         setEditing(r);
                         setName(r.name);
+                        setAddress(r.address || '');
+                        setCity(r.city || '');
+                        setTelephone(r.telephone || '');
+                        setMobileNo(r.mobileNo || '');
+                        setEmail(r.email || '');
+                        setWebsite(r.website || '');
+                        setContact(r.contact || '');
+                        setNtn(r.ntn || '');
+                        setStn(r.stn || '');
                         setPaymentTermsId(r.paymentTermsId || '');
                         setTaxProfileId(r.taxProfileId || '');
                         setOpen(true);
@@ -159,6 +204,86 @@ export function SuppliersPage() {
               onChange={(e) => setName(e.target.value)}
               required
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Address</label>
+            <input
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">City</label>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Contact</label>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={contact}
+                onChange={(e) => setContact(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Telephone</label>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={telephone}
+                onChange={(e) => setTelephone(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Mobile no</label>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={mobileNo}
+                onChange={(e) => setMobileNo(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Email</label>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Website</label>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">NTN</label>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={ntn}
+                onChange={(e) => setNtn(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">STN</label>
+              <input
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                value={stn}
+                onChange={(e) => setStn(e.target.value)}
+              />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">Payment terms</label>

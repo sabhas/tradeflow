@@ -19,8 +19,32 @@ export class Supplier extends BaseEntity {
   @Column()
   name!: string;
 
-  @Column({ type: 'jsonb', nullable: true })
-  contact?: Record<string, unknown>;
+  @Column({ nullable: true })
+  address?: string;
+
+  @Column({ nullable: true })
+  city?: string;
+
+  @Column({ nullable: true })
+  telephone?: string;
+
+  @Column({ name: 'mobile_no', nullable: true })
+  mobileNo?: string;
+
+  @Column({ nullable: true })
+  email?: string;
+
+  @Column({ nullable: true })
+  website?: string;
+
+  @Column({ name: 'contact_person', nullable: true })
+  contact?: string;
+
+  @Column({ nullable: true })
+  ntn?: string;
+
+  @Column({ nullable: true })
+  stn?: string;
 
   @Column({ name: 'payment_terms_id', nullable: true })
   paymentTermsId?: string;

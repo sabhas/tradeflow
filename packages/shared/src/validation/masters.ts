@@ -119,7 +119,15 @@ export const updateAreaSchema = createAreaSchema.partial();
 
 export const createSupplierSchema = z.object({
   name: z.string().min(1),
-  contact: contactSchema,
+  address: z.string().max(2000).optional().nullable(),
+  city: z.string().max(256).optional().nullable(),
+  telephone: z.string().max(64).optional().nullable(),
+  mobileNo: z.string().max(64).optional().nullable(),
+  email: z.string().max(320).optional().nullable(),
+  website: z.string().max(256).optional().nullable(),
+  contact: z.string().max(256).optional().nullable(),
+  ntn: z.string().max(32).optional().nullable(),
+  stn: z.string().max(32).optional().nullable(),
   paymentTermsId: optionalUuid,
   taxProfileId: optionalUuid,
 });

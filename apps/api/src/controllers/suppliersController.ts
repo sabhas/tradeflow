@@ -14,7 +14,15 @@ export function serializeSupplier(s: Supplier) {
   return {
     id: s.id,
     name: s.name,
+    address: s.address,
+    city: s.city,
+    telephone: s.telephone,
+    mobileNo: s.mobileNo,
+    email: s.email,
+    website: s.website,
     contact: s.contact,
+    ntn: s.ntn,
+    stn: s.stn,
     paymentTermsId: s.paymentTermsId,
     taxProfileId: s.taxProfileId,
     createdAt: s.createdAt,
@@ -175,7 +183,15 @@ export async function createSupplier(req: Request, body: CreateSupplierInput): P
   const repo = Supplier.getRepository();
   const row = repo.create({
     name: b.name,
+    address: b.address ?? undefined,
+    city: b.city ?? undefined,
+    telephone: b.telephone ?? undefined,
+    mobileNo: b.mobileNo ?? undefined,
+    email: b.email ?? undefined,
+    website: b.website ?? undefined,
     contact: b.contact ?? undefined,
+    ntn: b.ntn ?? undefined,
+    stn: b.stn ?? undefined,
     paymentTermsId: b.paymentTermsId ?? undefined,
     taxProfileId: b.taxProfileId ?? undefined,
   });
@@ -191,10 +207,18 @@ export async function updateSupplier(req: Request, body: UpdateSupplierInput): P
   }
   const b = body;
   if (b.name !== undefined) row.name = b.name;
+  if (b.address !== undefined) row.address = b.address ?? undefined;
+  if (b.city !== undefined) row.city = b.city ?? undefined;
+  if (b.telephone !== undefined) row.telephone = b.telephone ?? undefined;
+  if (b.mobileNo !== undefined) row.mobileNo = b.mobileNo ?? undefined;
+  if (b.email !== undefined) row.email = b.email ?? undefined;
+  if (b.website !== undefined) row.website = b.website ?? undefined;
   if (b.contact !== undefined) row.contact = b.contact ?? undefined;
+  if (b.ntn !== undefined) row.ntn = b.ntn ?? undefined;
+  if (b.stn !== undefined) row.stn = b.stn ?? undefined;
   if (b.paymentTermsId !== undefined) row.paymentTermsId = b.paymentTermsId ?? undefined;
   if (b.taxProfileId !== undefined) row.taxProfileId = b.taxProfileId ?? undefined;
-    await repo.save(row);
+  await repo.save(row);
   return ok({ data: serializeSupplier(row) });
 }
 
