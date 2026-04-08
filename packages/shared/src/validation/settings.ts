@@ -57,7 +57,6 @@ export const patchCompanyProfileSchema = z
 export const createInvoiceTemplateSchema = z.object({
   name: z.string().min(1).max(128),
   config: invoiceTemplateConfigSchema,
-  branchId: z.union([z.string().uuid(), z.null()]).optional(),
 });
 
 export const updateInvoiceTemplateSchema = createInvoiceTemplateSchema.partial();

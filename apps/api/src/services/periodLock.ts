@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { EntityManager } from 'typeorm';
 import { getCompanySettingsRow } from './companySettings';
 

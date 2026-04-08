@@ -3,8 +3,6 @@ export * from './entities/User';
 export * from './entities/Role';
 export * from './entities/Permission';
 export * from './entities/AuditLog';
-export * from './entities/Branch';
-export * from './entities/UserBranch';
 export * from './entities/ApprovalRequest';
 export * from './entities/UserNotification';
 export * from './entities/PaymentTerms';

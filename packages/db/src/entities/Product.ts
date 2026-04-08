@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { Supplier } from './Supplier';
 import { ProductCategory } from './ProductCategory';
 import { UnitOfMeasure } from './UnitOfMeasure';
@@ -71,13 +70,6 @@ export class Product extends BaseEntity {
 
   @Column({ name: 'reorder_level', type: 'decimal', precision: 14, scale: 4, nullable: true })
   reorderLevel?: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @OneToMany(() => ProductPrice, (pp) => pp.product)
   productPrices!: ProductPrice[];

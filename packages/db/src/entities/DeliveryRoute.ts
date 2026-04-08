@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { RouteStop } from './RouteStop';
 
 @Entity('delivery_routes')
@@ -25,13 +24,6 @@ export class DeliveryRoute extends BaseEntity {
 
   @Column({ type: 'text', nullable: true })
   description?: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @OneToMany(() => RouteStop, (s) => s.route)
   stops?: RouteStop[];

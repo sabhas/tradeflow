@@ -8,7 +8,6 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { GrnLine } from './GrnLine';
 import { Product } from './Product';
 import { Warehouse } from './Warehouse';
@@ -60,13 +59,6 @@ export class StockLayer extends BaseEntity {
   @ManyToOne(() => GrnLine, { nullable: true })
   @JoinColumn({ name: 'grn_line_id' })
   grnLine?: GrnLine;
-
-  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

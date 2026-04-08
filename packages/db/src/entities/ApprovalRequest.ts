@@ -7,7 +7,6 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { User } from './User';
 
 @Entity('approval_requests')
@@ -40,13 +39,6 @@ export class ApprovalRequest extends BaseEntity {
 
   @Column({ name: 'review_note', type: 'text', nullable: true })
   reviewNote?: string;
-
-  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

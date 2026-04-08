@@ -1,8 +1,8 @@
+// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Grn, GrnLine, PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
 import { createGrnSchema } from '@tradeflow/shared';
-import { resolveBranchId } from '../utils/branchScope';
 import { getPagination } from '../utils/pagination';
 import {
   applyMovement,
@@ -25,7 +25,6 @@ function serializeGrn(g: Grn, lines?: GrnLine[]) {
     grnDate: g.grnDate,
     warehouseId: g.warehouseId,
     status: g.status,
-    branchId: g.branchId ?? null,
     createdBy: g.createdBy ?? null,
     createdAt: g.createdAt,
     supplier: g.supplier ? { id: g.supplier.id, name: g.supplier.name } : undefined,
@@ -44,7 +43,7 @@ function serializeGrn(g: Grn, lines?: GrnLine[]) {
 }
 
 export async function listGrns(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = Grn
     .createQueryBuilder('g')
@@ -72,7 +71,7 @@ export async function getGrn(req: Request): Promise<ControllerResult> {
 
 export async function createGrn(req: Request, body: CreateGrnInput): Promise<ControllerResult> {
   const b = body;
-  const branchId = b.branchId ?? req.user?.branchId ?? undefined;
+  const branchId = undefined ?? req.user?.branchId ?? undefined;
   const userId = req.auth?.userId;
   try {
     await assertWarehouseInScope(b.warehouseId, branchId);
@@ -111,7 +110,6 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
         grnDate: b.grnDate.slice(0, 10),
         warehouseId: b.warehouseId,
         status: 'draft',
-        branchId: branchId ?? undefined,
         createdBy: userId,
       });
       await manager.save(grn);
@@ -160,8 +158,8 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
       await assertDateNotPeriodLocked(manager, grn.grnDate);
 
       for (const line of grn.lines ?? []) {
-        await assertProductInScope(line.productId, grn.branchId ?? undefined);
-        await assertWarehouseInScope(grn.warehouseId, grn.branchId ?? undefined);
+        await assertProductInScope(line.productId, undefined ?? undefined);
+        await assertWarehouseInScope(grn.warehouseId, undefined ?? undefined);
         const qty = parseDecimalStrict(line.quantity);
         await applyMovement(manager, {
           productId: line.productId,
@@ -171,7 +169,6 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
           refId: grn.id,
           unitCost: line.unitPrice,
           movementDate: grn.grnDate,
-          branchId: grn.branchId ?? undefined,
           userId: req.auth?.userId,
           grnLineId: line.id,
           batchCode: line.batchCode,

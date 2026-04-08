@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { Invoice } from './Invoice';
 import { SalesOrder } from './SalesOrder';
 import { User } from './User';
@@ -49,13 +48,6 @@ export class DeliveryNote extends BaseEntity {
   @ManyToOne(() => Warehouse, { nullable: true })
   @JoinColumn({ name: 'warehouse_id' })
   warehouse?: Warehouse;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy?: string;

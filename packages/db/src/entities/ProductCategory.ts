@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 
 @Entity('product_categories')
 export class ProductCategory extends BaseEntity {
@@ -31,13 +30,6 @@ export class ProductCategory extends BaseEntity {
 
   @Column()
   code!: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

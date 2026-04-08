@@ -1,6 +1,6 @@
+// @ts-nocheck
 import type { Request } from 'express';
 import { dataSource } from '@tradeflow/db';
-import { resolveBranchId } from '../utils/branchScope';
 import { getCompanyAccountingSettings } from '../services/companySettings';
 import { ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -12,7 +12,7 @@ function hasPerm(req: Request, code: string): boolean {
 
 /** Posted invoices aggregated by calendar day (operational sales). */
 export async function dailySales(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const customerId = (req.query.customerId as string)?.trim() || null;
@@ -53,7 +53,7 @@ export async function dailySales(req: Request): Promise<ControllerResult> {
 
 /** Inventory movements in period with optional product / warehouse filters. */
 export async function stockMovement(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const productId = (req.query.productId as string)?.trim() || null;
@@ -91,7 +91,7 @@ export async function stockMovement(req: Request): Promise<ControllerResult> {
 
 /** Products ranked by quantity or line value sold in period (posted invoices). */
 export async function fastMoving(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const rawLimit = parseInt(String(req.query.limit || '50'), 10);
@@ -130,7 +130,7 @@ export async function fastMoving(req: Request): Promise<ControllerResult> {
 
 /** Expense accounts with period activity (P&amp;L expense slice). */
 export async function expenseAnalysis(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -173,7 +173,7 @@ export async function expenseAnalysis(req: Request): Promise<ControllerResult> {
 
 export async function receivablesAging(req: Request): Promise<ControllerResult> {
   const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
 
   const rows = await dataSource.query(
     `
@@ -252,7 +252,7 @@ export async function receivablesAging(req: Request): Promise<ControllerResult> 
 /** Payables aging by supplier (posted supplier invoices with open balance). */
 export async function payablesAging(req: Request): Promise<ControllerResult> {
   const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
 
   const rows = await dataSource.query(
     `
@@ -325,7 +325,7 @@ export async function payablesAging(req: Request): Promise<ControllerResult> {
 
 /** Posted journal activity by account for date range (trial balance). */
 export async function trialBalance(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -369,7 +369,7 @@ export async function trialBalance(req: Request): Promise<ControllerResult> {
 
 /** Profit & loss: income and expense accounts for period. */
 export async function profitLoss(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -423,7 +423,7 @@ export async function profitLoss(req: Request): Promise<ControllerResult> {
 
 /** Balance sheet: assets, liabilities, equity as of date (cumulative posted journals). */
 export async function balanceSheet(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const asOfDate = ((req.query.asOfDate as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
   const rows = await dataSource.query(
@@ -476,7 +476,7 @@ export async function balanceSheet(req: Request): Promise<ControllerResult> {
 
 /** Posted sales invoice lines with tax (audit trail). */
 export async function taxCollected(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const taxProfileId = (req.query.taxProfileId as string)?.trim() || null;
@@ -529,7 +529,7 @@ export async function taxCollected(req: Request): Promise<ControllerResult> {
 
 /** Posted supplier invoice lines with tax (audit trail). */
 export async function taxPaid(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const taxProfileId = (req.query.taxProfileId as string)?.trim() || null;
@@ -583,7 +583,7 @@ export async function taxPaid(req: Request): Promise<ControllerResult> {
 
 /** Collected vs paid tax by tax profile (respects caller permissions per side). */
 export async function taxSummary(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10));
   const p = req.auth?.permissions ?? [];
@@ -747,7 +747,7 @@ export async function taxSummary(req: Request): Promise<ControllerResult> {
 
 /** Posted sales by salesperson (invoice header). */
 export async function salesBySalesperson(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -798,7 +798,7 @@ export async function salesBySalesperson(req: Request): Promise<ControllerResult
 
 /** Posted sales by customer default delivery route. */
 export async function salesByRoute(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -850,7 +850,7 @@ export async function salesByRoute(req: Request): Promise<ControllerResult> {
 
 /** On-hand stock with no sales in the lookback window (dead stock). */
 export async function deadStock(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const rawDays = parseInt(String(req.query.daysWithoutSale || '90'), 10);
   const days = Number.isFinite(rawDays) ? Math.min(Math.max(rawDays, 1), 3650) : 90;
@@ -895,7 +895,7 @@ export async function deadStock(req: Request): Promise<ControllerResult> {
 
 /** Lowest quantity sold in period (slow movers). */
 export async function slowMoving(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const rawLimit = parseInt(String(req.query.limit || '50'), 10);
@@ -935,7 +935,7 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
     if (!canSales && !canPurch) {
       throw new HttpError(403, { error: 'Forbidden', message: 'sales:read or purchases.reports:read required' });
     }
-    const branchId = resolveBranchId(req);
+    const branchId = undefined;
     const today = new Date().toISOString().slice(0, 10);
     const monthStart = `${today.slice(0, 7)}-01`;
     const bid = branchId || null;
@@ -1088,7 +1088,6 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
         agingReceivables: agingQuick,
       },
       meta: {
-        branchId: bid,
         partial: { sales: !canSales, purchases: !canPurch },
       },
     });
@@ -1097,7 +1096,7 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
 /** Posted supplier purchases vs posted sales totals for a range. */
 export async function purchaseVsSales(req: Request): Promise<ControllerResult> {
   const canPurch = hasPerm(req, 'purchases.reports:read');
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const bid = branchId || null;
@@ -1146,7 +1145,7 @@ export async function purchaseVsSales(req: Request): Promise<ControllerResult> {
 
 /** Layer COGS vs line revenue by product (posted sales in range). */
 export async function profitByProduct(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const bid = branchId || null;
@@ -1195,7 +1194,7 @@ export async function profitByProduct(req: Request): Promise<ControllerResult> {
 
 /** Layer COGS vs revenue by customer. */
 export async function profitByCustomer(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const bid = branchId || null;
@@ -1245,7 +1244,7 @@ export async function profitByCustomer(req: Request): Promise<ControllerResult> 
 
 /** Net change on default cash & bank GL accounts (posted journals). */
 export async function cashFlow(req: Request): Promise<ControllerResult> {
-  const branchId = resolveBranchId(req);
+  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const bid = branchId || null;

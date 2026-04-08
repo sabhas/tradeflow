@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { Customer } from './Customer';
 import { User } from './User';
 import { QuotationLine } from './QuotationLine';
@@ -49,13 +48,6 @@ export class Quotation extends BaseEntity {
 
   @Column({ type: 'text', nullable: true })
   notes?: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy?: string;

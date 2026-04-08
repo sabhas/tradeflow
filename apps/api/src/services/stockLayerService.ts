@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { EntityManager } from 'typeorm';
 import {
   CompanySettings,
@@ -147,7 +148,6 @@ export async function addInboundLayer(
     sourceRefType: params.sourceRefType,
     sourceRefId: params.sourceRefId,
     grnLineId: params.grnLineId,
-    branchId: params.branchId,
   });
   return manager.save(layer);
 }

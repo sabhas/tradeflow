@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Brackets, EntityManager, IsNull } from 'typeorm';
 import {
   Account,

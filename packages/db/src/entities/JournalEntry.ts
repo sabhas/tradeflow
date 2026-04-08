@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { User } from './User';
 import { JournalLine } from './JournalLine';
 
@@ -35,13 +34,6 @@ export class JournalEntry extends BaseEntity {
 
   @Column({ name: 'source_id', type: 'uuid', nullable: true })
   sourceId?: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy?: string;

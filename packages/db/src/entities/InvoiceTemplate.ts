@@ -8,7 +8,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 
 export type InvoiceTemplateConfig = {
   showLogo?: boolean;
@@ -28,13 +27,6 @@ export class InvoiceTemplate extends BaseEntity {
 
   @Column({ type: 'jsonb' })
   config!: InvoiceTemplateConfig;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

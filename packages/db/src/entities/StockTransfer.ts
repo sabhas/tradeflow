@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { User } from './User';
 import { Warehouse } from './Warehouse';
 import { StockTransferLine } from './StockTransferLine';
@@ -41,13 +40,6 @@ export class StockTransfer extends BaseEntity {
 
   @Column({ type: 'text', nullable: true })
   notes?: string;
-
-  @Column({ name: 'branch_id', type: 'uuid', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy?: string;

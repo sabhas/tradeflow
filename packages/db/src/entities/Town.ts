@@ -9,7 +9,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Area } from './Area';
-import { Branch } from './Branch';
 
 @Entity('towns')
 export class Town extends BaseEntity {
@@ -18,13 +17,6 @@ export class Town extends BaseEntity {
 
   @Column()
   name!: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'area_id', type: 'uuid', nullable: true })
   areaId?: string;

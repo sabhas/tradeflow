@@ -9,7 +9,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { Customer } from './Customer';
 import { User } from './User';
 import { ReceiptAllocation } from './ReceiptAllocation';
@@ -38,13 +37,6 @@ export class Receipt extends BaseEntity {
 
   @Column({ nullable: true })
   reference?: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy?: string;

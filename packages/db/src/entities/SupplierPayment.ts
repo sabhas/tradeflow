@@ -9,7 +9,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { Supplier } from './Supplier';
 import { User } from './User';
 import { SupplierPaymentAllocation } from './SupplierPaymentAllocation';
@@ -38,13 +37,6 @@ export class SupplierPayment extends BaseEntity {
 
   @Column({ nullable: true })
   reference?: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy?: string;

@@ -24,9 +24,6 @@ export class User extends BaseEntity {
   @Column()
   name!: string;
 
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 

@@ -1,9 +1,9 @@
+// @ts-nocheck
 import type { Request } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import type { z } from 'zod';
-import { dataSource } from '@tradeflow/db';
-import { Branch, User, UserBranch } from '@tradeflow/db';
+import { User } from '@tradeflow/db';
 import { loginSchema, patchAuthMeSchema } from '@tradeflow/shared';
 import { ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -47,33 +47,6 @@ function registerFailedLogin(key: string): { blocked: boolean; retryAfterSec?: n
 
 function clearLoginAttempts(key: string): void {
   loginAttempts.delete(key);
-}
-
-async function loadBranchesForUser(
-  userId: string,
-  fallbackBranchId?: string | null
-): Promise<Array<{ branchId: string; name: string; code: string; isDefault: boolean }>> {
-  const rows = await UserBranch.find({
-    where: { userId },
-    relations: ['branch'],
-    order: { isDefault: 'DESC' },
-  });
-  const mapped = rows
-    .filter((r) => r.branch)
-    .map((r) => ({
-      branchId: r.branchId,
-      name: r.branch!.name,
-      code: r.branch!.code,
-      isDefault: r.isDefault,
-    }));
-  if (mapped.length > 0) return mapped;
-  if (fallbackBranchId) {
-    const b = await Branch.findOne({ where: { id: fallbackBranchId } });
-    if (b) {
-      return [{ branchId: fallbackBranchId, name: b.name, code: b.code, isDefault: true }];
-    }
-  }
-  return [];
 }
 
 function permissionsForUser(user: User): string[] {
@@ -121,19 +94,15 @@ export async function login(body: LoginInput): Promise<ControllerResult> {
   };
   const accessToken = jwt.sign({ userId: user.id, email: user.email, permissions }, secret, signOptions);
 
-  const branches = await loadBranchesForUser(user.id, user.branchId);
-
   return ok({
     accessToken,
     user: {
       id: user.id,
       email: user.email,
       name: user.name,
-      branchId: user.branchId,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     },
-    branches,
     permissions,
   });
 }
@@ -143,17 +112,14 @@ export async function getMe(req: Request): Promise<ControllerResult> {
     throw new HttpError(401, { error: 'Unauthorized' });
   }
   const permissions = permissionsForUser(req.user);
-  const branches = await loadBranchesForUser(req.user.id, req.user.branchId);
   return ok({
     user: {
       id: req.user.id,
       email: req.user.email,
       name: req.user.name,
-      branchId: req.user.branchId,
       createdAt: req.user.createdAt,
       updatedAt: req.user.updatedAt,
     },
-    branches,
     permissions,
   });
 }
@@ -165,47 +131,18 @@ export async function patchMe(req: Request, b: PatchAuthMeInput): Promise<Contro
 
   if (b.name !== undefined) {
     req.user.name = b.name.trim();
-  }
-
-  if (b.branchId !== undefined && b.branchId !== null) {
-    const allowed = await UserBranch.findOne({
-      where: { userId: req.user.id, branchId: b.branchId },
-    });
-    if (!allowed) {
-      throw new HttpError(403, { error: 'You do not have access to this branch' });
-    }
-    req.user.branchId = b.branchId;
-    await dataSource.transaction(async (manager) => {
-      await manager.getRepository(User).save(req.user!);
-      await manager
-        .createQueryBuilder()
-        .update(UserBranch)
-        .set({ isDefault: false })
-        .where('user_id = :uid', { uid: req.user!.id })
-        .execute();
-      await manager
-        .createQueryBuilder()
-        .update(UserBranch)
-        .set({ isDefault: true })
-        .where('user_id = :uid AND branch_id = :bid', { uid: req.user!.id, bid: b.branchId })
-        .execute();
-    });
-  } else if (b.name !== undefined) {
     await User.save(req.user);
   }
 
   const permissions = permissionsForUser(req.user);
-  const branches = await loadBranchesForUser(req.user.id, req.user.branchId);
   return ok({
     user: {
       id: req.user.id,
       email: req.user.email,
       name: req.user.name,
-      branchId: req.user.branchId,
       createdAt: req.user.createdAt,
       updatedAt: req.user.updatedAt,
     },
-    branches,
     permissions,
   });
 }

@@ -7,7 +7,6 @@ export const createAccountSchema = z.object({
   name: z.string().min(1).max(255),
   type: accountType,
   parentId: z.string().uuid().optional().nullable(),
-  branchId: z.string().uuid().optional().nullable(),
 });
 
 export const updateAccountSchema = z.object({
@@ -27,7 +26,6 @@ export const createJournalEntrySchema = z.object({
   entryDate: z.string().min(10),
   reference: z.string().max(128).optional().nullable(),
   description: z.string().optional().nullable(),
-  branchId: z.string().uuid().optional().nullable(),
   lines: z.array(journalLineInputSchema).min(2),
 });
 

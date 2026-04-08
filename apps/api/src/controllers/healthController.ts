@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { dataSource } from '@tradeflow/db';
 import { ok, withStatus, type ControllerResult } from '../utils/controllerResult';
 

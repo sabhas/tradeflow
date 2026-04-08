@@ -8,7 +8,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 
 @Entity('warehouses')
 export class Warehouse extends BaseEntity {
@@ -20,13 +19,6 @@ export class Warehouse extends BaseEntity {
 
   @Column()
   code!: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'is_default', default: false })
   isDefault!: boolean;

@@ -9,7 +9,6 @@ import { dataSource } from './data-source';
 import { User } from './entities/User';
 import { Role } from './entities/Role';
 import { Permission } from './entities/Permission';
-import { Branch } from './entities/Branch';
 import { UnitOfMeasure } from './entities/UnitOfMeasure';
 import { PriceLevel } from './entities/PriceLevel';
 import { PaymentTerms } from './entities/PaymentTerms';
@@ -194,26 +193,17 @@ async function seed() {
       }
     }
 
-    const branchRepo = dataSource.getRepository(Branch);
-    let mainBranch = await branchRepo.findOne({ where: { code: 'MAIN' } });
-    if (!mainBranch) {
-      mainBranch = await branchRepo.save(branchRepo.create({ name: 'Main', code: 'MAIN' }));
-      console.log('Created default branch MAIN');
-    }
-
     const uomRepo = dataSource.getRepository(UnitOfMeasure);
     if ((await uomRepo.count()) === 0) {
-      await uomRepo.save(
-        uomRepo.create({ code: 'PCS', name: 'Pieces', branchId: mainBranch.id })
-      );
+      await uomRepo.save(uomRepo.create({ code: 'PCS', name: 'Pieces' }));
       console.log('Created default UoM PCS');
     }
 
     const plRepo = dataSource.getRepository(PriceLevel);
     if ((await plRepo.count()) === 0) {
       await plRepo.save([
-        plRepo.create({ name: 'Retail', branchId: mainBranch.id }),
-        plRepo.create({ name: 'Wholesale', branchId: mainBranch.id }),
+        plRepo.create({ name: 'Retail' }),
+        plRepo.create({ name: 'Wholesale' }),
       ]);
       console.log('Created default price levels');
     }
@@ -221,8 +211,8 @@ async function seed() {
     const ptRepo = dataSource.getRepository(PaymentTerms);
     if ((await ptRepo.count()) === 0) {
       await ptRepo.save([
-        ptRepo.create({ name: 'Net 30', netDays: 30, branchId: mainBranch.id }),
-        ptRepo.create({ name: 'COD', netDays: 0, branchId: mainBranch.id }),
+        ptRepo.create({ name: 'Net 30', netDays: 30 }),
+        ptRepo.create({ name: 'COD', netDays: 0 }),
       ]);
       console.log('Created sample payment terms');
     }
@@ -234,7 +224,6 @@ async function seed() {
           name: 'Standard',
           rate: '0',
           isInclusive: false,
-          branchId: mainBranch.id,
         })
       );
       console.log('Created default tax profile');
@@ -246,7 +235,6 @@ async function seed() {
         catRepo.create({
           name: 'General',
           code: 'GEN',
-          branchId: mainBranch.id,
         })
       );
       console.log('Created default product category');
@@ -260,15 +248,11 @@ async function seed() {
           email: 'admin@tradeflow.local',
           passwordHash: await bcrypt.hash('admin123', 10),
           name: 'Admin User',
-          branchId: mainBranch.id,
         });
         user.roles = [adminRole];
         await userRepo.save(user);
         console.log('Created admin user: admin@tradeflow.local / admin123');
       }
-    } else if (!existingUser.branchId) {
-      existingUser.branchId = mainBranch.id;
-      await userRepo.save(existingUser);
     }
 
     console.log('Seed completed');

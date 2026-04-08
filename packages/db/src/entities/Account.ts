@@ -8,7 +8,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 
 export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
 
@@ -31,13 +30,6 @@ export class Account extends BaseEntity {
 
   @Column({ name: 'is_system', default: false })
   isSystem!: boolean;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

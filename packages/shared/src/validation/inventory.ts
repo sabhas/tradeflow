@@ -51,7 +51,6 @@ export const createStockTransferSchema = z.object({
   toWarehouseId: z.string().uuid(),
   transferDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   notes: z.string().optional().nullable(),
-  branchId: optionalUuid,
   lines: z
     .array(
       z.object({

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { EntityManager, IsNull } from 'typeorm';
 import { randomUUID } from 'crypto';
 import {

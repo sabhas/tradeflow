@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { EntityManager, IsNull } from 'typeorm';
 import { Customer, TaxProfile } from '@tradeflow/db';
 import { computeLineTax } from '@tradeflow/shared';

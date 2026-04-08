@@ -9,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { DeliveryRoute } from './DeliveryRoute';
 import { Salesperson } from './Salesperson';
 import { User } from './User';
@@ -42,13 +41,6 @@ export class DeliveryRun extends BaseEntity {
 
   @Column({ default: 'draft' })
   status!: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy?: string;

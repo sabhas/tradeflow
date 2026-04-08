@@ -9,7 +9,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { PurchaseOrder } from './PurchaseOrder';
 import { Supplier } from './Supplier';
 import { User } from './User';
@@ -48,13 +47,6 @@ export class Grn extends BaseEntity {
 
   @Column({ default: 'draft' })
   status!: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy?: string;

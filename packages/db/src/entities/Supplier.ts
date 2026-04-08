@@ -8,7 +8,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { PaymentTerms } from './PaymentTerms';
 import { TaxProfile } from './TaxProfile';
 
@@ -36,13 +35,6 @@ export class Supplier extends BaseEntity {
   @ManyToOne(() => TaxProfile, { nullable: true })
   @JoinColumn({ name: 'tax_profile_id' })
   taxProfile?: TaxProfile;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

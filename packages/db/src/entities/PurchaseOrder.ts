@@ -10,7 +10,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Branch } from './Branch';
 import { Supplier } from './Supplier';
 import { User } from './User';
 import { Warehouse } from './Warehouse';
@@ -59,13 +58,6 @@ export class PurchaseOrder extends BaseEntity {
 
   @Column({ type: 'text', nullable: true })
   notes?: string;
-
-  @Column({ name: 'branch_id', nullable: true })
-  branchId?: string;
-
-  @ManyToOne(() => Branch, { nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch?: Branch;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy?: string;

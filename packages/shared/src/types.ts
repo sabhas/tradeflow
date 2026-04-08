@@ -2,7 +2,6 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  branchId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

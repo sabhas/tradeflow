@@ -7,7 +7,6 @@ export const createDeliveryRouteSchema = z.object({
   name: z.string().min(1),
   code: z.string().min(1),
   description: z.string().optional().nullable(),
-  branchId: optionalUuid,
 });
 
 export const updateDeliveryRouteSchema = createDeliveryRouteSchema.partial().extend({
@@ -35,7 +34,6 @@ export const createDeliveryRunSchema = z.object({
   vehicleInfo: z.string().optional().nullable(),
   driverSalespersonId: optionalUuid,
   status: z.enum(['draft', 'dispatched', 'completed', 'cancelled']).optional(),
-  branchId: optionalUuid,
   coldChainRequired: z.boolean().optional(),
   controlledDeliveryRequired: z.boolean().optional(),
   dispatchComplianceNote: z.string().optional().nullable(),
@@ -49,7 +47,6 @@ export const updateDeliveryRunSchema = z.object({
   vehicleInfo: z.string().optional().nullable(),
   driverSalespersonId: optionalUuid,
   status: z.enum(['draft', 'dispatched', 'completed', 'cancelled']).optional(),
-  branchId: optionalUuid,
   coldChainRequired: z.boolean().optional(),
   controlledDeliveryRequired: z.boolean().optional(),
   dispatchComplianceNote: z.string().optional().nullable(),
@@ -63,7 +60,6 @@ export const createDeliveryNoteSchema = z
     salesOrderId: z.string().uuid().optional(),
     deliveryDate: z.union([z.string(), z.null()]).optional(),
     warehouseId: optionalUuid,
-    branchId: optionalUuid,
     coldChainRequired: z.boolean().optional(),
     controlledDeliveryRequired: z.boolean().optional(),
     lines: z
@@ -84,7 +80,6 @@ export const updateDeliveryNoteSchema = z.object({
   deliveryDate: z.union([z.string(), z.null()]).optional(),
   status: z.enum(['pending', 'dispatched', 'delivered']).optional(),
   warehouseId: optionalUuid,
-  branchId: optionalUuid,
   coldChainRequired: z.boolean().optional(),
   controlledDeliveryRequired: z.boolean().optional(),
   dispatchComplianceNote: z.string().optional().nullable(),

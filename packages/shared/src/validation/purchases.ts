@@ -9,7 +9,6 @@ export const createPurchaseOrderSchema = z.object({
   expectedDate: z.union([z.string(), z.null()]).optional(),
   warehouseId: z.string().uuid(),
   notes: z.string().optional().nullable(),
-  branchId: optionalUuid,
   discountAmount: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
   lines: z.array(documentLineInputSchema).min(1),
 });
@@ -23,7 +22,6 @@ export const createGrnSchema = z.object({
   supplierId: z.string().uuid(),
   warehouseId: z.string().uuid(),
   grnDate: z.string(),
-  branchId: optionalUuid,
   lines: z
     .array(
       z.object({
@@ -46,7 +44,6 @@ export const createSupplierInvoiceSchema = z.object({
   purchaseOrderId: optionalUuid,
   grnId: optionalUuid,
   notes: z.string().optional().nullable(),
-  branchId: optionalUuid,
   discountAmount: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
   lines: z
     .array(
@@ -72,7 +69,6 @@ export const createSupplierPaymentSchema = z.object({
   amount: z.union([z.number(), z.string()]).transform((v) => String(v)),
   paymentMethod: z.string().min(1),
   reference: z.string().optional().nullable(),
-  branchId: optionalUuid,
   allocations: z
     .array(
       z.object({

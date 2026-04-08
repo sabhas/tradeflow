@@ -27,7 +27,6 @@ export const createProductCategorySchema = z.object({
   parentId: optionalUuid,
   name: z.string().min(1),
   code: z.string().min(1),
-  branchId: optionalUuid,
 });
 
 export const updateProductCategorySchema = createProductCategorySchema.partial();
@@ -35,14 +34,12 @@ export const updateProductCategorySchema = createProductCategorySchema.partial()
 export const createUnitSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
-  branchId: optionalUuid,
 });
 
 export const updateUnitSchema = createUnitSchema.partial();
 
 export const createPriceLevelSchema = z.object({
   name: z.string().min(1),
-  branchId: optionalUuid,
 });
 
 export const updatePriceLevelSchema = createPriceLevelSchema.partial();
@@ -68,7 +65,6 @@ export const createProductSchema = z.object({
   costingMethod: costingMethodSchema,
   minStock: decimal.optional().nullable(),
   reorderLevel: decimal.optional().nullable(),
-  branchId: optionalUuid,
   prices: z.array(productPriceRowSchema).optional(),
 });
 
@@ -98,7 +94,6 @@ export const createCustomerSchema = z.object({
   creditLimit: decimal.optional(),
   paymentTermsId: optionalUuid,
   taxProfileId: optionalUuid,
-  branchId: optionalUuid,
   defaultRouteId: optionalUuid,
 });
 
@@ -107,7 +102,6 @@ export const updateCustomerSchema = createCustomerSchema.partial();
 export const createTownSchema = z.object({
   areaId: z.string().uuid(),
   name: z.string().min(1),
-  branchId: optionalUuid,
 });
 
 export const updateTownSchema = createTownSchema.partial();
@@ -123,7 +117,6 @@ export const createSupplierSchema = z.object({
   contact: contactSchema,
   paymentTermsId: optionalUuid,
   taxProfileId: optionalUuid,
-  branchId: optionalUuid,
 });
 
 export const updateSupplierSchema = createSupplierSchema.partial();
@@ -131,7 +124,6 @@ export const updateSupplierSchema = createSupplierSchema.partial();
 export const createWarehouseSchema = z.object({
   name: z.string().min(1),
   code: z.string().min(1),
-  branchId: optionalUuid,
   isDefault: z.boolean().optional(),
 });
 
@@ -140,7 +132,6 @@ export const updateWarehouseSchema = createWarehouseSchema.partial();
 export const createSalespersonSchema = z.object({
   name: z.string().min(1),
   code: z.string().min(1),
-  branchId: optionalUuid,
 });
 
 export const updateSalespersonSchema = createSalespersonSchema.partial();
@@ -150,7 +141,6 @@ export const createTaxProfileSchema = z.object({
   rate: decimal,
   isInclusive: z.boolean().optional(),
   region: z.string().optional().nullable(),
-  branchId: optionalUuid,
 });
 
 export const updateTaxProfileSchema = createTaxProfileSchema.partial();
@@ -158,7 +148,6 @@ export const updateTaxProfileSchema = createTaxProfileSchema.partial();
 export const createPaymentTermsSchema = z.object({
   name: z.string().min(1),
   netDays: z.number().int().min(0).optional(),
-  branchId: optionalUuid,
 });
 
 export const updatePaymentTermsSchema = createPaymentTermsSchema.partial();

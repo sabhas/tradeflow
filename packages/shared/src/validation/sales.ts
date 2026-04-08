@@ -16,7 +16,6 @@ export const createQuotationSchema = z.object({
   quotationDate: z.string(),
   validUntil: z.union([z.string(), z.null()]).optional(),
   notes: z.string().optional().nullable(),
-  branchId: optionalUuid,
   discountAmount: decimal.optional(),
   lines: z.array(documentLineInputSchema).min(1),
 });
@@ -31,7 +30,6 @@ export const createSalesOrderSchema = z.object({
   warehouseId: optionalUuid,
   salespersonId: optionalUuid,
   notes: z.string().optional().nullable(),
-  branchId: optionalUuid,
   discountAmount: decimal.optional(),
   lines: z.array(documentLineInputSchema).min(1),
 });
@@ -52,7 +50,6 @@ export const createInvoiceSchema = z.object({
   salespersonId: optionalUuid,
   invoiceTemplateId: optionalUuid,
   notes: z.string().optional().nullable(),
-  branchId: optionalUuid,
   discountAmount: decimal.optional(),
   lines: z.array(documentLineInputSchema).min(1),
 });
@@ -88,7 +85,6 @@ export const createReceiptSchema = z.object({
   amount: decimal,
   paymentMethod: z.string().min(1),
   reference: z.string().optional().nullable(),
-  branchId: optionalUuid,
   allocations: z
     .array(
       z.object({
