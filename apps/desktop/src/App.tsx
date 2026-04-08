@@ -39,10 +39,6 @@ import { OperationalReportsPage } from './pages/reports/OperationalReportsPage';
 import { AgingReportsPage } from './pages/reports/AgingReportsPage';
 import { TaxReportsPage } from './pages/reports/TaxReportsPage';
 import { InventoryHealthReportsPage } from './pages/reports/InventoryHealthReportsPage';
-import { DeliveryRoutesPage } from './pages/logistics/DeliveryRoutesPage';
-import { DeliveryRunsPage } from './pages/logistics/DeliveryRunsPage';
-import { DeliveryNotesPage } from './pages/logistics/DeliveryNotesPage';
-import { LogisticsReportsPage } from './pages/logistics/LogisticsReportsPage';
 import { ImportHubPage } from './pages/import/ImportHubPage';
 import { ImportProductsPage } from './pages/import/ImportProductsPage';
 import { ImportCustomersPage } from './pages/import/ImportCustomersPage';
@@ -123,11 +119,6 @@ export default function App() {
             <Route path="tax" element={<TaxReportsPage />} />
             <Route path="inventory-health" element={<InventoryHealthReportsPage />} />
           </Route>
-          <Route path="logistics" element={<Navigate to="/logistics/routes" replace />} />
-          <Route path="logistics/routes" element={<DeliveryRoutesPage />} />
-          <Route path="logistics/runs" element={<DeliveryRunsPage />} />
-          <Route path="logistics/delivery-notes" element={<DeliveryNotesPage />} />
-          <Route path="logistics/reports" element={<LogisticsReportsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

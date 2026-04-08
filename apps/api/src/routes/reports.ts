@@ -113,22 +113,6 @@ reportsRouter.get(
 );
 
 reportsRouter.get(
-  '/sales-by-salesperson',
-  requirePermission('reports.logistics', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.salesBySalesperson(req));
-  })
-);
-
-reportsRouter.get(
-  '/sales-by-route',
-  requirePermission('reports.logistics', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.salesByRoute(req));
-  })
-);
-
-reportsRouter.get(
   '/dead-stock',
   requirePermission('inventory', 'read'),
   asyncHandler(async (req, res) => {

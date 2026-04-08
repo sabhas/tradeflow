@@ -36,17 +36,6 @@ const menuItems: Array<{
     anyOf: ['sales:read', 'purchases.reports:read', 'accounting:read', 'inventory:read'],
   },
   {
-    path: '/logistics/routes',
-    label: 'Logistics',
-    icon: '🚚',
-    permission: null,
-    anyOf: [
-      'logistics.routes:read',
-      'logistics.deliveries:read',
-      'reports.logistics:read',
-    ],
-  },
-  {
     path: '/import',
     label: 'Import',
     icon: '📥',

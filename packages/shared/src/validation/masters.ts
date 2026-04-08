@@ -94,7 +94,6 @@ export const createCustomerSchema = z.object({
   creditLimit: decimal.optional(),
   paymentTermsId: optionalUuid,
   taxProfileId: optionalUuid,
-  defaultRouteId: optionalUuid,
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial();

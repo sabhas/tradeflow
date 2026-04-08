@@ -65,7 +65,6 @@ export function serializeCustomer(c: Customer) {
     creditLimit: c.creditLimit,
     paymentTermsId: c.paymentTermsId,
     taxProfileId: c.taxProfileId,
-    defaultRouteId: c.defaultRouteId,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
     deletedAt: c.deletedAt,
@@ -248,7 +247,6 @@ export async function createCustomer(req: Request, body: CreateCustomerInput): P
     creditLimit: b.creditLimit ?? '0',
     paymentTermsId: b.paymentTermsId ?? undefined,
     taxProfileId: b.taxProfileId ?? undefined,
-    defaultRouteId: b.defaultRouteId ?? undefined,
   });
   await repo.save(row);
   const withGeo = await Customer.findOne({
@@ -327,7 +325,6 @@ export async function updateCustomer(req: Request, body: UpdateCustomerInput): P
   if (b.creditLimit !== undefined) row.creditLimit = b.creditLimit;
   if (b.paymentTermsId !== undefined) row.paymentTermsId = b.paymentTermsId ?? undefined;
   if (b.taxProfileId !== undefined) row.taxProfileId = b.taxProfileId ?? undefined;
-    if (b.defaultRouteId !== undefined) row.defaultRouteId = b.defaultRouteId ?? undefined;
   await repo.save(row);
   const refreshed = await Customer.findOne({
     where: { id: row.id },

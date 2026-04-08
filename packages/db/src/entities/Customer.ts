@@ -93,9 +93,6 @@ export class Customer extends BaseEntity {
   @JoinColumn({ name: 'tax_profile_id' })
   taxProfile?: TaxProfile;
 
-  @Column({ name: 'default_route_id', type: 'uuid', nullable: true })
-  defaultRouteId?: string;
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 
