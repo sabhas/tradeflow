@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { EntityTarget, IsNull, Not } from 'typeorm';
 import {
@@ -39,7 +38,6 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
       message: `Query "entity" must be one of: ${ENTITY_TYPES.join(', ')}`,
     });
   }
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
 
   switch (entity) {
@@ -50,7 +48,6 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
         .orderBy('p.deleted_at', 'DESC')
         .take(limit)
         .skip(offset);
-      if (branchId) qb.andWhere('(p.branch_id IS NULL OR p.branch_id = :bid)', { bid: branchId });
       const [rows, total] = await qb.getManyAndCount();
       return ok({
         data: rows.map((p) => ({
@@ -68,7 +65,6 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
         .orderBy('c.deleted_at', 'DESC')
         .take(limit)
         .skip(offset);
-      if (branchId) qb.andWhere('(c.branch_id IS NULL OR c.branch_id = :bid)', { bid: branchId });
       const [rows, total] = await qb.getManyAndCount();
       return ok({
         data: rows.map((c) => ({
@@ -86,7 +82,6 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
         .orderBy('s.deleted_at', 'DESC')
         .take(limit)
         .skip(offset);
-      if (branchId) qb.andWhere('(s.branch_id IS NULL OR s.branch_id = :bid)', { bid: branchId });
       const [rows, total] = await qb.getManyAndCount();
       return ok({
         data: rows.map((s) => ({
@@ -104,7 +99,6 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
         .orderBy('i.deleted_at', 'DESC')
         .take(limit)
         .skip(offset);
-      if (branchId) qb.andWhere('(i.branch_id IS NULL OR i.branch_id = :bid)', { bid: branchId });
       const [rows, total] = await qb.getManyAndCount();
       return ok({
         data: rows.map((i) => ({
@@ -122,7 +116,6 @@ export async function listRecycleBin(req: Request): Promise<ControllerResult> {
         .orderBy('je.deleted_at', 'DESC')
         .take(limit)
         .skip(offset);
-      if (branchId) qb.andWhere('(je.branch_id IS NULL OR je.branch_id = :bid)', { bid: branchId });
       const [rows, total] = await qb.getManyAndCount();
       return ok({
         data: rows.map((je) => ({
@@ -146,8 +139,6 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
   if (!req.auth?.userId) {
     throw new HttpError(401, { error: 'Unauthorized' });
   }
-
-  const branchId = undefined;
   const auditRepo = AuditLog.getRepository();
   const userId = req.auth.userId;
 
@@ -170,9 +161,6 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
       if (!row) {
         throw new HttpError(404, { error: 'Not found' });
       }
-      if (branchId && undefined && undefined !== branchId) {
-        throw new HttpError(403, { error: 'Out of branch scope' });
-      }
       const prev = row.deletedAt;
       await clearDeletedAtColumn(Product, id);
       await logRestore(prev ?? undefined);
@@ -185,9 +173,6 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
       if (!row) {
         throw new HttpError(404, { error: 'Not found' });
       }
-      if (branchId && undefined && undefined !== branchId) {
-        throw new HttpError(403, { error: 'Out of branch scope' });
-      }
       const prev = row.deletedAt;
       await clearDeletedAtColumn(Customer, id);
       await logRestore(prev ?? undefined);
@@ -199,9 +184,6 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
       });
       if (!row) {
         throw new HttpError(404, { error: 'Not found' });
-      }
-      if (branchId && undefined && undefined !== branchId) {
-        throw new HttpError(403, { error: 'Out of branch scope' });
       }
       const prev = row.deletedAt;
       await clearDeletedAtColumn(Supplier, id);
@@ -218,9 +200,6 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
       if (row.status !== 'draft') {
         throw new HttpError(400, { error: 'Only draft invoices can be restored from recycle bin' });
       }
-      if (branchId && undefined && undefined !== branchId) {
-        throw new HttpError(403, { error: 'Out of branch scope' });
-      }
       const prev = row.deletedAt;
       await clearDeletedAtColumn(Invoice, id);
       await logRestore(prev ?? undefined);
@@ -235,9 +214,6 @@ export async function restoreRecycleBinEntity(req: Request): Promise<ControllerR
       }
       if (row.status !== 'draft') {
         throw new HttpError(400, { error: 'Only draft journal entries can be restored' });
-      }
-      if (branchId && undefined && undefined !== branchId) {
-        throw new HttpError(403, { error: 'Out of branch scope' });
       }
       const prev = row.deletedAt;
       await clearDeletedAtColumn(JournalEntry, id);

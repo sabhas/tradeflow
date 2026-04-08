@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { FindOptionsRelations } from 'typeorm';
 import type { z } from 'zod';

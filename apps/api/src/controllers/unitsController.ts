@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
@@ -21,7 +20,6 @@ export function serializeUnit(u: UnitOfMeasure) {
 }
 
 export async function listUnits(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const rows = await UnitOfMeasure.find({
     order: { name: 'ASC' },
   });
@@ -46,8 +44,7 @@ export async function updateUnit(req: Request, body: UpdateUnitInput): Promise<C
   }
   if (body.code !== undefined) row.code = body.code;
   if (body.name !== undefined) row.name = body.name;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await repo.save(row);
+    await repo.save(row);
   return ok({ data: serializeUnit(row) });
 }
 

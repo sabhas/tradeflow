@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { parseUploadToSheets } from '../utils/tabularFile';
 import {
@@ -86,8 +85,7 @@ export async function importProducts(req: Request): Promise<ControllerResult> {
   }
   try {
     const sheets = await parseUploadToSheets(file.buffer, file.mimetype, file.originalname);
-    const branchId = undefined;
-    const result = await importProductsFromSheets(sheets, branchId, req.user?.branchId);
+    const result = await importProductsFromSheets(sheets, undefined, undefined);
     return ok(result);
   } catch (e) {
     throw new HttpError(400, { error: e instanceof Error ? e.message : 'Import failed' });
@@ -101,8 +99,7 @@ export async function importCustomers(req: Request): Promise<ControllerResult> {
   }
   try {
     const sheets = await parseUploadToSheets(file.buffer, file.mimetype, file.originalname);
-    const branchId = undefined;
-    const result = await importCustomersFromSheets(sheets, branchId, req.user?.branchId);
+    const result = await importCustomersFromSheets(sheets, undefined, undefined);
     return ok(result);
   } catch (e) {
     throw new HttpError(400, { error: e instanceof Error ? e.message : 'Import failed' });
@@ -116,11 +113,10 @@ export async function importOpeningBalances(req: Request): Promise<ControllerRes
   }
   try {
     const sheets = await parseUploadToSheets(file.buffer, file.mimetype, file.originalname);
-    const branchId = undefined;
     const result = await importOpeningBalancesFromSheets(
       sheets,
-      branchId,
-      req.user?.branchId,
+      undefined,
+      undefined,
       req.auth?.userId,
       hasAccountingWrite(req)
     );

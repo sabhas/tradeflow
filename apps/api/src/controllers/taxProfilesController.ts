@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
@@ -23,7 +22,6 @@ function serialize(t: TaxProfile) {
 }
 
 export async function listTaxProfiles(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const rows = await TaxProfile.find({
     order: { name: 'ASC' },
   });
@@ -52,8 +50,7 @@ export async function updateTaxProfile(req: Request, body: UpdateTaxProfileInput
   if (body.rate !== undefined) row.rate = body.rate;
   if (body.isInclusive !== undefined) row.isInclusive = body.isInclusive;
   if (body.region !== undefined) row.region = body.region ?? undefined;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await repo.save(row);
+    await repo.save(row);
   return ok({ data: serialize(row) });
 }
 

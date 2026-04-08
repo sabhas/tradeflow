@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { createSupplierPaymentSchema } from '@tradeflow/shared';
@@ -35,13 +34,11 @@ function serialize(p: SupplierPayment, allocations?: SupplierPaymentAllocation[]
 }
 
 export async function listSupplierPayments(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = SupplierPayment
     .createQueryBuilder('p')
     .leftJoinAndSelect('p.supplier', 's')
     .where('1=1');
-  if (branchId) qb.andWhere('(p.branch_id IS NULL OR p.branch_id = :bid)', { bid: branchId });
   if (req.query.supplierId) qb.andWhere('p.supplier_id = :sid', { sid: req.query.supplierId });
   qb.orderBy('p.payment_date', 'DESC').addOrderBy('p.created_at', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
@@ -63,7 +60,6 @@ export async function createSupplierPayment(
   req: Request,
   body: CreateSupplierPaymentInput
 ): Promise<ControllerResult> {
-  const branchId = undefined ?? req.user?.branchId ?? undefined;
   const userId = req.auth?.userId;
   const payAmt = parseFloat(body.amount);
   const allocSum = body.allocations.reduce((s, a) => s + parseFloat(a.amount), 0);

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import {
@@ -38,14 +37,12 @@ function serializeRoute(r: DeliveryRoute, stops?: RouteStop[]) {
 }
 
 export async function listDeliveryRoutes(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = DeliveryRoute
     .createQueryBuilder('r')
     .orderBy('r.code', 'ASC')
     .take(limit)
     .skip(offset);
-  if (branchId) qb.andWhere('(r.branch_id IS NULL OR r.branch_id = :bid)', { bid: branchId });
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serializeRoute(r)), meta: { total, limit, offset } });
 }
@@ -97,8 +94,7 @@ export async function updateDeliveryRoute(
   if (body.name !== undefined) row.name = body.name;
   if (body.code !== undefined) row.code = body.code;
   if (body.description !== undefined) row.description = body.description ?? undefined;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await repo.save(row);
+    await repo.save(row);
 
   if (body.stops) {
     for (const s of body.stops) {

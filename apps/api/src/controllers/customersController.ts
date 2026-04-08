@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
@@ -74,17 +73,12 @@ export function serializeCustomer(c: Customer) {
 }
 
 export async function listCustomers(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const search = (req.query.search as string | undefined)?.trim();
 
   const qb = Customer
     .createQueryBuilder('c')
     .where('c.deleted_at IS NULL');
-
-  if (branchId) {
-    qb.andWhere('(c.branch_id IS NULL OR c.branch_id = :bid)', { bid: branchId });
-  }
   if (search) {
     const term = `%${search.toLowerCase()}%`;
     const raw = `%${search}%`;
@@ -333,8 +327,7 @@ export async function updateCustomer(req: Request, body: UpdateCustomerInput): P
   if (b.creditLimit !== undefined) row.creditLimit = b.creditLimit;
   if (b.paymentTermsId !== undefined) row.paymentTermsId = b.paymentTermsId ?? undefined;
   if (b.taxProfileId !== undefined) row.taxProfileId = b.taxProfileId ?? undefined;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  if (b.defaultRouteId !== undefined) row.defaultRouteId = b.defaultRouteId ?? undefined;
+    if (b.defaultRouteId !== undefined) row.defaultRouteId = b.defaultRouteId ?? undefined;
   await repo.save(row);
   const refreshed = await Customer.findOne({
     where: { id: row.id },

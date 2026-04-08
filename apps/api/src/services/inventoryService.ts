@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { EntityManager, IsNull } from 'typeorm';
 import { randomUUID } from 'crypto';
 import {
@@ -192,9 +191,6 @@ export async function applyMovement(
 export async function assertWarehouseInScope(warehouseId: string, branchId: string | undefined): Promise<Warehouse> {
   const w = await Warehouse.findOne({ where: { id: warehouseId } });
   if (!w) throw new Error('Warehouse not found');
-  if (branchId && w.branchId && w.branchId !== branchId) {
-    throw new Error('Warehouse is not available for this branch');
-  }
   return w;
 }
 
@@ -203,9 +199,6 @@ export async function assertProductInScope(productId: string, branchId: string |
     where: { id: productId, deletedAt: IsNull() },
   });
   if (!p) throw new Error('Product not found');
-  if (branchId && p.branchId && p.branchId !== branchId) {
-    throw new Error('Product is not available for this branch');
-  }
   return p;
 }
 

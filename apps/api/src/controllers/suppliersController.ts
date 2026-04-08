@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
@@ -25,17 +24,12 @@ export function serializeSupplier(s: Supplier) {
 }
 
 export async function listSuppliers(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const search = (req.query.search as string | undefined)?.trim();
 
   const qb = Supplier
     .createQueryBuilder('s')
     .where('s.deleted_at IS NULL');
-
-  if (branchId) {
-    qb.andWhere('(s.branch_id IS NULL OR s.branch_id = :bid)', { bid: branchId });
-  }
   if (search) {
     qb.andWhere('LOWER(s.name) LIKE :term', { term: `%${search.toLowerCase()}%` });
   }
@@ -200,8 +194,7 @@ export async function updateSupplier(req: Request, body: UpdateSupplierInput): P
   if (b.contact !== undefined) row.contact = b.contact ?? undefined;
   if (b.paymentTermsId !== undefined) row.paymentTermsId = b.paymentTermsId ?? undefined;
   if (b.taxProfileId !== undefined) row.taxProfileId = b.taxProfileId ?? undefined;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await repo.save(row);
+    await repo.save(row);
   return ok({ data: serializeSupplier(row) });
 }
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { In } from 'typeorm';
 import { dataSource, InventoryMovement, StockBalance } from '@tradeflow/db';
@@ -75,7 +74,6 @@ function serializeBalance(sb: StockBalance) {
 }
 
 export async function listBalances(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const warehouseId = req.query.warehouseId as string | undefined;
   const productId = req.query.productId as string | undefined;
 
@@ -90,10 +88,6 @@ export async function listBalances(req: Request): Promise<ControllerResult> {
   }
   if (productId) {
     qb.andWhere('sb.product_id = :pid', { pid: productId });
-  }
-  if (branchId) {
-    qb.andWhere('(w.branch_id IS NULL OR w.branch_id = :bid)', { bid: branchId });
-    qb.andWhere('(p.branch_id IS NULL OR p.branch_id = :bid)', { bid: branchId });
   }
 
   qb.orderBy('p.name', 'ASC').addOrderBy('w.name', 'ASC');
@@ -127,7 +121,6 @@ export async function listBalances(req: Request): Promise<ControllerResult> {
 }
 
 export async function listLowStock(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const rows = await dataSource.query(
     `
     SELECT
@@ -149,17 +142,14 @@ export async function listLowStock(req: Request): Promise<ControllerResult> {
         (p.min_stock IS NOT NULL AND sb.quantity::numeric < p.min_stock::numeric)
         OR (p.reorder_level IS NOT NULL AND sb.quantity::numeric < p.reorder_level::numeric)
       )
-      AND ($1::uuid IS NULL OR p.branch_id IS NULL OR p.branch_id = $1::uuid)
-      AND ($1::uuid IS NULL OR w.branch_id IS NULL OR w.branch_id = $1::uuid)
     ORDER BY p.name, w.name
     `,
-    [branchId || null]
+    [null]
   );
   return ok({ data: rows, meta: { rowCount: rows.length } });
 }
 
 export async function listMovements(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const warehouseId = req.query.warehouseId as string | undefined;
   const productId = req.query.productId as string | undefined;
@@ -178,10 +168,6 @@ export async function listMovements(req: Request): Promise<ControllerResult> {
   if (refType) qb.andWhere('m.ref_type = :rt', { rt: refType });
   if (dateFrom) qb.andWhere('m.movement_date >= :df', { df: dateFrom });
   if (dateTo) qb.andWhere('m.movement_date <= :dt', { dt: dateTo });
-  if (branchId) {
-    qb.andWhere('(w.branch_id IS NULL OR w.branch_id = :bid)', { bid: branchId });
-    qb.andWhere('(p.branch_id IS NULL OR p.branch_id = :bid)', { bid: branchId });
-  }
 
   qb.orderBy('m.movement_date', 'DESC').addOrderBy('m.created_at', 'DESC').take(limit).skip(offset);
 
@@ -193,11 +179,10 @@ export async function listMovements(req: Request): Promise<ControllerResult> {
 }
 
 export async function postOpeningBalance(req: Request, body: PostOpeningBalanceInput): Promise<ControllerResult> {
-  const branchId = req.user?.branchId ?? undefined;
   const userId = req.auth?.userId;
 
   try {
-    await assertWarehouseInScope(body.warehouseId, branchId);
+    await assertWarehouseInScope(body.warehouseId, undefined);
   } catch (e) {
     throw new HttpError(400, { error: e instanceof Error ? e.message : 'Bad request' });
   }
@@ -207,7 +192,7 @@ export async function postOpeningBalance(req: Request, body: PostOpeningBalanceI
     const movements = await runInTransaction(async (manager) => {
       const out: Awaited<ReturnType<typeof applyMovement>>[] = [];
       for (const line of body.lines) {
-        await assertProductInScope(line.productId, branchId);
+        await assertProductInScope(line.productId, undefined);
         const qty = parseDecimalStrict(line.quantity);
         const mov = await applyMovement(manager, {
           productId: line.productId,
@@ -217,7 +202,6 @@ export async function postOpeningBalance(req: Request, body: PostOpeningBalanceI
           refId,
           unitCost: line.unitCost != null && line.unitCost !== '' ? parseDecimalStrict(String(line.unitCost)) : undefined,
           movementDate: body.movementDate,
-          branchId,
           userId,
           batchCode: line.batchCode?.trim() || undefined,
           expiryDate: line.expiryDate?.trim() ? line.expiryDate.slice(0, 10) : undefined,
@@ -248,11 +232,10 @@ export async function postOpeningBalance(req: Request, body: PostOpeningBalanceI
 }
 
 export async function postStockAdjustment(req: Request, body: PostStockAdjustmentInput): Promise<ControllerResult> {
-  const branchId = req.user?.branchId ?? undefined;
   const userId = req.auth?.userId;
 
   try {
-    await assertWarehouseInScope(body.warehouseId, branchId);
+    await assertWarehouseInScope(body.warehouseId, undefined);
   } catch (e) {
     throw new HttpError(400, { error: e instanceof Error ? e.message : 'Bad request' });
   }
@@ -265,7 +248,7 @@ export async function postStockAdjustment(req: Request, body: PostStockAdjustmen
     const movements = await runInTransaction(async (manager) => {
       const out: Awaited<ReturnType<typeof applyMovement>>[] = [];
       for (const line of body.lines) {
-        await assertProductInScope(line.productId, branchId);
+        await assertProductInScope(line.productId, undefined);
         const delta = parseDecimalStrict(line.quantityDelta);
         const mov = await applyMovement(manager, {
           productId: line.productId,
@@ -274,7 +257,6 @@ export async function postStockAdjustment(req: Request, body: PostStockAdjustmen
           refType: 'adjustment',
           refId,
           movementDate,
-          branchId,
           notes: reasonNote,
           userId,
         });

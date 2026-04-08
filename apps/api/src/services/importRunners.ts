@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Brackets, EntityManager, IsNull } from 'typeorm';
 import {
   Account,
@@ -78,7 +77,6 @@ async function findCategory(
       t: term,
     });
   if (branchId) {
-    qb.andWhere('(c.branch_id IS NULL OR c.branch_id = :bid)', { bid: branchId });
   }
   return qb.getOne();
 }
@@ -102,7 +100,6 @@ async function findSupplierByName(em: EntityManager, name: string, branchId: str
     .where('s.deleted_at IS NULL')
     .andWhere('LOWER(TRIM(s.name)) = LOWER(TRIM(:t))', { t: term });
   if (branchId) {
-    qb.andWhere('(s.branch_id IS NULL OR s.branch_id = :bid)', { bid: branchId });
   }
   return qb.getOne();
 }
@@ -114,9 +111,7 @@ async function skuExists(em: EntityManager, sku: string, branchId: string | unde
     .where('p.deleted_at IS NULL')
     .andWhere('LOWER(TRIM(p.sku)) = LOWER(TRIM(:sku))', { sku });
   if (branchId) {
-    qb.andWhere('(p.branch_id IS NULL OR p.branch_id = :bid)', { bid: branchId });
   } else {
-    qb.andWhere('p.branch_id IS NULL');
   }
   const n = await qb.getCount();
   return n > 0;
@@ -134,7 +129,6 @@ async function findPaymentTermsByName(
     .createQueryBuilder('pt')
     .where('LOWER(TRIM(pt.name)) = LOWER(TRIM(:n))', { n });
   if (branchId) {
-    qb.andWhere('(pt.branch_id IS NULL OR pt.branch_id = :bid)', { bid: branchId });
   }
   const row = await qb.getOne();
   return row?.id;
@@ -152,7 +146,6 @@ async function findTaxProfileByName(
     .createQueryBuilder('tp')
     .where('LOWER(TRIM(tp.name)) = LOWER(TRIM(:n))', { n });
   if (branchId) {
-    qb.andWhere('(tp.branch_id IS NULL OR tp.branch_id = :bid)', { bid: branchId });
   }
   const row = await qb.getOne();
   return row?.id;
@@ -240,7 +233,6 @@ export async function importProductsFromSheets(
           sellingPrice: valid.data.sellingPrice ?? '0',
           batchTracked: valid.data.batchTracked ?? false,
           expiryTracked: valid.data.expiryTracked ?? false,
-          branchId: effectiveBranch ?? undefined,
         });
         await repo.save(p);
       });
@@ -310,7 +302,6 @@ export async function importCustomersFromSheets(
           creditLimit: row.creditLimit ?? '0',
           paymentTermsId,
           taxProfileId,
-          branchId: effectiveBranch ?? undefined,
         });
         await em.getRepository(Customer).save(c);
       });
@@ -345,7 +336,6 @@ async function findWarehouseByCode(
     .createQueryBuilder('w')
     .where('LOWER(TRIM(w.code)) = LOWER(TRIM(:c))', { c: code.trim() });
   if (branchId) {
-    qb.andWhere('(w.branch_id IS NULL OR w.branch_id = :bid)', { bid: branchId });
   }
   return qb.getOne();
 }
@@ -361,9 +351,7 @@ async function findProductBySku(
     .where('p.deleted_at IS NULL')
     .andWhere('LOWER(TRIM(p.sku)) = LOWER(TRIM(:sku))', { sku: sku.trim() });
   if (branchId) {
-    qb.andWhere('(p.branch_id IS NULL OR p.branch_id = :bid)', { bid: branchId });
   } else {
-    qb.andWhere('p.branch_id IS NULL');
   }
   return qb.getOne();
 }
@@ -380,7 +368,6 @@ async function findAccountByCode(
   if (branchId) {
     qb.andWhere(
       new Brackets((q) => {
-        q.where('a.branch_id IS NULL').orWhere('a.branch_id = :bid', { bid: branchId });
       })
     );
   }
@@ -555,8 +542,7 @@ export async function importOpeningBalancesFromSheets(
               reference: lines[0].reference ?? undefined,
               description: 'Opening balance import',
               status: 'posted',
-              branchId: effectiveBranch ?? undefined,
-              createdBy: userId,
+                  createdBy: userId,
             });
             await em.save(entry);
             for (const l of resolved) {

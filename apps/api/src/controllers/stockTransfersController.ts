@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { createStockTransferSchema } from '@tradeflow/shared';
@@ -43,13 +42,11 @@ function serialize(t: StockTransfer, lines?: StockTransferLine[]) {
 }
 
 export async function listStockTransfers(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = StockTransfer
     .createQueryBuilder('t')
     .leftJoinAndSelect('t.fromWarehouse', 'fw')
     .leftJoinAndSelect('t.toWarehouse', 'tw');
-  if (branchId) qb.andWhere('(t.branch_id IS NULL OR t.branch_id = :bid)', { bid: branchId });
   qb.orderBy('t.transfer_date', 'DESC').addOrderBy('t.created_at', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
@@ -73,13 +70,12 @@ export async function createStockTransfer(
   if (body.fromWarehouseId === body.toWarehouseId) {
     throw new HttpError(400, { error: 'Source and destination warehouse must differ' });
   }
-  const branchId = undefined ?? req.user?.branchId ?? undefined;
   const userId = req.auth?.userId;
   try {
-    await assertWarehouseInScope(body.fromWarehouseId, branchId);
-    await assertWarehouseInScope(body.toWarehouseId, branchId);
+    await assertWarehouseInScope(body.fromWarehouseId, undefined);
+    await assertWarehouseInScope(body.toWarehouseId, undefined);
     for (const ln of body.lines) {
-      await assertProductInScope(ln.productId, branchId);
+      await assertProductInScope(ln.productId, undefined);
       parseDecimalStrict(String(ln.quantity));
     }
   } catch (e) {
@@ -128,9 +124,7 @@ export async function postStockTransfer(req: Request): Promise<ControllerResult>
       if (!t) throw new HttpError(404, { error: 'Not found' });
       if (t.status !== 'draft') throw new HttpError(400, { error: 'Only draft transfers can be posted' });
       if (!t.lines?.length) throw new HttpError(400, { error: 'Transfer has no lines' });
-
-      const branchId = undefined ?? undefined;
-      await postStockTransferTx(manager, t, t.lines, req.auth?.userId, branchId);
+      await postStockTransferTx(manager, t, t.lines, req.auth?.userId);
 
       t.status = 'posted';
       await manager.save(t);

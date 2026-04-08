@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Area, Customer, Town } from '@tradeflow/db';
@@ -23,14 +22,10 @@ export function serializeTown(t: Town) {
 }
 
 export async function listTowns(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const areaId = (req.query.areaId as string | undefined)?.trim();
   const qb = Town.createQueryBuilder('t')
     .leftJoinAndSelect('t.area', 'a')
     .where('t.deleted_at IS NULL');
-  if (branchId) {
-    qb.andWhere('(t.branch_id IS NULL OR t.branch_id = :bid)', { bid: branchId });
-  }
   if (areaId) {
     qb.andWhere('t.area_id = :aid', { aid: areaId });
   }
@@ -68,8 +63,7 @@ export async function updateTown(req: Request, body: UpdateTownInput): Promise<C
     row.areaId = body.areaId;
   }
   if (body.name !== undefined) row.name = body.name.trim();
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await repo.save(row);
+    await repo.save(row);
   const withArea = await repo.findOne({ where: { id: row.id }, relations: ['area'] });
   return ok({ data: serializeTown(withArea || row) });
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
@@ -38,7 +37,6 @@ export async function getProductCategorySnapshotForAudit(id: string) {
 
 export async function listProductCategories(req: Request): Promise<ControllerResult> {
   const tree = req.query.tree === 'true' || req.query.tree === '1';
-  const branchId = undefined;
   const repo = ProductCategory.getRepository();
   const flat = await repo.find({
     order: { name: 'ASC' },
@@ -55,7 +53,6 @@ export async function createProductCategory(
   body: CreateProductCategoryInput
 ): Promise<ControllerResult> {
   const repo = ProductCategory.getRepository();
-  const branchId = undefined ?? req.user?.branchId;
   const row = repo.create({
     parentId: body.parentId ?? undefined,
     name: body.name,
@@ -77,8 +74,7 @@ export async function updateProductCategory(
   if (body.name !== undefined) row.name = body.name;
   if (body.code !== undefined) row.code = body.code;
   if (body.parentId !== undefined) row.parentId = body.parentId ?? undefined;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await repo.save(row);
+    await repo.save(row);
   return ok({ data: serializeCategory(row) });
 }
 

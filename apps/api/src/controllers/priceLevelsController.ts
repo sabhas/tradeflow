@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
@@ -20,7 +19,6 @@ function serialize(p: PriceLevel) {
 }
 
 export async function listPriceLevels(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const rows = await PriceLevel.find({
     order: { name: 'ASC' },
   });
@@ -43,8 +41,7 @@ export async function updatePriceLevel(req: Request, body: UpdatePriceLevelInput
     throw new HttpError(404, { error: 'Not found' });
   }
   if (body.name !== undefined) row.name = body.name;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await repo.save(row);
+    await repo.save(row);
   return ok({ data: serialize(row) });
 }
 

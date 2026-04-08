@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Product, SalesOrder, SalesOrderLine, Invoice, InvoiceLine } from '@tradeflow/db';
@@ -50,14 +49,12 @@ export function serializeSalesOrder(o: SalesOrder, lines?: Array<SalesOrderLine 
 }
 
 export async function listSalesOrders(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = SalesOrder
     .createQueryBuilder('o')
     .orderBy('o.order_date', 'DESC')
     .take(limit)
     .skip(offset);
-  if (branchId) qb.andWhere('(o.branch_id IS NULL OR o.branch_id = :bid)', { bid: branchId });
   if (req.query.customerId) qb.andWhere('o.customer_id = :cid', { cid: req.query.customerId });
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((o) => serializeSalesOrder(o)), meta: { total, limit, offset } });
@@ -142,8 +139,7 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
       if (b.warehouseId !== undefined) o.warehouseId = b.warehouseId ?? undefined;
       if (b.salespersonId !== undefined) o.salespersonId = b.salespersonId ?? undefined;
       if (b.notes !== undefined) o.notes = b.notes ?? undefined;
-      if (undefined !== undefined) undefined = undefined ?? undefined;
-
+      
       if (b.lines) {
         await manager.delete(SalesOrderLine, { salesOrderId: o.id });
         const totals = await computeSalesDocumentTotals(

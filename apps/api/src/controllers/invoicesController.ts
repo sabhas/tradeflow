@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
@@ -59,7 +58,6 @@ export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
 }
 
 export async function listInvoices(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = Invoice
     .createQueryBuilder('i')
@@ -67,7 +65,6 @@ export async function listInvoices(req: Request): Promise<ControllerResult> {
     .orderBy('i.invoice_date', 'DESC')
     .take(limit)
     .skip(offset);
-  if (branchId) qb.andWhere('(i.branch_id IS NULL OR i.branch_id = :bid)', { bid: branchId });
   if (req.query.customerId) qb.andWhere('i.customer_id = :cid', { cid: req.query.customerId });
   if (req.query.status) qb.andWhere('i.status = :st', { st: req.query.status });
   if (req.query.dateFrom) qb.andWhere('i.invoice_date >= :df', { df: req.query.dateFrom });
@@ -192,9 +189,8 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
 }
 
 export async function postInvoiceAction(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   try {
-    const inv = await postInvoice(req.params.id, req.auth?.userId, branchId);
+    const inv = await postInvoice(req.params.id, req.auth?.userId);
     const full = await Invoice.findOne({
       where: { id: inv.id, deletedAt: IsNull() },
       relations: ['lines'],
@@ -234,8 +230,7 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
       if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
       if (b.salesOrderId !== undefined) inv.salesOrderId = b.salesOrderId ?? undefined;
       if (b.salespersonId !== undefined) inv.salespersonId = b.salespersonId ?? undefined;
-      if (undefined !== undefined) undefined = undefined ?? undefined;
-      if (b.invoiceTemplateId !== undefined) {
+            if (b.invoiceTemplateId !== undefined) {
         if (b.invoiceTemplateId) {
           const t = await manager.findOne(InvoiceTemplate, { where: { id: b.invoiceTemplateId } });
           if (!t) throw new Error('Invoice template not found');

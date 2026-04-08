@@ -1,4 +1,3 @@
-// @ts-nocheck
 import ExcelJS from 'exceljs';
 import { Brackets, In } from 'typeorm';
 import {
@@ -18,7 +17,6 @@ export async function buildProductsXlsx(branchId: string | undefined, categoryId
     .where('p.deleted_at IS NULL');
 
   if (branchId) {
-    qb.andWhere('(p.branch_id IS NULL OR p.branch_id = :bid)', { bid: branchId });
   }
   if (categoryId) {
     qb.andWhere('p.category_id = :cid', { cid: categoryId });
@@ -101,7 +99,6 @@ export async function buildCustomersXlsx(branchId: string | undefined, search?: 
     .where('c.deleted_at IS NULL');
 
   if (branchId) {
-    qb.andWhere('(c.branch_id IS NULL OR c.branch_id = :bid)', { bid: branchId });
   }
   if (search?.trim()) {
     const term = `%${search.trim().toLowerCase()}%`;
@@ -184,7 +181,6 @@ export async function buildInvoicesXlsx(
     .addOrderBy('i.created_at', 'DESC');
 
   if (branchId) {
-    qb.andWhere('(i.branch_id IS NULL OR i.branch_id = :bid)', { bid: branchId });
   }
   if (filters.customerId) qb.andWhere('i.customer_id = :cid', { cid: filters.customerId });
   if (filters.status) qb.andWhere('i.status = :st', { st: filters.status });

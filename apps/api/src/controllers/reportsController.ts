@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { dataSource } from '@tradeflow/db';
 import { getCompanyAccountingSettings } from '../services/companySettings';
@@ -12,7 +11,6 @@ function hasPerm(req: Request, code: string): boolean {
 
 /** Posted invoices aggregated by calendar day (operational sales). */
 export async function dailySales(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const customerId = (req.query.customerId as string)?.trim() || null;
@@ -31,11 +29,10 @@ export async function dailySales(req: Request): Promise<ControllerResult> {
       AND i.invoice_date <= $2::date
       AND ($3::uuid IS NULL OR i.customer_id = $3::uuid)
       AND ($4::uuid IS NULL OR i.warehouse_id = $4::uuid)
-      AND ($5::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $5::uuid)
     GROUP BY i.invoice_date
     ORDER BY i.invoice_date
     `,
-    [dateFrom, dateTo, customerId, warehouseId, branchId || null]
+    [dateFrom, dateTo, customerId, warehouseId]
   );
 
   let grandTotal = 0;
@@ -53,7 +50,6 @@ export async function dailySales(req: Request): Promise<ControllerResult> {
 
 /** Inventory movements in period with optional product / warehouse filters. */
 export async function stockMovement(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const productId = (req.query.productId as string)?.trim() || null;
@@ -80,10 +76,9 @@ export async function stockMovement(req: Request): Promise<ControllerResult> {
       AND im.movement_date <= $2::date
       AND ($3::uuid IS NULL OR im.product_id = $3::uuid)
       AND ($4::uuid IS NULL OR im.warehouse_id = $4::uuid)
-      AND ($5::uuid IS NULL OR im.branch_id IS NULL OR im.branch_id = $5::uuid)
     ORDER BY im.movement_date, im.created_at, im.id
     `,
-    [dateFrom, dateTo, productId, warehouseId, branchId || null]
+    [dateFrom, dateTo, productId, warehouseId]
   );
 
   return ok({ data: rows, meta: { dateFrom, dateTo, productId, warehouseId, rowCount: rows.length } });
@@ -91,7 +86,6 @@ export async function stockMovement(req: Request): Promise<ControllerResult> {
 
 /** Products ranked by quantity or line value sold in period (posted invoices). */
 export async function fastMoving(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const rawLimit = parseInt(String(req.query.limit || '50'), 10);
@@ -117,12 +111,11 @@ export async function fastMoving(req: Request): Promise<ControllerResult> {
     WHERE i.status = 'posted'
       AND i.invoice_date >= $1::date
       AND i.invoice_date <= $2::date
-      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
     GROUP BY il.product_id, p.sku, p.name
     ORDER BY ${orderSql}
     LIMIT $4
     `,
-    [dateFrom, dateTo, branchId || null, limit]
+    [dateFrom, dateTo, limit]
   );
 
   return ok({ data: rows, meta: { dateFrom, dateTo, limit, sortBy } });
@@ -130,7 +123,6 @@ export async function fastMoving(req: Request): Promise<ControllerResult> {
 
 /** Expense accounts with period activity (P&amp;L expense slice). */
 export async function expenseAnalysis(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -150,14 +142,12 @@ export async function expenseAnalysis(req: Request): Promise<ControllerResult> {
       AND je.status = 'posted'
       AND je.entry_date >= $1::date
       AND je.entry_date <= $2::date
-      AND ($3::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $3::uuid)
     WHERE a.type = 'expense'
-      AND ($3::uuid IS NULL OR a.branch_id IS NULL OR a.branch_id = $3::uuid)
     GROUP BY a.id, a.code, a.name
     HAVING COALESCE(SUM(jl.debit), 0) != 0 OR COALESCE(SUM(jl.credit), 0) != 0
     ORDER BY a.code
     `,
-    [dateFrom, dateTo, branchId || null]
+    [dateFrom, dateTo]
   );
 
   let totalNet = 0;
@@ -173,8 +163,6 @@ export async function expenseAnalysis(req: Request): Promise<ControllerResult> {
 
 export async function receivablesAging(req: Request): Promise<ControllerResult> {
   const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const branchId = undefined;
-
   const rows = await dataSource.query(
     `
     SELECT
@@ -199,9 +187,8 @@ export async function receivablesAging(req: Request): Promise<ControllerResult> 
     WHERE i.status = 'posted'
       AND i.deleted_at IS NULL
       AND i.payment_type = 'credit'
-      AND ($1::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $1::uuid)
     `,
-    [branchId || null]
+    [null]
   );
 
   const asOfMs = new Date(`${asOf}T12:00:00.000Z`).getTime();
@@ -252,8 +239,6 @@ export async function receivablesAging(req: Request): Promise<ControllerResult> 
 /** Payables aging by supplier (posted supplier invoices with open balance). */
 export async function payablesAging(req: Request): Promise<ControllerResult> {
   const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const branchId = undefined;
-
   const rows = await dataSource.query(
     `
     SELECT
@@ -276,9 +261,8 @@ export async function payablesAging(req: Request): Promise<ControllerResult> {
     FROM supplier_invoices si
     INNER JOIN suppliers s ON s.id = si.supplier_id AND s.deleted_at IS NULL
     WHERE si.status = 'posted'
-      AND ($1::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $1::uuid)
     `,
-    [branchId || null]
+    [null]
   );
 
   const asOfMs = new Date(`${asOf}T12:00:00.000Z`).getTime();
@@ -325,7 +309,6 @@ export async function payablesAging(req: Request): Promise<ControllerResult> {
 
 /** Posted journal activity by account for date range (trial balance). */
 export async function trialBalance(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -345,13 +328,11 @@ export async function trialBalance(req: Request): Promise<ControllerResult> {
       AND je.status = 'posted'
       AND je.entry_date >= $1::date
       AND je.entry_date <= $2::date
-      AND ($3::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $3::uuid)
-    WHERE ($3::uuid IS NULL OR a.branch_id IS NULL OR a.branch_id = $3::uuid)
     GROUP BY a.id, a.code, a.name, a.type
     HAVING COALESCE(SUM(jl.debit), 0) != 0 OR COALESCE(SUM(jl.credit), 0) != 0
     ORDER BY a.code
     `,
-    [dateFrom, dateTo, branchId || null]
+    [dateFrom, dateTo]
   );
 
   let totalDebit = 0;
@@ -369,7 +350,6 @@ export async function trialBalance(req: Request): Promise<ControllerResult> {
 
 /** Profit & loss: income and expense accounts for period. */
 export async function profitLoss(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -389,14 +369,12 @@ export async function profitLoss(req: Request): Promise<ControllerResult> {
       AND je.status = 'posted'
       AND je.entry_date >= $1::date
       AND je.entry_date <= $2::date
-      AND ($3::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $3::uuid)
     WHERE a.type IN ('income', 'expense')
-      AND ($3::uuid IS NULL OR a.branch_id IS NULL OR a.branch_id = $3::uuid)
     GROUP BY a.id, a.code, a.name, a.type
     HAVING COALESCE(SUM(jl.debit), 0) != 0 OR COALESCE(SUM(jl.credit), 0) != 0
     ORDER BY a.type DESC, a.code
     `,
-    [dateFrom, dateTo, branchId || null]
+    [dateFrom, dateTo]
   );
 
   let incomeNet = 0;
@@ -423,7 +401,6 @@ export async function profitLoss(req: Request): Promise<ControllerResult> {
 
 /** Balance sheet: assets, liabilities, equity as of date (cumulative posted journals). */
 export async function balanceSheet(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const asOfDate = ((req.query.asOfDate as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
   const rows = await dataSource.query(
@@ -441,14 +418,12 @@ export async function balanceSheet(req: Request): Promise<ControllerResult> {
       AND je.deleted_at IS NULL
       AND je.status = 'posted'
       AND je.entry_date <= $1::date
-      AND ($2::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $2::uuid)
     WHERE a.type IN ('asset', 'liability', 'equity')
-      AND ($2::uuid IS NULL OR a.branch_id IS NULL OR a.branch_id = $2::uuid)
     GROUP BY a.id, a.code, a.name, a.type
     HAVING COALESCE(SUM(jl.debit), 0) != 0 OR COALESCE(SUM(jl.credit), 0) != 0
     ORDER BY a.type, a.code
     `,
-    [asOfDate, branchId || null]
+    [asOfDate]
   );
 
   let assets = 0;
@@ -476,7 +451,6 @@ export async function balanceSheet(req: Request): Promise<ControllerResult> {
 
 /** Posted sales invoice lines with tax (audit trail). */
 export async function taxCollected(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const taxProfileId = (req.query.taxProfileId as string)?.trim() || null;
@@ -510,10 +484,9 @@ export async function taxCollected(req: Request): Promise<ControllerResult> {
       AND i.invoice_date >= $1::date
       AND i.invoice_date <= $2::date
       AND ($3::uuid IS NULL OR il.tax_profile_id = $3::uuid)
-      AND ($4::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $4::uuid)
     ORDER BY i.invoice_date, i.id, il.id
     `,
-    [dateFrom, dateTo, taxProfileId, branchId || null]
+    [dateFrom, dateTo, taxProfileId]
   );
 
   let totalTax = 0;
@@ -529,7 +502,6 @@ export async function taxCollected(req: Request): Promise<ControllerResult> {
 
 /** Posted supplier invoice lines with tax (audit trail). */
 export async function taxPaid(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const taxProfileId = (req.query.taxProfileId as string)?.trim() || null;
@@ -564,10 +536,9 @@ export async function taxPaid(req: Request): Promise<ControllerResult> {
       AND si.invoice_date >= $1::date
       AND si.invoice_date <= $2::date
       AND ($3::uuid IS NULL OR sil.tax_profile_id = $3::uuid)
-      AND ($4::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $4::uuid)
     ORDER BY si.invoice_date, si.id, sil.id
     `,
-    [dateFrom, dateTo, taxProfileId, branchId || null]
+    [dateFrom, dateTo, taxProfileId]
   );
 
   let totalTax = 0;
@@ -583,7 +554,6 @@ export async function taxPaid(req: Request): Promise<ControllerResult> {
 
 /** Collected vs paid tax by tax profile (respects caller permissions per side). */
 export async function taxSummary(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10));
   const p = req.auth?.permissions ?? [];
@@ -617,11 +587,10 @@ export async function taxSummary(req: Request): Promise<ControllerResult> {
       WHERE i.status = 'posted'
         AND i.invoice_date >= $1::date
         AND i.invoice_date <= $2::date
-        AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
       GROUP BY il.tax_profile_id, tp.name, tp.rate, tp.is_inclusive
       ORDER BY "taxProfileName"
       `,
-      [dateFrom, dateTo, branchId || null]
+      [dateFrom, dateTo]
     );
   }
 
@@ -640,11 +609,10 @@ export async function taxSummary(req: Request): Promise<ControllerResult> {
       WHERE si.status = 'posted'
         AND si.invoice_date >= $1::date
         AND si.invoice_date <= $2::date
-        AND ($3::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $3::uuid)
       GROUP BY sil.tax_profile_id, tp.name, tp.rate, tp.is_inclusive
       ORDER BY "taxProfileName"
       `,
-      [dateFrom, dateTo, branchId || null]
+      [dateFrom, dateTo]
     );
   }
 
@@ -713,18 +681,16 @@ export async function taxSummary(req: Request): Promise<ControllerResult> {
     const cnt = await dataSource.query(
       `SELECT COUNT(DISTINCT i.id)::text AS c FROM invoices i
        WHERE i.status = 'posted' AND i.deleted_at IS NULL
-       AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
-       AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)`,
-      [dateFrom, dateTo, branchId || null]
+       AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date`,
+      [dateFrom, dateTo]
     );
     collectedInvoiceCount = cnt[0]?.c ?? '0';
   }
   if (canPurch) {
     const cnt = await dataSource.query(
       `SELECT COUNT(DISTINCT si.id)::text AS c FROM supplier_invoices si
-       WHERE si.status = 'posted' AND si.invoice_date >= $1::date AND si.invoice_date <= $2::date
-       AND ($3::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $3::uuid)`,
-      [dateFrom, dateTo, branchId || null]
+       WHERE si.status = 'posted' AND si.invoice_date >= $1::date AND si.invoice_date <= $2::date`,
+      [dateFrom, dateTo]
     );
     paidInvoiceCount = cnt[0]?.c ?? '0';
   }
@@ -747,7 +713,6 @@ export async function taxSummary(req: Request): Promise<ControllerResult> {
 
 /** Posted sales by salesperson (invoice header). */
 export async function salesBySalesperson(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -771,11 +736,10 @@ export async function salesBySalesperson(req: Request): Promise<ControllerResult
       AND i.deleted_at IS NULL
       AND i.invoice_date >= $1::date
       AND i.invoice_date <= $2::date
-      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
     GROUP BY i.salesperson_id, sp.name, sp.code
     ORDER BY SUM(i.total::numeric) DESC NULLS LAST
     `,
-    [dateFrom, dateTo, branchId || null]
+    [dateFrom, dateTo]
   );
 
   let grandTotal = 0;
@@ -798,7 +762,6 @@ export async function salesBySalesperson(req: Request): Promise<ControllerResult
 
 /** Posted sales by customer default delivery route. */
 export async function salesByRoute(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
@@ -823,11 +786,10 @@ export async function salesByRoute(req: Request): Promise<ControllerResult> {
       AND i.deleted_at IS NULL
       AND i.invoice_date >= $1::date
       AND i.invoice_date <= $2::date
-      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
     GROUP BY dr.id, dr.name, dr.code
     ORDER BY SUM(i.total::numeric) DESC NULLS LAST
     `,
-    [dateFrom, dateTo, branchId || null]
+    [dateFrom, dateTo]
   );
 
   let grandTotal = 0;
@@ -850,7 +812,6 @@ export async function salesByRoute(req: Request): Promise<ControllerResult> {
 
 /** On-hand stock with no sales in the lookback window (dead stock). */
 export async function deadStock(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const rawDays = parseInt(String(req.query.daysWithoutSale || '90'), 10);
   const days = Number.isFinite(rawDays) ? Math.min(Math.max(rawDays, 1), 3650) : 90;
@@ -872,8 +833,6 @@ export async function deadStock(req: Request): Promise<ControllerResult> {
     INNER JOIN products p ON p.id = sb.product_id AND p.deleted_at IS NULL
     INNER JOIN warehouses w ON w.id = sb.warehouse_id
     WHERE sb.quantity::numeric > 0.00001
-      AND ($1::uuid IS NULL OR p.branch_id IS NULL OR p.branch_id = $1::uuid)
-      AND ($1::uuid IS NULL OR w.branch_id IS NULL OR w.branch_id = $1::uuid)
       AND NOT EXISTS (
         SELECT 1 FROM inventory_movements im
         WHERE im.product_id = sb.product_id
@@ -884,7 +843,7 @@ export async function deadStock(req: Request): Promise<ControllerResult> {
       )
     ORDER BY p.name, w.name
     `,
-    [branchId || null, fromStr, asOf]
+    [null, fromStr, asOf]
   );
 
   return ok({
@@ -895,7 +854,6 @@ export async function deadStock(req: Request): Promise<ControllerResult> {
 
 /** Lowest quantity sold in period (slow movers). */
 export async function slowMoving(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const rawLimit = parseInt(String(req.query.limit || '50'), 10);
@@ -915,14 +873,12 @@ export async function slowMoving(req: Request): Promise<ControllerResult> {
       AND i.status = 'posted'
       AND i.invoice_date >= $1::date
       AND i.invoice_date <= $2::date
-      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
     WHERE p.deleted_at IS NULL
-      AND ($3::uuid IS NULL OR p.branch_id IS NULL OR p.branch_id = $3::uuid)
     GROUP BY p.id, p.sku, p.name
     ORDER BY COALESCE(SUM(il.quantity::numeric), 0) ASC NULLS FIRST, p.name ASC
     LIMIT $4
     `,
-    [dateFrom, dateTo, branchId || null, limit]
+    [dateFrom, dateTo, limit]
   );
 
   return ok({ data: rows, meta: { dateFrom, dateTo, limit } });
@@ -935,11 +891,8 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
     if (!canSales && !canPurch) {
       throw new HttpError(403, { error: 'Forbidden', message: 'sales:read or purchases.reports:read required' });
     }
-    const branchId = undefined;
     const today = new Date().toISOString().slice(0, 10);
     const monthStart = `${today.slice(0, 7)}-01`;
-    const bid = branchId || null;
-
     let salesToday = '0.0000';
     let salesMtd = '0.0000';
     let purchasesToday = '0.0000';
@@ -953,9 +906,8 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
         FROM invoices i
         WHERE i.status = 'posted' AND i.deleted_at IS NULL
           AND i.invoice_date = $1::date
-          AND ($2::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $2::uuid)
         `,
-        [today, bid]
+        [today]
       );
       salesToday = s1[0]?.t ?? '0';
       invoicesPostedToday = Number(s1[0]?.c ?? 0);
@@ -965,9 +917,8 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
         FROM invoices i
         WHERE i.status = 'posted' AND i.deleted_at IS NULL
           AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
-          AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
         `,
-        [monthStart, today, bid]
+        [monthStart, today]
       );
       salesMtd = s2[0]?.t ?? '0';
     }
@@ -979,9 +930,8 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
         FROM supplier_invoices si
         WHERE si.status = 'posted'
           AND si.invoice_date = $1::date
-          AND ($2::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $2::uuid)
         `,
-        [today, bid]
+        [today]
       );
       purchasesToday = p1[0]?.t ?? '0';
       const p2 = await dataSource.query(
@@ -990,9 +940,8 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
         FROM supplier_invoices si
         WHERE si.status = 'posted'
           AND si.invoice_date >= $1::date AND si.invoice_date <= $2::date
-          AND ($3::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $3::uuid)
         `,
-        [monthStart, today, bid]
+        [monthStart, today]
       );
       purchasesMtd = p2[0]?.t ?? '0';
     }
@@ -1015,9 +964,8 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
         ), 0)::text AS t
         FROM invoices i
         WHERE i.status = 'posted' AND i.deleted_at IS NULL AND i.payment_type = 'credit'
-          AND ($1::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $1::uuid)
         `,
-        [bid]
+        []
       );
       arOpen = ar[0]?.t ?? '0';
 
@@ -1028,9 +976,8 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
         SELECT i.due_date AS "dueDate", (i.total::numeric - COALESCE((SELECT SUM(ra.amount) FROM receipt_allocations ra WHERE ra.invoice_id = i.id), 0))::text AS "openAmount"
         FROM invoices i
         WHERE i.status = 'posted' AND i.deleted_at IS NULL AND i.payment_type = 'credit'
-          AND ($1::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $1::uuid)
         `,
-        [bid]
+        []
       );
       const b = {
         arCurrent: 0,
@@ -1067,9 +1014,8 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
         ), 0)::text AS t
         FROM supplier_invoices si
         WHERE si.status = 'posted'
-          AND ($1::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $1::uuid)
         `,
-        [bid]
+        []
       );
       apOpen = ap[0]?.t ?? '0';
     }
@@ -1096,20 +1042,16 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
 /** Posted supplier purchases vs posted sales totals for a range. */
 export async function purchaseVsSales(req: Request): Promise<ControllerResult> {
   const canPurch = hasPerm(req, 'purchases.reports:read');
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const bid = branchId || null;
-
   const sales = await dataSource.query(
     `
     SELECT COALESCE(SUM(i.total::numeric), 0)::text AS t, COUNT(*)::int AS c
     FROM invoices i
     WHERE i.status = 'posted' AND i.deleted_at IS NULL
       AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
-      AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
     `,
-    [dateFrom, dateTo, bid]
+    [dateFrom, dateTo]
   );
 
   let purchasesTotal = '0.0000';
@@ -1121,9 +1063,8 @@ export async function purchaseVsSales(req: Request): Promise<ControllerResult> {
       FROM supplier_invoices si
       WHERE si.status = 'posted'
         AND si.invoice_date >= $1::date AND si.invoice_date <= $2::date
-        AND ($3::uuid IS NULL OR si.branch_id IS NULL OR si.branch_id = $3::uuid)
       `,
-      [dateFrom, dateTo, bid]
+      [dateFrom, dateTo]
     );
     purchasesTotal = p[0]?.t ?? '0';
     purchaseCount = Number(p[0]?.c ?? 0);
@@ -1145,11 +1086,8 @@ export async function purchaseVsSales(req: Request): Promise<ControllerResult> {
 
 /** Layer COGS vs line revenue by product (posted sales in range). */
 export async function profitByProduct(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const bid = branchId || null;
-
   const rows = await dataSource.query(
     `
     WITH rev AS (
@@ -1159,7 +1097,6 @@ export async function profitByProduct(req: Request): Promise<ControllerResult> {
       INNER JOIN invoices i ON i.id = il.invoice_id AND i.deleted_at IS NULL
       WHERE i.status = 'posted'
         AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
-        AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
       GROUP BY il.product_id
     ),
     cog AS (
@@ -1168,7 +1105,6 @@ export async function profitByProduct(req: Request): Promise<ControllerResult> {
       FROM inventory_movements im
       WHERE im.ref_type = 'sale'
         AND im.movement_date >= $1::date AND im.movement_date <= $2::date
-        AND ($3::uuid IS NULL OR im.branch_id IS NULL OR im.branch_id = $3::uuid)
       GROUP BY im.product_id
     )
     SELECT
@@ -1183,10 +1119,9 @@ export async function profitByProduct(req: Request): Promise<ControllerResult> {
     LEFT JOIN cog ON cog.pid = p.id
     WHERE p.deleted_at IS NULL
       AND (COALESCE(rev.revenue, 0) > 0.00001 OR COALESCE(cog.cogs, 0) > 0.00001)
-      AND ($3::uuid IS NULL OR p.branch_id IS NULL OR p.branch_id = $3::uuid)
     ORDER BY (COALESCE(rev.revenue, 0) - COALESCE(cog.cogs, 0)) DESC NULLS LAST
     `,
-    [dateFrom, dateTo, bid]
+    [dateFrom, dateTo]
   );
 
   return ok({ data: rows, meta: { dateFrom, dateTo } });
@@ -1194,11 +1129,8 @@ export async function profitByProduct(req: Request): Promise<ControllerResult> {
 
 /** Layer COGS vs revenue by customer. */
 export async function profitByCustomer(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const bid = branchId || null;
-
   const rows = await dataSource.query(
     `
     WITH rev AS (
@@ -1208,7 +1140,6 @@ export async function profitByCustomer(req: Request): Promise<ControllerResult> 
       INNER JOIN invoices i ON i.id = il.invoice_id AND i.deleted_at IS NULL
       WHERE i.status = 'posted'
         AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
-        AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
       GROUP BY i.customer_id
     ),
     cog AS (
@@ -1219,7 +1150,6 @@ export async function profitByCustomer(req: Request): Promise<ControllerResult> 
       WHERE im.ref_type = 'sale'
         AND i.status = 'posted'
         AND i.invoice_date >= $1::date AND i.invoice_date <= $2::date
-        AND ($3::uuid IS NULL OR i.branch_id IS NULL OR i.branch_id = $3::uuid)
       GROUP BY i.customer_id
     )
     SELECT
@@ -1233,10 +1163,9 @@ export async function profitByCustomer(req: Request): Promise<ControllerResult> 
     LEFT JOIN cog ON cog.cid = c.id
     WHERE c.deleted_at IS NULL
       AND (COALESCE(rev.revenue, 0) > 0.00001 OR COALESCE(cog.cogs, 0) > 0.00001)
-      AND ($3::uuid IS NULL OR c.branch_id IS NULL OR c.branch_id = $3::uuid)
     ORDER BY (COALESCE(rev.revenue, 0) - COALESCE(cog.cogs, 0)) DESC NULLS LAST
     `,
-    [dateFrom, dateTo, bid]
+    [dateFrom, dateTo]
   );
 
   return ok({ data: rows, meta: { dateFrom, dateTo } });
@@ -1244,11 +1173,8 @@ export async function profitByCustomer(req: Request): Promise<ControllerResult> 
 
 /** Net change on default cash & bank GL accounts (posted journals). */
 export async function cashFlow(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const bid = branchId || null;
-
   const { cashId, bankId } = await getCompanyAccountingSettings(dataSource.manager);
 
   const byDay = await dataSource.query(
@@ -1262,12 +1188,11 @@ export async function cashFlow(req: Request): Promise<ControllerResult> {
       AND je.status = 'posted'
       AND je.entry_date >= $1::date
       AND je.entry_date <= $2::date
-      AND ($3::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $3::uuid)
     WHERE jl.account_id = ANY($4::uuid[])
     GROUP BY je.entry_date
     ORDER BY je.entry_date
     `,
-    [dateFrom, dateTo, bid, [cashId, bankId]]
+    [dateFrom, dateTo, [cashId, bankId]]
   );
 
   const total = await dataSource.query(
@@ -1279,10 +1204,9 @@ export async function cashFlow(req: Request): Promise<ControllerResult> {
       AND je.status = 'posted'
       AND je.entry_date >= $1::date
       AND je.entry_date <= $2::date
-      AND ($3::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $3::uuid)
     WHERE jl.account_id = ANY($4::uuid[])
     `,
-    [dateFrom, dateTo, bid, [cashId, bankId]]
+    [dateFrom, dateTo, [cashId, bankId]]
   );
 
   return ok({

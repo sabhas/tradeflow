@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
@@ -50,15 +49,12 @@ export async function getPurchaseOrderSnapshotForAudit(id: string) {
 }
 
 export async function listPurchaseOrders(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = PurchaseOrder
     .createQueryBuilder('po')
     .leftJoinAndSelect('po.supplier', 's')
     .leftJoinAndSelect('po.warehouse', 'w')
     .where('1=1');
-
-  if (branchId) qb.andWhere('(po.branch_id IS NULL OR po.branch_id = :bid)', { bid: branchId });
   if (req.query.supplierId) qb.andWhere('po.supplier_id = :sid', { sid: req.query.supplierId });
   if (req.query.status) qb.andWhere('po.status = :st', { st: req.query.status });
 
@@ -114,11 +110,10 @@ export async function getPurchaseOrder(req: Request): Promise<ControllerResult> 
 
 export async function createPurchaseOrder(req: Request, body: CreatePurchaseOrderInput): Promise<ControllerResult> {
   const b = body;
-  const branchId = undefined ?? req.user?.branchId ?? undefined;
   const userId = req.auth?.userId;
 
   try {
-    await assertWarehouseInScope(b.warehouseId, branchId);
+    await assertWarehouseInScope(b.warehouseId, undefined);
   } catch (e) {
     throw new HttpError(400, { error: e instanceof Error ? e.message : 'Bad request' });
   }
@@ -126,7 +121,7 @@ export async function createPurchaseOrder(req: Request, body: CreatePurchaseOrde
   try {
     const row = await runInTransaction(async (manager) => {
       for (const line of b.lines) {
-        await assertProductInScope(line.productId, branchId);
+        await assertProductInScope(line.productId, undefined);
       }
       const totals = await computePurchaseDocumentTotals(
         manager,
@@ -186,7 +181,6 @@ export async function createPurchaseOrder(req: Request, body: CreatePurchaseOrde
 
 export async function updatePurchaseOrder(req: Request, body: UpdatePurchaseOrderInput): Promise<ControllerResult> {
   const b = body;
-  const branchId = undefined ?? req.user?.branchId ?? undefined;
   try {
     const row = await runInTransaction(async (manager) => {
       const po = await manager.findOne(PurchaseOrder, {
@@ -215,8 +209,8 @@ export async function updatePurchaseOrder(req: Request, body: UpdatePurchaseOrde
         throw new HttpError(400, { error: 'Sent orders can only update notes, dates, or header discount' });
       }
 
-      if (b.warehouseId !== undefined) await assertWarehouseInScope(b.warehouseId, branchId);
-      else await assertWarehouseInScope(po.warehouseId, branchId);
+      if (b.warehouseId !== undefined) await assertWarehouseInScope(b.warehouseId, undefined);
+      else await assertWarehouseInScope(po.warehouseId, undefined);
 
       const nextSupplier = b.supplierId ?? po.supplierId;
       if (b.orderDate !== undefined) po.orderDate = b.orderDate.slice(0, 10);
@@ -224,11 +218,10 @@ export async function updatePurchaseOrder(req: Request, body: UpdatePurchaseOrde
       if (b.supplierId !== undefined) po.supplierId = b.supplierId;
       if (b.warehouseId !== undefined) po.warehouseId = b.warehouseId;
       if (b.notes !== undefined) po.notes = b.notes ?? undefined;
-      if (undefined !== undefined) undefined = undefined ?? undefined;
-
+      
       if (linesIn) {
         for (const line of linesIn) {
-          await assertProductInScope(line.productId, branchId);
+          await assertProductInScope(line.productId, undefined);
         }
         const totals = await computePurchaseDocumentTotals(
           manager,

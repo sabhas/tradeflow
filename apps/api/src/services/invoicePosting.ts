@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { EntityManager, IsNull } from 'typeorm';
 import { Customer, InventoryMovement, Invoice, SalesOrderLine } from '@tradeflow/db';
 import { applyMovement, assertProductInScope, assertWarehouseInScope, runInTransaction } from './inventoryService';
@@ -24,9 +23,9 @@ export async function postInvoice(
 
     await assertDateNotPeriodLocked(manager, inv.invoiceDate);
 
-    await assertWarehouseInScope(inv.warehouseId, branchId);
+    await assertWarehouseInScope(inv.warehouseId, undefined);
     for (const line of inv.lines) {
-      await assertProductInScope(line.productId, branchId);
+      await assertProductInScope(line.productId, undefined);
     }
 
     if (inv.paymentType === 'credit') {

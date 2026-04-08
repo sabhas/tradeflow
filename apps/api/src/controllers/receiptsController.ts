@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { createReceiptSchema } from '@tradeflow/shared';
@@ -33,14 +32,12 @@ function serialize(r: Receipt, allocations?: ReceiptAllocation[]) {
 }
 
 export async function listReceipts(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = Receipt
     .createQueryBuilder('r')
     .orderBy('r.receipt_date', 'DESC')
     .take(limit)
     .skip(offset);
-  if (branchId) qb.andWhere('(r.branch_id IS NULL OR r.branch_id = :bid)', { bid: branchId });
   if (req.query.customerId) qb.andWhere('r.customer_id = :cid', { cid: req.query.customerId });
   if (req.query.dateFrom) qb.andWhere('r.receipt_date >= :df', { df: req.query.dateFrom });
   if (req.query.dateTo) qb.andWhere('r.receipt_date <= :dt', { dt: req.query.dateTo });
@@ -65,9 +62,6 @@ export async function createReceipt(req: Request, body: CreateReceiptInput): Pro
   if (Math.abs(allocSum - parseFloat(body.amount)) > 0.0001) {
     throw new HttpError(400, { error: 'Allocations must sum to receipt amount' });
   }
-
-  const branchId = undefined;
-
   try {
     const saved = await runInTransaction(async (manager) => {
       await validateReceiptAllocations(manager, body.customerId, body.allocations);

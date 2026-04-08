@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Quotation, QuotationLine, SalesOrder, SalesOrderLine } from '@tradeflow/db';
@@ -41,7 +40,6 @@ export function serializeQuotation(q: Quotation, lines?: QuotationLine[]) {
 }
 
 export async function listQuotations(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = Quotation
     .createQueryBuilder('q')
@@ -49,7 +47,6 @@ export async function listQuotations(req: Request): Promise<ControllerResult> {
     .addOrderBy('q.created_at', 'DESC')
     .take(limit)
     .skip(offset);
-  if (branchId) qb.andWhere('(q.branch_id IS NULL OR q.branch_id = :bid)', { bid: branchId });
   if (req.query.customerId) qb.andWhere('q.customer_id = :cid', { cid: req.query.customerId });
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((q) => serializeQuotation(q)), meta: { total, limit, offset } });
@@ -131,8 +128,7 @@ export async function updateQuotation(req: Request, body: UpdateQuotationInput):
       if (b.quotationDate !== undefined) q.quotationDate = b.quotationDate.slice(0, 10);
       if (b.validUntil !== undefined) q.validUntil = b.validUntil?.slice(0, 10) ?? undefined;
       if (b.notes !== undefined) q.notes = b.notes ?? undefined;
-      if (undefined !== undefined) undefined = undefined ?? undefined;
-
+      
       if (b.lines) {
         await manager.delete(QuotationLine, { quotationId: q.id });
         const totals = await computeSalesDocumentTotals(

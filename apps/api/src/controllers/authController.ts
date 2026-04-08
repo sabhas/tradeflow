@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';

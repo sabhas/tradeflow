@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { In, IsNull } from 'typeorm';
 import type { z } from 'zod';
@@ -76,14 +75,12 @@ function serializeNote(
 }
 
 export async function listDeliveryNotes(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = DeliveryNote
     .createQueryBuilder('n')
     .orderBy('n.created_at', 'DESC')
     .take(limit)
     .skip(offset);
-  if (branchId) qb.andWhere('(n.branch_id IS NULL OR n.branch_id = :bid)', { bid: branchId });
   if (req.query.status) qb.andWhere('n.status = :st', { st: req.query.status });
   if (req.query.dateFrom) qb.andWhere('(n.delivery_date IS NULL OR n.delivery_date >= :df)', {
     df: req.query.dateFrom,
@@ -287,8 +284,7 @@ export async function updateDeliveryNote(req: Request, body: UpdateDeliveryNoteI
   if (b.deliveryDate !== undefined) row.deliveryDate = b.deliveryDate?.slice(0, 10) ?? undefined;
   if (b.status !== undefined) row.status = b.status;
   if (b.warehouseId !== undefined) row.warehouseId = b.warehouseId ?? undefined;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  if (b.coldChainRequired !== undefined) row.coldChainRequired = b.coldChainRequired;
+    if (b.coldChainRequired !== undefined) row.coldChainRequired = b.coldChainRequired;
   if (b.controlledDeliveryRequired !== undefined) row.controlledDeliveryRequired = b.controlledDeliveryRequired;
   if (b.dispatchComplianceNote !== undefined) row.dispatchComplianceNote = b.dispatchComplianceNote ?? undefined;
   if (b.deliveryComplianceNote !== undefined) row.deliveryComplianceNote = b.deliveryComplianceNote ?? undefined;

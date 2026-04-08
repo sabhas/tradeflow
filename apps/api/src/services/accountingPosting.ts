@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { EntityManager } from 'typeorm';
 import { Account, JournalEntry, JournalLine } from '@tradeflow/db';
 import { resolveLiquidAccountId } from './companySettings';
@@ -17,7 +16,6 @@ const ACC = {
 async function accountIdByCode(manager: EntityManager, code: string): Promise<string> {
   const row = await manager
     .createQueryBuilder(Account, 'a')
-    .where('a.code = :code AND a.branch_id IS NULL', { code })
     .getOne();
   if (!row) throw new Error(`System account ${code} not found. Run migrations.`);
   return row.id;

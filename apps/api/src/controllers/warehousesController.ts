@@ -1,7 +1,5 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { IsNull } from 'typeorm';
 import { createWarehouseSchema, updateWarehouseSchema } from '@tradeflow/shared';
 import { Warehouse } from '@tradeflow/db';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
@@ -25,12 +23,6 @@ async function ensureDefaultWarehouse() {
   const repo = Warehouse.getRepository();
   const count = await repo.count();
   if (count > 0) return;
-  let branch = await Branch.findOne({ where: { code: 'MAIN' } });
-  if (!branch) {
-    branch = await Branch.save(
-      Branch.create({ name: 'Main', code: 'MAIN' })
-    );
-  }
   await repo.save(
     repo.create({
       name: 'Main',
@@ -47,7 +39,6 @@ export async function getWarehouseSnapshotForAudit(id: string) {
 
 export async function listWarehouses(req: Request): Promise<ControllerResult> {
   await ensureDefaultWarehouse();
-  const branchId = undefined;
   const rows = await Warehouse.find({
     order: { name: 'ASC' },
   });
@@ -92,7 +83,6 @@ export async function updateWarehouse(req: Request, body: UpdateWarehouseInput):
   }
   if (body.name !== undefined) row.name = body.name;
   if (body.code !== undefined) row.code = body.code;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
   if (body.isDefault !== undefined) row.isDefault = body.isDefault;
   await repo.save(row);
   return ok({ data: serializeWarehouse(row) });

@@ -1,6 +1,4 @@
-// @ts-nocheck
 import type { Request } from 'express';
-import { Brackets } from 'typeorm';
 import type { z } from 'zod';
 import { createAccountSchema, updateAccountSchema } from '@tradeflow/shared';
 import { dataSource, Account, JournalEntry, JournalLine } from '@tradeflow/db';
@@ -34,17 +32,9 @@ async function accountHasPostedLines(accountId: string): Promise<boolean> {
 }
 
 export async function listAccounts(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const format = (req.query.format as string) || 'flat';
 
   const qb = Account.createQueryBuilder('a').orderBy('a.code', 'ASC');
-  if (branchId) {
-    qb.andWhere(
-      new Brackets((w) => {
-        w.where('a.branch_id IS NULL').orWhere('a.branch_id = :bid', { bid: branchId });
-      })
-    );
-  }
 
   const rows = await qb.getMany();
 
@@ -69,7 +59,6 @@ export async function listAccounts(req: Request): Promise<ControllerResult> {
 }
 
 export async function getAccountBalance(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
   const acc = await Account.findOne({ where: { id: req.params.id } });
@@ -88,9 +77,8 @@ export async function getAccountBalance(req: Request): Promise<ControllerResult>
     WHERE jl.account_id = $1
       AND je.status = 'posted'
       AND je.entry_date <= $2::date
-      AND ($3::uuid IS NULL OR je.branch_id IS NULL OR je.branch_id = $3::uuid)
     `,
-    [req.params.id, asOf, branchId || null]
+    [req.params.id, asOf]
   );
 
   const debit = row[0]?.debit ?? '0';
@@ -108,28 +96,17 @@ export async function getAccountBalance(req: Request): Promise<ControllerResult>
 }
 
 export async function createAccount(req: Request, body: CreateAccountInput): Promise<ControllerResult> {
-  const branchId = undefined;
-  const effectiveBranch = undefined ?? branchId ?? undefined;
-
   try {
     if (body.parentId) {
       const parent = await Account.findOne({ where: { id: body.parentId } });
       if (!parent) {
         throw new HttpError(400, { error: 'Parent account not found' });
       }
-      if (undefined && effectiveBranch && undefined !== effectiveBranch) {
-        throw new HttpError(400, { error: 'Parent branch mismatch' });
-      }
     }
 
     const codeQb = Account
       .createQueryBuilder('a')
       .where('a.code = :code', { code: body.code });
-    if (effectiveBranch) {
-      codeQb.andWhere('a.branch_id = :bid', { bid: effectiveBranch });
-    } else {
-      codeQb.andWhere('a.branch_id IS NULL');
-    }
     if (await codeQb.getOne()) {
       throw new HttpError(409, { error: 'Account code already exists' });
     }

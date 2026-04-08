@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { createInvoiceTemplateSchema, updateInvoiceTemplateSchema } from '@tradeflow/shared';
@@ -20,11 +19,7 @@ function serialize(t: InvoiceTemplate) {
 }
 
 export async function listInvoiceTemplates(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const qb = InvoiceTemplate.createQueryBuilder('t').orderBy('t.name', 'ASC');
-  if (branchId) {
-    qb.andWhere('(t.branch_id IS NULL OR t.branch_id = :bid)', { bid: branchId });
-  }
   const rows = await qb.getMany();
   return ok({ data: rows.map(serialize) });
 }
@@ -59,7 +54,6 @@ export async function updateInvoiceTemplate(
   }
   if (body.name !== undefined) row.name = body.name.trim();
   if (body.config !== undefined) row.config = { ...row.config, ...body.config };
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await InvoiceTemplate.save(row);
+    await InvoiceTemplate.save(row);
   return ok({ data: serialize(row) });
 }

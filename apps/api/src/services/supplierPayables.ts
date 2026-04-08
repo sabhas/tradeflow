@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { EntityManager } from 'typeorm';
 import { SupplierInvoice } from '@tradeflow/db';
 import { moneyCmp } from '../utils/money';

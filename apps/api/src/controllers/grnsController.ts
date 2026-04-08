@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Grn, GrnLine, PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
@@ -43,14 +42,12 @@ function serializeGrn(g: Grn, lines?: GrnLine[]) {
 }
 
 export async function listGrns(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = Grn
     .createQueryBuilder('g')
     .leftJoinAndSelect('g.supplier', 's')
     .leftJoinAndSelect('g.warehouse', 'w')
     .where('1=1');
-  if (branchId) qb.andWhere('(g.branch_id IS NULL OR g.branch_id = :bid)', { bid: branchId });
   if (req.query.supplierId) qb.andWhere('g.supplier_id = :sid', { sid: req.query.supplierId });
   if (req.query.status) qb.andWhere('g.status = :st', { st: req.query.status });
   qb.orderBy('g.grn_date', 'DESC').addOrderBy('g.created_at', 'DESC').take(limit).skip(offset);
@@ -71,12 +68,11 @@ export async function getGrn(req: Request): Promise<ControllerResult> {
 
 export async function createGrn(req: Request, body: CreateGrnInput): Promise<ControllerResult> {
   const b = body;
-  const branchId = undefined ?? req.user?.branchId ?? undefined;
   const userId = req.auth?.userId;
   try {
-    await assertWarehouseInScope(b.warehouseId, branchId);
+    await assertWarehouseInScope(b.warehouseId, undefined);
     for (const line of b.lines) {
-      await assertProductInScope(line.productId, branchId);
+      await assertProductInScope(line.productId, undefined);
     }
   } catch (e) {
     throw new HttpError(400, { error: e instanceof Error ? e.message : 'Bad request' });
@@ -158,8 +154,8 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
       await assertDateNotPeriodLocked(manager, grn.grnDate);
 
       for (const line of grn.lines ?? []) {
-        await assertProductInScope(line.productId, undefined ?? undefined);
-        await assertWarehouseInScope(grn.warehouseId, undefined ?? undefined);
+        await assertProductInScope(line.productId, undefined);
+        await assertWarehouseInScope(grn.warehouseId, undefined);
         const qty = parseDecimalStrict(line.quantity);
         await applyMovement(manager, {
           productId: line.productId,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Area, Customer, Town } from '@tradeflow/db';
@@ -21,19 +20,7 @@ export function serializeArea(a: Area) {
 }
 
 export async function listAreas(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const qb = Area.createQueryBuilder('a').where('a.deleted_at IS NULL');
-  if (branchId) {
-    qb.andWhere(
-      `EXISTS (
-        SELECT 1 FROM towns t
-        WHERE t.area_id = a.id
-          AND t.deleted_at IS NULL
-          AND (t.branch_id IS NULL OR t.branch_id = :bid)
-      )`,
-      { bid: branchId }
-    );
-  }
   qb.orderBy('a.name', 'ASC');
   const rows = await qb.getMany();
   return ok({ data: rows.map(serializeArea) });

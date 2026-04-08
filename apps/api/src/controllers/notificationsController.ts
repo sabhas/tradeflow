@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import { dataSource, UserNotification } from '@tradeflow/db';

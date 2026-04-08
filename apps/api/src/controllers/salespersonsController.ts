@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
@@ -21,7 +20,6 @@ function serialize(s: Salesperson) {
 }
 
 export async function listSalespersons(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const rows = await Salesperson.find({
     order: { name: 'ASC' },
   });
@@ -46,8 +44,7 @@ export async function updateSalesperson(req: Request, body: UpdateSalespersonInp
   }
   if (body.name !== undefined) row.name = body.name;
   if (body.code !== undefined) row.code = body.code;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await repo.save(row);
+    await repo.save(row);
   return ok({ data: serialize(row) });
 }
 

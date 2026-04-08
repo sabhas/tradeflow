@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { ApprovalRequest } from '@tradeflow/db';
 import { getPagination } from '../utils/pagination';
@@ -24,7 +23,6 @@ function serialize(a: ApprovalRequest) {
 }
 
 export async function listApprovalRequests(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const status = (req.query.status as string | undefined)?.trim() || 'pending';
   const { limit, offset } = getPagination(req);
 
@@ -34,10 +32,6 @@ export async function listApprovalRequests(req: Request): Promise<ControllerResu
     .orderBy('a.created_at', 'DESC')
     .take(limit)
     .skip(offset);
-
-  if (branchId) {
-    qb.andWhere('(a.branch_id IS NULL OR a.branch_id = :bid)', { bid: branchId });
-  }
   if (status !== 'all') {
     qb.andWhere('a.status = :st', { st: status });
   }

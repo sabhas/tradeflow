@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { EntityManager, IsNull } from 'typeorm';
 import type { z } from 'zod';
@@ -82,7 +81,6 @@ function normalizeLines(
 }
 
 export async function listJournalEntries(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const status = (req.query.status as string | undefined)?.trim();
   const dateFrom = (req.query.dateFrom as string | undefined)?.slice(0, 10);
@@ -95,10 +93,6 @@ export async function listJournalEntries(req: Request): Promise<ControllerResult
     .addOrderBy('je.created_at', 'DESC')
     .take(limit)
     .skip(offset);
-
-  if (branchId) {
-    qb.andWhere('(je.branch_id IS NULL OR je.branch_id = :bid)', { bid: branchId });
-  }
   if (status) qb.andWhere('je.status = :st', { st: status });
   if (dateFrom) qb.andWhere('je.entry_date >= :df', { df: dateFrom });
   if (dateTo) qb.andWhere('je.entry_date <= :dt', { dt: dateTo });
@@ -120,7 +114,6 @@ export async function getJournalEntry(req: Request): Promise<ControllerResult> {
 
 export async function createJournalEntry(req: Request, body: CreateJournalEntryInput): Promise<ControllerResult> {
   const b = body;
-  const branchId = undefined;
   try {
     const lines = normalizeLines(b.lines);
     assertBalanced(lines);
@@ -170,8 +163,7 @@ export async function updateJournalEntry(req: Request, body: UpdateJournalEntryI
       if (b.entryDate !== undefined) cur.entryDate = b.entryDate.slice(0, 10);
       if (b.reference !== undefined) cur.reference = b.reference ?? undefined;
       if (b.description !== undefined) cur.description = b.description ?? undefined;
-      if (undefined !== undefined) undefined = undefined ?? undefined;
-
+      
       if (b.lines) {
         const lines = normalizeLines(b.lines);
         assertBalanced(lines);

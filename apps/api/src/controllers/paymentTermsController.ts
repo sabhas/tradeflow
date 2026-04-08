@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
@@ -21,7 +20,6 @@ function serialize(p: PaymentTerms) {
 }
 
 export async function listPaymentTerms(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const rows = await PaymentTerms.find({
     order: { name: 'ASC' },
   });
@@ -46,8 +44,7 @@ export async function updatePaymentTerms(req: Request, body: UpdatePaymentTermsI
   }
   if (body.name !== undefined) row.name = body.name;
   if (body.netDays !== undefined) row.netDays = body.netDays;
-  if (undefined !== undefined) undefined = undefined ?? undefined;
-  await repo.save(row);
+    await repo.save(row);
   return ok({ data: serialize(row) });
 }
 

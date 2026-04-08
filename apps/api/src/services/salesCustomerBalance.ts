@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { EntityManager } from 'typeorm';
 import { moneySub } from '../utils/money';
 

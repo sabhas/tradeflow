@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { In } from 'typeorm';
 import type { z } from 'zod';
@@ -67,7 +66,6 @@ function serializeDeliveryRun(
 }
 
 export async function listDeliveryRuns(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = DeliveryRun
     .createQueryBuilder('r')
@@ -76,7 +74,6 @@ export async function listDeliveryRuns(req: Request): Promise<ControllerResult> 
     .addOrderBy('r.created_at', 'DESC')
     .take(limit)
     .skip(offset);
-  if (branchId) qb.andWhere('(r.branch_id IS NULL OR r.branch_id = :bid)', { bid: branchId });
   if (req.query.routeId) qb.andWhere('r.route_id = :rid', { rid: req.query.routeId });
   if (req.query.runDate) qb.andWhere('r.run_date = :rd', { rd: req.query.runDate });
   const [rows, total] = await qb.getManyAndCount();
@@ -227,8 +224,7 @@ export async function updateDeliveryRun(req: Request, body: UpdateDeliveryRunInp
     if (b.vehicleInfo !== undefined) row.vehicleInfo = b.vehicleInfo ?? undefined;
     if (b.driverSalespersonId !== undefined) row.driverSalespersonId = b.driverSalespersonId ?? undefined;
     if (b.status !== undefined) row.status = b.status;
-    if (undefined !== undefined) undefined = undefined ?? undefined;
-    if (b.coldChainRequired !== undefined) row.coldChainRequired = b.coldChainRequired;
+        if (b.coldChainRequired !== undefined) row.coldChainRequired = b.coldChainRequired;
     if (b.controlledDeliveryRequired !== undefined) row.controlledDeliveryRequired = b.controlledDeliveryRequired;
     if (b.dispatchComplianceNote !== undefined) row.dispatchComplianceNote = b.dispatchComplianceNote ?? undefined;
     if (b.deliveryComplianceNote !== undefined) row.deliveryComplianceNote = b.deliveryComplianceNote ?? undefined;

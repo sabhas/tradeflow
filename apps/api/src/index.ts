@@ -11,7 +11,6 @@ dotenv.config({ path: path.join(repoRoot, 'apps/api/.env') });
 import { BaseEntity } from 'typeorm';
 import { dataSource } from '@tradeflow/db';
 
-
 const PORT = process.env.PORT || 3001;
 
 async function main() {

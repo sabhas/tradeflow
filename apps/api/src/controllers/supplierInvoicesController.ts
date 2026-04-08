@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Request } from 'express';
 import { IsNull, type EntityManager } from 'typeorm';
 import type { z } from 'zod';
@@ -70,13 +69,11 @@ function serialize(inv: SupplierInvoice, lines?: SupplierInvoiceLine[]) {
 }
 
 export async function listSupplierInvoices(req: Request): Promise<ControllerResult> {
-  const branchId = undefined;
   const { limit, offset } = getPagination(req);
   const qb = SupplierInvoice
     .createQueryBuilder('si')
     .leftJoinAndSelect('si.supplier', 's')
     .where('1=1');
-  if (branchId) qb.andWhere('(si.branch_id IS NULL OR si.branch_id = :bid)', { bid: branchId });
   if (req.query.supplierId) qb.andWhere('si.supplier_id = :sid', { sid: req.query.supplierId });
   if (req.query.status) qb.andWhere('si.status = :st', { st: req.query.status });
   qb.orderBy('si.invoice_date', 'DESC').addOrderBy('si.created_at', 'DESC').take(limit).skip(offset);
@@ -117,7 +114,6 @@ export async function getSupplierInvoice(req: Request): Promise<ControllerResult
 
 export async function createSupplierInvoice(req: Request, body: CreateSupplierInvoiceInput): Promise<ControllerResult> {
   const b = body;
-  const branchId = undefined ?? req.user?.branchId ?? undefined;
   const userId = req.auth?.userId;
 
   try {
@@ -134,7 +130,7 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
       }
 
       for (const line of b.lines) {
-        await assertProductInScope(line.productId, branchId);
+        await assertProductInScope(line.productId, undefined);
       }
 
       const totals = await computePurchaseDocumentTotals(
@@ -205,7 +201,6 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
 
 export async function updateSupplierInvoice(req: Request, body: UpdateSupplierInvoiceInput): Promise<ControllerResult> {
   const b = body;
-  const branchId = undefined ?? req.user?.branchId ?? undefined;
   try {
     const row = await runInTransaction(async (manager) => {
       const inv = await manager.findOne(SupplierInvoice, {
@@ -221,8 +216,7 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
       if (b.purchaseOrderId !== undefined) inv.purchaseOrderId = b.purchaseOrderId ?? undefined;
       if (b.grnId !== undefined) inv.grnId = b.grnId ?? undefined;
       if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
-      if (undefined !== undefined) undefined = undefined ?? undefined;
-      const nextSupplier = b.supplierId ?? inv.supplierId;
+            const nextSupplier = b.supplierId ?? inv.supplierId;
 
       if (b.grnId !== undefined && inv.grnId) {
         const grn = await manager.findOne(Grn, { where: { id: inv.grnId } });
@@ -241,7 +235,7 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
 
       if (linesIn) {
         for (const line of linesIn) {
-          await assertProductInScope(line.productId, branchId);
+          await assertProductInScope(line.productId, undefined);
           if (inv.grnId && line.grnLineId) {
             const gl = await manager.findOne(GrnLine, { where: { id: line.grnLineId } });
             if (!gl || gl.grnId !== inv.grnId) throw new Error('GRN line does not belong to linked GRN');

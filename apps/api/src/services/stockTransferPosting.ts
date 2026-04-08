@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { EntityManager } from 'typeorm';
 import { InventoryMovement, StockTransfer, StockTransferLine } from '@tradeflow/db';
 import { decimalAdd, parseDecimalStrict } from '../utils/decimal';
@@ -18,9 +17,9 @@ export async function postStockTransferTx(
   const company = await loadCompanyForInventory(manager);
 
   for (const line of lines) {
-    const product = await assertProductInScope(line.productId, branchId);
-    await assertWarehouseInScope(transfer.fromWarehouseId, branchId);
-    await assertWarehouseInScope(transfer.toWarehouseId, branchId);
+    const product = await assertProductInScope(line.productId, undefined);
+    await assertWarehouseInScope(transfer.fromWarehouseId, undefined);
+    await assertWarehouseInScope(transfer.toWarehouseId, undefined);
 
     const qtyStr = parseDecimalStrict(line.quantity);
     if (parseFloat(qtyStr) <= 0) continue;
