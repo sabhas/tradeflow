@@ -14,6 +14,8 @@ import { PriceLevel } from './entities/PriceLevel';
 import { PaymentTerms } from './entities/PaymentTerms';
 import { TaxProfile } from './entities/TaxProfile';
 import { ProductCategory } from './entities/ProductCategory';
+import { Account } from './entities/Account';
+import { CompanySettings } from './entities/CompanySettings';
 
 const PERMISSIONS: Array<{ resource: string; action: string; code: string }> = [
   { resource: 'audit', action: 'read', code: 'audit:read' },
@@ -225,6 +227,49 @@ async function seed() {
         })
       );
       console.log('Created default product category');
+    }
+
+    const accountRepo = dataSource.getRepository(Account);
+    let cashAccount = await accountRepo.findOne({ where: { code: '1000' } });
+    if (!cashAccount) {
+      cashAccount = await accountRepo.save(
+        accountRepo.create({
+          code: '1000',
+          name: 'Cash in Hand',
+          type: 'asset',
+          isSystem: true,
+        })
+      );
+      console.log('Created default cash account (1000)');
+    }
+
+    let bankAccount = await accountRepo.findOne({ where: { code: '1010' } });
+    if (!bankAccount) {
+      bankAccount = await accountRepo.save(
+        accountRepo.create({
+          code: '1010',
+          name: 'Bank Account',
+          type: 'asset',
+          isSystem: true,
+        })
+      );
+      console.log('Created default bank account (1010)');
+    }
+
+    const companySettingsRepo = dataSource.getRepository(CompanySettings);
+    const existingCompanySettings = await companySettingsRepo.findOne({
+      where: {},
+      order: { id: 'ASC' },
+    });
+    if (!existingCompanySettings) {
+      await companySettingsRepo.save(
+        companySettingsRepo.create({
+          companyName: 'TradeFlow',
+          defaultCashAccountId: cashAccount.id,
+          defaultBankAccountId: bankAccount.id,
+        })
+      );
+      console.log('Created default company settings');
     }
 
     const existingUser = await userRepo.findOne({ where: { email: 'admin@tradeflow.local' } });

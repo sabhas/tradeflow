@@ -202,9 +202,6 @@ export function CustomersPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800">Customers</h1>
-          <p className="mt-1 text-slate-600">
-            Pharma distribution: registration, licensing, tax status, and structured town / area addresses.
-          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canRead && (
