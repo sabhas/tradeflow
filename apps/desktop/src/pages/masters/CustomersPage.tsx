@@ -41,6 +41,11 @@ interface AreaOpt {
   name: string;
 }
 
+interface CustomerTypeOpt {
+  id: string;
+  name: string;
+}
+
 const inputCls = 'mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm';
 
 export function CustomersPage() {
@@ -71,7 +76,7 @@ export function CustomersPage() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [name, setName] = useState('');
   const [longName, setLongName] = useState('');
-  const [type, setType] = useState<'retailer' | 'wholesaler' | 'walk_in'>('retailer');
+  const [type, setType] = useState('');
   const [address, setAddress] = useState('');
   const [townId, setTownId] = useState('');
   const [areaId, setAreaId] = useState('');
@@ -101,6 +106,13 @@ export function CustomersPage() {
     queryFn: () => apiFetch<{ data: AreaOpt[] }>('/areas').then((r) => r.data),
   });
 
+  const customerTypes = useQuery({
+    queryKey: ['customer-types'],
+    enabled: canRead,
+    queryFn: () => apiFetchData<CustomerTypeOpt[]>('/customer-types'),
+  });
+  const hasCustomerTypes = (customerTypes.data?.length ?? 0) > 0;
+
   useEffect(() => {
     if (!open || !areaId) return;
     const list = towns.data ?? [];
@@ -114,8 +126,8 @@ export function CustomersPage() {
       const payload: Record<string, unknown> = {
         name,
         longName: longName.trim() ? longName.trim() : null,
-        type,
-        address: address.trim() ? address.trim() : null,
+        type: type.trim(),
+        address: address.trim(),
         townId: townId ? townId : null,
         areaId: areaId ? areaId : null,
         telephone: telephone.trim() ? telephone.trim() : null,
@@ -155,7 +167,7 @@ export function CustomersPage() {
     setEditing(null);
     setName('');
     setLongName('');
-    setType('retailer');
+    setType('');
     setAddress('');
     setTownId('');
     setAreaId('');
@@ -177,7 +189,7 @@ export function CustomersPage() {
     setEditing(r);
     setName(r.name);
     setLongName(r.longName ?? '');
-    setType(r.type as typeof type);
+    setType(r.type ?? '');
     setAddress(r.address ?? '');
     setTownId(r.townId ?? '');
     setAreaId(r.areaId ?? '');
@@ -256,7 +268,7 @@ export function CustomersPage() {
                 <td className="px-4 py-3 font-medium text-slate-900">{r.name}</td>
                 <td className="px-4 py-3 text-slate-700">{r.town?.name ?? '—'}</td>
                 <td className="px-4 py-3 text-slate-700">{r.area?.name ?? '—'}</td>
-                <td className="px-4 py-3 capitalize text-slate-700">{r.type.replace('_', ' ')}</td>
+                <td className="px-4 py-3 text-slate-700">{r.type}</td>
                 <td className="px-4 py-3">{r.creditLimit}</td>
                 {canWrite && (
                   <td className="px-4 py-3 text-right">
@@ -291,9 +303,15 @@ export function CustomersPage() {
           className="space-y-5"
           onSubmit={(e) => {
             e.preventDefault();
+            if (!hasCustomerTypes) return;
             save.mutate();
           }}
         >
+          {!hasCustomerTypes && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              No customer types found. Create one first under Masters → Customer types.
+            </div>
+          )}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Identity</p>
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
@@ -310,11 +328,15 @@ export function CustomersPage() {
                 <select
                   className={inputCls}
                   value={type}
-                  onChange={(e) => setType(e.target.value as typeof type)}
+                  onChange={(e) => setType(e.target.value)}
+                  required
                 >
-                  <option value="retailer">Retailer</option>
-                  <option value="wholesaler">Wholesaler</option>
-                  <option value="walk_in">Walk-in</option>
+                  <option value="">— Select —</option>
+                  {(customerTypes.data || []).map((ct) => (
+                    <option key={ct.id} value={ct.name}>
+                      {ct.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -330,6 +352,7 @@ export function CustomersPage() {
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   rows={3}
+                  required
                 />
               </div>
               <div>
@@ -479,7 +502,11 @@ export function CustomersPage() {
             <button type="button" className="rounded-md border px-4 py-2 text-sm" onClick={() => setOpen(false)}>
               Cancel
             </button>
-            <button type="submit" className="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white">
+            <button
+              type="submit"
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              disabled={!hasCustomerTypes}
+            >
               Save
             </button>
           </div>

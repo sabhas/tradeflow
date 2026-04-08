@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
-import { Area, Customer, dataSource, Town } from '@tradeflow/db';
+import { Area, Customer, CustomerType, dataSource, Town } from '@tradeflow/db';
 import { createCustomerSchema, updateCustomerSchema } from '@tradeflow/shared';
 import { getPagination } from '../utils/pagination';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
@@ -39,6 +39,18 @@ async function resolveTownAndAreaIds(
     throw new HttpError(400, { error: 'Selected town does not belong to the selected area' });
   }
   return { townId, areaId };
+}
+
+async function ensureCustomerTypeExists(type: string): Promise<string> {
+  const normalized = type.trim();
+  const existing = await CustomerType.createQueryBuilder('ct')
+    .where('LOWER(TRIM(ct.name)) = LOWER(TRIM(:name))', { name: normalized })
+    .andWhere('ct.deleted_at IS NULL')
+    .getOne();
+  if (!existing) {
+    throw new HttpError(400, { error: 'Unknown customer type' });
+  }
+  return existing.name;
 }
 
 export function serializeCustomer(c: Customer) {
@@ -207,7 +219,11 @@ export async function createCustomer(req: Request, body: CreateCustomerInput): P
   if (!t0 || !a0) {
     throw new HttpError(400, { error: 'Town and area are required' });
   }
-  const geo = await resolveTownAndAreaIds(t0, a0);
+  const address = (typeof b.address === 'string' ? b.address : '').trim();
+  if (!address) {
+    throw new HttpError(400, { error: 'Address is required' });
+  }
+  const [geo, type] = await Promise.all([resolveTownAndAreaIds(t0, a0), ensureCustomerTypeExists(b.type)]);
   const repo = Customer.getRepository();
   const row = repo.create({
     name: b.name,
@@ -215,13 +231,10 @@ export async function createCustomer(req: Request, body: CreateCustomerInput): P
       b.longName == null || (typeof b.longName === 'string' && b.longName.trim() === '')
         ? undefined
         : b.longName.trim(),
-    type: b.type,
-    address:
-      b.address == null || (typeof b.address === 'string' && b.address.trim() === '')
-        ? undefined
-        : b.address.trim(),
-    townId: geo.townId,
-    areaId: geo.areaId,
+    type,
+    address,
+    townId: geo.townId!,
+    areaId: geo.areaId!,
     telephone:
       b.telephone == null || (typeof b.telephone === 'string' && b.telephone.trim() === '')
         ? undefined
@@ -268,9 +281,22 @@ export async function updateCustomer(req: Request, body: UpdateCustomerInput): P
   if (!effTown || !effArea) {
     throw new HttpError(400, { error: 'Town and area are required' });
   }
+  const effectiveAddress = (
+    b.address !== undefined
+      ? typeof b.address === 'string'
+        ? b.address
+        : ''
+      : (row.address ?? '')
+  ).trim();
+  if (!effectiveAddress) {
+    throw new HttpError(400, { error: 'Address is required' });
+  }
+  const resolvedType = await ensureCustomerTypeExists(b.type !== undefined ? b.type : row.type);
   const geo = await resolveTownAndAreaIds(effTown, effArea);
-  row.townId = geo.townId;
-  row.areaId = geo.areaId;
+  row.townId = geo.townId!;
+  row.areaId = geo.areaId!;
+  row.address = effectiveAddress;
+  row.type = resolvedType;
 
   if (b.name !== undefined) row.name = b.name;
   if (b.longName !== undefined) {
@@ -278,13 +304,6 @@ export async function updateCustomer(req: Request, body: UpdateCustomerInput): P
       b.longName == null || (typeof b.longName === 'string' && b.longName.trim() === '')
         ? undefined
         : b.longName.trim();
-  }
-  if (b.type !== undefined) row.type = b.type;
-  if (b.address !== undefined) {
-    row.address =
-      b.address == null || (typeof b.address === 'string' && b.address.trim() === '')
-        ? undefined
-        : b.address.trim();
   }
   if (b.telephone !== undefined) {
     row.telephone =

@@ -13,6 +13,7 @@ export * from './entities/PriceLevel';
 export * from './entities/Product';
 export * from './entities/ProductPrice';
 export * from './entities/Customer';
+export * from './entities/CustomerType';
 export * from './entities/Town';
 export * from './entities/Area';
 export * from './entities/Supplier';

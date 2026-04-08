@@ -24,26 +24,25 @@ export class Customer extends BaseEntity {
   @Column({ name: 'long_name', type: 'varchar', nullable: true })
   longName?: string;
 
-  /** retailer | wholesaler | walk_in */
   @Column()
   type!: string;
 
-  @Column({ type: 'text', nullable: true })
-  address?: string;
+  @Column({ type: 'text' })
+  address!: string;
 
-  @Column({ name: 'town_id', type: 'uuid', nullable: true })
-  townId?: string | null;
+  @Column({ name: 'town_id', type: 'uuid' })
+  townId!: string;
 
-  @ManyToOne(() => Town, { nullable: true })
+  @ManyToOne(() => Town, { nullable: false })
   @JoinColumn({ name: 'town_id' })
-  town?: Town;
+  town!: Town;
 
-  @Column({ name: 'area_id', type: 'uuid', nullable: true })
-  areaId?: string | null;
+  @Column({ name: 'area_id', type: 'uuid' })
+  areaId!: string;
 
-  @ManyToOne(() => Area, { nullable: true })
+  @ManyToOne(() => Area, { nullable: false })
   @JoinColumn({ name: 'area_id' })
-  area?: Area;
+  area!: Area;
 
   @Column({ name: 'telephone', type: 'varchar', nullable: true })
   telephone?: string;

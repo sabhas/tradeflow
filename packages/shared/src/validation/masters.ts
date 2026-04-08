@@ -3,7 +3,7 @@ import { z } from 'zod';
 const optionalUuid = z.union([z.string().uuid(), z.null()]).optional();
 const decimal = z.union([z.number(), z.string()]).transform((v) => String(v));
 
-export const customerTypeSchema = z.enum(['retailer', 'wholesaler', 'walk_in']);
+export const customerTypeSchema = z.string().trim().min(1).max(128);
 
 export const salesTaxStatusSchema = z.enum(['unregistered', 'registered', 'exempt']);
 
@@ -78,7 +78,7 @@ export const createCustomerSchema = z.object({
   name: z.string().min(1),
   longName: z.string().max(500).optional().nullable(),
   type: customerTypeSchema,
-  address: z.string().max(2000).optional().nullable(),
+  address: z.string().trim().min(1).max(2000),
   townId: z.string().uuid(),
   areaId: z.string().uuid(),
   telephone: z.string().max(64).optional().nullable(),
@@ -97,6 +97,12 @@ export const createCustomerSchema = z.object({
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial();
+
+export const createCustomerTypeSchema = z.object({
+  name: z.string().trim().min(1).max(128),
+});
+
+export const updateCustomerTypeSchema = createCustomerTypeSchema.partial();
 
 export const createTownSchema = z.object({
   areaId: z.string().uuid(),

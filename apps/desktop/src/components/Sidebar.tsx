@@ -47,6 +47,7 @@ const menuItems: Array<{
   { path: '/masters/units', label: 'Units', icon: '📏', permission: 'masters.products:read' },
   { path: '/masters/price-levels', label: 'Price levels', icon: '💰', permission: 'masters.products:read' },
   { path: '/masters/customers', label: 'Customers', icon: '👤', permission: 'masters.customers:read' },
+  { path: '/masters/customer-types', label: 'Customer types', icon: '🏷️', permission: 'masters.customers:read' },
   { path: '/masters/towns-areas', label: 'Towns & areas', icon: '📍', permission: 'masters.customers:read' },
   { path: '/masters/suppliers', label: 'Suppliers', icon: '🏭', permission: 'masters.suppliers:read' },
   { path: '/masters/warehouses', label: 'Warehouses', icon: '🏢', permission: 'masters.warehouses:read' },

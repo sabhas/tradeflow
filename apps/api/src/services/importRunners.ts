@@ -2,6 +2,7 @@ import { Brackets, EntityManager, IsNull } from 'typeorm';
 import {
   Account,
   Customer,
+  CustomerType,
   JournalEntry,
   JournalLine,
   PaymentTerms,
@@ -151,6 +152,21 @@ async function findTaxProfileByName(
   return row?.id;
 }
 
+async function findCustomerTypeNameByName(
+  em: EntityManager,
+  name: string
+): Promise<string | null> {
+  const n = name.trim();
+  if (!n) return null;
+  const row = await em
+    .getRepository(CustomerType)
+    .createQueryBuilder('ct')
+    .where('LOWER(TRIM(ct.name)) = LOWER(TRIM(:n))', { n })
+    .andWhere('ct.deleted_at IS NULL')
+    .getOne();
+  return row?.name ?? null;
+}
+
 export async function importProductsFromSheets(
   sheets: SheetTable[],
   branchId: string | undefined,
@@ -287,10 +303,14 @@ export async function importCustomersFromSheets(
         if (row.taxProfile?.trim() && !taxProfileId) {
           throw new Error(`Unknown tax profile: ${row.taxProfile}`);
         }
+        const customerTypeName = await findCustomerTypeNameByName(em, row.type);
+        if (!customerTypeName) {
+          throw new Error(`Unknown customer type: ${row.type}`);
+        }
 
         const c = em.getRepository(Customer).create({
           name: row.name.trim(),
-          type: row.type,
+          type: customerTypeName,
           contact:
             row.contactPhone || row.contactEmail || row.contactAddress
               ? {

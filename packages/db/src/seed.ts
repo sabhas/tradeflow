@@ -16,6 +16,7 @@ import { TaxProfile } from './entities/TaxProfile';
 import { ProductCategory } from './entities/ProductCategory';
 import { Account } from './entities/Account';
 import { CompanySettings } from './entities/CompanySettings';
+import { CustomerType } from './entities/CustomerType';
 
 const PERMISSIONS: Array<{ resource: string; action: string; code: string }> = [
   { resource: 'audit', action: 'read', code: 'audit:read' },
@@ -216,6 +217,16 @@ async function seed() {
         })
       );
       console.log('Created default tax profile');
+    }
+
+    const customerTypeRepo = dataSource.getRepository(CustomerType);
+    if ((await customerTypeRepo.count()) === 0) {
+      await customerTypeRepo.save([
+        customerTypeRepo.create({ name: 'Retailer' }),
+        customerTypeRepo.create({ name: 'Wholesaler' }),
+        customerTypeRepo.create({ name: 'Walk-in' }),
+      ]);
+      console.log('Created default customer types');
     }
 
     const catRepo = dataSource.getRepository(ProductCategory);

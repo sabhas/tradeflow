@@ -15,6 +15,7 @@ import { WarehousesPage } from './pages/masters/WarehousesPage';
 import { SalespersonsPage } from './pages/masters/SalespersonsPage';
 import { TaxProfilesPage } from './pages/masters/TaxProfilesPage';
 import { PaymentTermsPage } from './pages/masters/PaymentTermsPage';
+import { CustomerTypesPage } from './pages/masters/CustomerTypesPage';
 import { InventoryStockPage } from './pages/inventory/InventoryStockPage';
 import { InventoryMovementsPage } from './pages/inventory/InventoryMovementsPage';
 import { InventoryOpeningBalancePage } from './pages/inventory/InventoryOpeningBalancePage';
@@ -80,6 +81,7 @@ export default function App() {
           <Route path="masters/units" element={<UnitsPage />} />
           <Route path="masters/price-levels" element={<PriceLevelsPage />} />
           <Route path="masters/customers" element={<CustomersPage />} />
+          <Route path="masters/customer-types" element={<CustomerTypesPage />} />
           <Route path="masters/towns-areas" element={<TownsAndAreasPage />} />
           <Route path="masters/suppliers" element={<SuppliersPage />} />
           <Route path="masters/warehouses" element={<WarehousesPage />} />
