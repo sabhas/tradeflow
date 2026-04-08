@@ -128,8 +128,6 @@ export const createSupplierSchema = z.object({
   contact: z.string().max(256).optional().nullable(),
   ntn: z.string().max(32).optional().nullable(),
   stn: z.string().max(32).optional().nullable(),
-  paymentTermsId: optionalUuid,
-  taxProfileId: optionalUuid,
 });
 
 export const updateSupplierSchema = createSupplierSchema.partial();

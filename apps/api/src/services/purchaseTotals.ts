@@ -40,7 +40,7 @@ export async function computePurchaseDocumentTotals(
   let taxSum = '0.0000';
 
   for (const line of lines) {
-    const tpId = line.taxProfileId ?? supplier.taxProfileId;
+    const tpId = line.taxProfileId;
     let profile: { rate: string; isInclusive: boolean } | null = null;
     if (tpId) {
       const tp = await manager.findOne(TaxProfile, { where: { id: tpId } });

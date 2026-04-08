@@ -1,15 +1,4 @@
-import {
-  BaseEntity,
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
-import { PaymentTerms } from './PaymentTerms';
-import { TaxProfile } from './TaxProfile';
+import { BaseEntity, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('suppliers')
 export class Supplier extends BaseEntity {
@@ -45,20 +34,6 @@ export class Supplier extends BaseEntity {
 
   @Column({ nullable: true })
   stn?: string;
-
-  @Column({ name: 'payment_terms_id', nullable: true })
-  paymentTermsId?: string;
-
-  @ManyToOne(() => PaymentTerms, { nullable: true })
-  @JoinColumn({ name: 'payment_terms_id' })
-  paymentTerms?: PaymentTerms;
-
-  @Column({ name: 'tax_profile_id', nullable: true })
-  taxProfileId?: string;
-
-  @ManyToOne(() => TaxProfile, { nullable: true })
-  @JoinColumn({ name: 'tax_profile_id' })
-  taxProfile?: TaxProfile;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

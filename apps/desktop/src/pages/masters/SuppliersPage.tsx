@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { apiFetch, apiFetchData } from '../../api/client';
+import { apiFetch } from '../../api/client';
 import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -17,13 +17,6 @@ interface Row {
   contact?: string | null;
   ntn?: string | null;
   stn?: string | null;
-  paymentTermsId?: string | null;
-  taxProfileId?: string | null;
-}
-
-interface Opt {
-  id: string;
-  name: string;
 }
 
 export function SuppliersPage() {
@@ -38,18 +31,6 @@ export function SuppliersPage() {
     queryFn: () => apiFetch<{ data: Row[] }>('/suppliers').then((r) => r.data),
   });
 
-  const paymentTerms = useQuery({
-    queryKey: ['payment-terms'],
-    enabled: canRead,
-    queryFn: () => apiFetchData<Opt[]>('/payment-terms'),
-  });
-
-  const taxProfiles = useQuery({
-    queryKey: ['tax-profiles'],
-    enabled: canRead,
-    queryFn: () => apiFetchData<Opt[]>('/tax-profiles'),
-  });
-
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const [name, setName] = useState('');
@@ -62,8 +43,6 @@ export function SuppliersPage() {
   const [contact, setContact] = useState('');
   const [ntn, setNtn] = useState('');
   const [stn, setStn] = useState('');
-  const [paymentTermsId, setPaymentTermsId] = useState('');
-  const [taxProfileId, setTaxProfileId] = useState('');
 
   const save = useMutation({
     mutationFn: async () => {
@@ -78,8 +57,6 @@ export function SuppliersPage() {
         contact: contact || null,
         ntn: ntn || null,
         stn: stn || null,
-        paymentTermsId: paymentTermsId || null,
-        taxProfileId: taxProfileId || null,
       };
       if (editing) {
         await apiFetch(`/suppliers/${editing.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
@@ -120,8 +97,6 @@ export function SuppliersPage() {
               setContact('');
               setNtn('');
               setStn('');
-              setPaymentTermsId('');
-              setTaxProfileId('');
               setOpen(true);
             }}
           >
@@ -165,8 +140,6 @@ export function SuppliersPage() {
                         setContact(r.contact || '');
                         setNtn(r.ntn || '');
                         setStn(r.stn || '');
-                        setPaymentTermsId(r.paymentTermsId || '');
-                        setTaxProfileId(r.taxProfileId || '');
                         setOpen(true);
                       }}
                     >
@@ -284,36 +257,6 @@ export function SuppliersPage() {
                 onChange={(e) => setStn(e.target.value)}
               />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Payment terms</label>
-            <select
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              value={paymentTermsId}
-              onChange={(e) => setPaymentTermsId(e.target.value)}
-            >
-              <option value="">— None —</option>
-              {(paymentTerms.data || []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Tax profile</label>
-            <select
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              value={taxProfileId}
-              onChange={(e) => setTaxProfileId(e.target.value)}
-            >
-              <option value="">— None —</option>
-              {(taxProfiles.data || []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" className="rounded-md border px-4 py-2 text-sm" onClick={() => setOpen(false)}>

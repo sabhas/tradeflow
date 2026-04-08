@@ -23,8 +23,6 @@ export function serializeSupplier(s: Supplier) {
     contact: s.contact,
     ntn: s.ntn,
     stn: s.stn,
-    paymentTermsId: s.paymentTermsId,
-    taxProfileId: s.taxProfileId,
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
     deletedAt: s.deletedAt,
@@ -170,7 +168,6 @@ export async function getSupplierPricingHistory(req: Request): Promise<Controlle
 export async function getSupplier(req: Request): Promise<ControllerResult> {
   const row = await Supplier.findOne({
     where: { id: req.params.id, deletedAt: IsNull() },
-    relations: ['paymentTerms', 'taxProfile'],
   });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
@@ -192,8 +189,6 @@ export async function createSupplier(req: Request, body: CreateSupplierInput): P
     contact: b.contact ?? undefined,
     ntn: b.ntn ?? undefined,
     stn: b.stn ?? undefined,
-    paymentTermsId: b.paymentTermsId ?? undefined,
-    taxProfileId: b.taxProfileId ?? undefined,
   });
   await repo.save(row);
   return created({ data: serializeSupplier(row) });
@@ -216,8 +211,6 @@ export async function updateSupplier(req: Request, body: UpdateSupplierInput): P
   if (b.contact !== undefined) row.contact = b.contact ?? undefined;
   if (b.ntn !== undefined) row.ntn = b.ntn ?? undefined;
   if (b.stn !== undefined) row.stn = b.stn ?? undefined;
-  if (b.paymentTermsId !== undefined) row.paymentTermsId = b.paymentTermsId ?? undefined;
-  if (b.taxProfileId !== undefined) row.taxProfileId = b.taxProfileId ?? undefined;
   await repo.save(row);
   return ok({ data: serializeSupplier(row) });
 }

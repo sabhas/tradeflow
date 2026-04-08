@@ -28,11 +28,9 @@ type UpdateSupplierInvoiceInput = z.infer<typeof updateSupplierInvoiceSchema>;
 async function resolveSupplierDueDate(manager: EntityManager, supplierId: string, invoiceDate: string): Promise<string> {
   const s = await manager.findOne(Supplier, {
     where: { id: supplierId, deletedAt: IsNull() },
-    relations: ['paymentTerms'],
   });
   if (!s) throw new Error('Supplier not found');
-  const net = s.paymentTerms?.netDays ?? 30;
-  return addDaysIso(invoiceDate, net);
+  return addDaysIso(invoiceDate, 30);
 }
 
 function serialize(inv: SupplierInvoice, lines?: SupplierInvoiceLine[]) {
