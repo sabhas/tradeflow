@@ -78,7 +78,7 @@ export function PurchaseReportsPage() {
   const products = useQuery({
     queryKey: ['products', 'pricing-labels'],
     enabled: canRead && tab === 'pricing' && !!pricing.data?.length,
-    queryFn: () => apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500').then((r) => r.data),
+    queryFn: () => apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500&activeOnly=true').then((r) => r.data),
   });
 
   if (!canRead) return <p className="text-slate-600">No permission.</p>;

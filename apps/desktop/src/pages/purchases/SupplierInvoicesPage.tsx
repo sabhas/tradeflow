@@ -96,7 +96,7 @@ export function SupplierInvoicesPage() {
     queryKey: ['products', 'si-dd'],
     enabled: canRead && panelOpen,
     queryFn: () =>
-      apiFetch<{ data: Array<{ id: string; sku: string; name: string; costPrice?: string }> }>('/products?limit=500').then(
+      apiFetch<{ data: Array<{ id: string; sku: string; name: string; costPrice?: string }> }>('/products?limit=500&activeOnly=true').then(
         (r) => r.data
       ),
   });

@@ -46,7 +46,7 @@ export function InventoryTransfersPage() {
   const products = useQuery({
     queryKey: ['products', 'transfer-dd'],
     enabled: canRead && panelOpen,
-    queryFn: () => apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500').then((r) => r.data),
+    queryFn: () => apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500&activeOnly=true').then((r) => r.data),
   });
 
   useEffect(() => {

@@ -31,6 +31,21 @@ export const productImportRowSchema = z.object({
   sellingPrice: looseDecimal.optional(),
   batchTracked: looseBool,
   expiryTracked: looseBool,
+  manufacturerCode: z.string().optional().nullable(),
+  shortName: z.string().optional().nullable(),
+  genericName: z.string().optional().nullable(),
+  packing: z.string().optional().nullable(),
+  hsCode: z.string().optional().nullable(),
+  retailPrice: looseDecimal.optional(),
+  cutPrice: looseDecimal.optional(),
+  isActive: looseBool,
+  isHerbal: looseBool,
+  isNarcotic: looseBool,
+  isFridged: looseBool,
+  isSurgical: looseBool,
+  saleType: z.string().optional().nullable(),
+  sroSchedule: z.string().optional().nullable(),
+  sroItemSerial: z.string().optional().nullable(),
 });
 
 export const customerImportRowSchema = z.object({

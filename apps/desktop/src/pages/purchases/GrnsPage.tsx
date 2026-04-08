@@ -71,7 +71,7 @@ export function GrnsPage() {
   const products = useQuery({
     queryKey: ['products', 'grn-dd'],
     enabled: canRead && panelOpen && !purchaseOrderId,
-    queryFn: () => apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500').then((r) => r.data),
+    queryFn: () => apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500&activeOnly=true').then((r) => r.data),
   });
 
   const warehouses = useQuery({

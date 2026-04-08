@@ -10,12 +10,49 @@ export async function productImportTemplateBuffer(): Promise<Buffer> {
     'barcode',
     'name',
     'unit',
+    'manufacturerCode',
+    'shortName',
+    'genericName',
+    'packing',
+    'hsCode',
     'costPrice',
     'sellingPrice',
+    'retailPrice',
+    'cutPrice',
     'batchTracked',
     'expiryTracked',
+    'isActive',
+    'isNarcotic',
+    'isFridged',
+    'saleType',
+    'sroSchedule',
+    'sroItemSerial',
   ]);
-  ws.addRow(['Acme Pharma', 'BEV', 'SKU-001', '', 'Sample cola 500ml', 'EA', '0.50', '1.20', 'false', 'false']);
+  ws.addRow([
+    'Acme Pharma',
+    'BEV',
+    'SKU-001',
+    '',
+    'Sample tablets 500mg',
+    'EA',
+    'MFG-99',
+    'SMP Tabs',
+    'Paracetamol',
+    "10's",
+    '3004.90',
+    '50.00',
+    '65.00',
+    '70.00',
+    '68.00',
+    'false',
+    'false',
+    'true',
+    'false',
+    'false',
+    'Retail',
+    '',
+    '',
+  ]);
   const buf = await wb.xlsx.writeBuffer();
   return Buffer.from(buf);
 }
@@ -64,8 +101,8 @@ export async function openingBalanceTemplateBuffer(): Promise<Buffer> {
 
 export function productImportTemplateCsv(): string {
   return [
-    'supplier,category,sku,barcode,name,unit,costPrice,sellingPrice,batchTracked,expiryTracked',
-    'Acme Pharma,BEV,SKU-001,,Sample cola 500ml,EA,0.50,1.20,false,false',
+    'supplier,category,sku,barcode,name,unit,manufacturerCode,shortName,genericName,packing,hsCode,costPrice,sellingPrice,retailPrice,cutPrice,batchTracked,expiryTracked,isActive,isNarcotic,isFridged,saleType,sroSchedule,sroItemSerial',
+    'Acme Pharma,BEV,SKU-001,,Sample tablets 500mg,EA,MFG-99,SMP Tabs,Paracetamol,"10\'s",3004.90,50.00,65.00,70.00,68.00,false,false,true,false,false,Retail,,',
   ].join('\n');
 }
 

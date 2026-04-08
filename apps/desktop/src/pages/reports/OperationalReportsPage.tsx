@@ -78,7 +78,7 @@ export function OperationalReportsPage() {
     queryKey: ['products', 'report-dd'],
     enabled: canInventory && tab === 'movement',
     staleTime: 120_000,
-    queryFn: () => apiFetch<{ data: { id: string; sku: string; name: string }[] }>('/products?limit=500').then(
+    queryFn: () => apiFetch<{ data: { id: string; sku: string; name: string }[] }>('/products?limit=500&activeOnly=true').then(
       (r) => r.data
     ),
   });

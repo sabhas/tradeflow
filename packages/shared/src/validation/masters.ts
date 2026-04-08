@@ -51,6 +51,17 @@ const productPriceRowSchema = z.object({
 
 export const costingMethodSchema = z.enum(['fifo', 'lifo']).nullable().optional();
 
+const optionalProductStr = (max: number) =>
+  z.preprocess((v) => {
+    if (v === undefined) return undefined;
+    if (v === null) return null;
+    if (typeof v === 'string') {
+      const t = v.trim();
+      return t === '' ? null : t;
+    }
+    return v;
+  }, z.union([z.string().max(max), z.null()]).optional());
+
 export const createProductSchema = z.object({
   supplierId: z.string().uuid(),
   categoryId: z.string().uuid(),
@@ -66,6 +77,38 @@ export const createProductSchema = z.object({
   minStock: decimal.optional().nullable(),
   reorderLevel: decimal.optional().nullable(),
   prices: z.array(productPriceRowSchema).optional(),
+
+  manufacturerCode: optionalProductStr(64),
+  shortName: optionalProductStr(256),
+  genericName: optionalProductStr(512),
+  packing: optionalProductStr(128),
+  hsCode: optionalProductStr(32),
+  retailPrice: decimal.optional(),
+  cutPrice: decimal.optional(),
+  purchaseDiscountPct: decimal.optional().nullable(),
+  salesDiscountPct: decimal.optional().nullable(),
+  purchaseSalesTaxPct: decimal.optional().nullable(),
+  purchaseWithholdingTaxPct: decimal.optional().nullable(),
+  purchaseFurtherTaxPct: decimal.optional().nullable(),
+  salesSalesTaxPct: decimal.optional().nullable(),
+  salesWithholdingTaxPct: decimal.optional().nullable(),
+  salesFurtherTaxPct: decimal.optional().nullable(),
+  saleType: optionalProductStr(64),
+  saleRatePct: decimal.optional().nullable(),
+  sroSchedule: optionalProductStr(128),
+  sroItemSerial: optionalProductStr(128),
+  isHerbal: z.boolean().optional(),
+  isNarcotic: z.boolean().optional(),
+  isFridged: z.boolean().optional(),
+  isSurgical: z.boolean().optional(),
+  staxBeforeDiscount: z.boolean().optional(),
+  staxOnRetail: z.boolean().optional(),
+  staxOnBonusSale: z.boolean().optional(),
+  staxOnBonusPurchase: z.boolean().optional(),
+  tradePriceAllBatches: z.boolean().optional(),
+  autoPriceFromRetail: z.boolean().optional(),
+  printNetPriceOnInvoice: z.boolean().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

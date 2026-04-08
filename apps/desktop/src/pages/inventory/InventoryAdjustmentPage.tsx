@@ -43,7 +43,7 @@ export function InventoryAdjustmentPage() {
     queryKey: ['products', 'inventory-dd'],
     enabled: canWrite,
     queryFn: async () => {
-      const res = await apiFetch<{ data: ProductOpt[] }>('/products?limit=500');
+      const res = await apiFetch<{ data: ProductOpt[] }>('/products?limit=500&activeOnly=true');
       return res.data;
     },
   });

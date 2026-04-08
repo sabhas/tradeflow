@@ -5,9 +5,11 @@ type Props = {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  /** Wider dialog for dense master forms (e.g. products). */
+  wide?: boolean;
 };
 
-export function MastersModal({ title, open, onClose, children }: Props) {
+export function MastersModal({ title, open, onClose, children, wide }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -27,7 +29,11 @@ export function MastersModal({ title, open, onClose, children }: Props) {
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+      <div
+        className={`relative z-10 w-full max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl ${
+          wide ? 'max-w-4xl' : 'max-w-2xl'
+        }`}
+      >
         <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-3">
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
           <button

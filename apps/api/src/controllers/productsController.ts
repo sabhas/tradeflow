@@ -36,6 +36,37 @@ function serializeProduct(p: Product, prices?: ProductPrice[]) {
     costingMethod: p.costingMethod ?? null,
     minStock: p.minStock,
     reorderLevel: p.reorderLevel,
+    manufacturerCode: p.manufacturerCode ?? null,
+    shortName: p.shortName ?? null,
+    genericName: p.genericName ?? null,
+    packing: p.packing ?? null,
+    hsCode: p.hsCode ?? null,
+    retailPrice: p.retailPrice,
+    cutPrice: p.cutPrice,
+    purchaseDiscountPct: p.purchaseDiscountPct ?? null,
+    salesDiscountPct: p.salesDiscountPct ?? null,
+    purchaseSalesTaxPct: p.purchaseSalesTaxPct ?? null,
+    purchaseWithholdingTaxPct: p.purchaseWithholdingTaxPct ?? null,
+    purchaseFurtherTaxPct: p.purchaseFurtherTaxPct ?? null,
+    salesSalesTaxPct: p.salesSalesTaxPct ?? null,
+    salesWithholdingTaxPct: p.salesWithholdingTaxPct ?? null,
+    salesFurtherTaxPct: p.salesFurtherTaxPct ?? null,
+    saleType: p.saleType ?? null,
+    saleRatePct: p.saleRatePct ?? null,
+    sroSchedule: p.sroSchedule ?? null,
+    sroItemSerial: p.sroItemSerial ?? null,
+    isHerbal: p.isHerbal,
+    isNarcotic: p.isNarcotic,
+    isFridged: p.isFridged,
+    isSurgical: p.isSurgical,
+    staxBeforeDiscount: p.staxBeforeDiscount,
+    staxOnRetail: p.staxOnRetail,
+    staxOnBonusSale: p.staxOnBonusSale,
+    staxOnBonusPurchase: p.staxOnBonusPurchase,
+    tradePriceAllBatches: p.tradePriceAllBatches,
+    autoPriceFromRetail: p.autoPriceFromRetail,
+    printNetPriceOnInvoice: p.printNetPriceOnInvoice,
+    isActive: p.isActive,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
     deletedAt: p.deletedAt,
@@ -59,6 +90,7 @@ export async function listProducts(req: Request): Promise<ControllerResult> {
   const { limit, offset } = getPagination(req);
   const categoryId = req.query.categoryId as string | undefined;
   const search = (req.query.search as string | undefined)?.trim();
+  const activeOnly = ['true', '1', 'yes'].includes(String(req.query.activeOnly ?? '').toLowerCase());
 
   const qb = Product
     .createQueryBuilder('p')
@@ -67,13 +99,20 @@ export async function listProducts(req: Request): Promise<ControllerResult> {
   if (categoryId) {
     qb.andWhere('p.category_id = :cid', { cid: categoryId });
   }
+  if (activeOnly) {
+    qb.andWhere('p.is_active = true');
+  }
   if (search) {
     const term = `%${search.toLowerCase()}%`;
     qb.andWhere(
       new Brackets((q) => {
         q.where('LOWER(p.name) LIKE :term', { term })
           .orWhere('LOWER(p.sku) LIKE :term', { term })
-          .orWhere('LOWER(p.barcode) LIKE :term', { term });
+          .orWhere('LOWER(p.barcode) LIKE :term', { term })
+          .orWhere('LOWER(COALESCE(p.generic_name, \'\')) LIKE :term', { term })
+          .orWhere('LOWER(COALESCE(p.short_name, \'\')) LIKE :term', { term })
+          .orWhere('LOWER(COALESCE(p.manufacturer_code, \'\')) LIKE :term', { term })
+          .orWhere('LOWER(COALESCE(p.packing, \'\')) LIKE :term', { term });
       })
     );
   }
@@ -109,7 +148,7 @@ export async function lookupProductByBarcode(req: Request): Promise<ControllerRe
   const qb = Product
     .createQueryBuilder('p')
     .leftJoinAndSelect('p.supplier', 'supplier')
-    .where('p.deleted_at IS NULL AND p.barcode = :code', { code });
+    .where('p.deleted_at IS NULL AND p.is_active = true AND p.barcode = :code', { code });
   const p = await qb.getOne();
   if (!p) {
     throw new HttpError(404, { error: 'No product for barcode' });
@@ -206,6 +245,37 @@ export async function createProduct(req: Request, b: CreateProductInput): Promis
       costingMethod: b.costingMethod ?? undefined,
       minStock: b.minStock ?? undefined,
       reorderLevel: b.reorderLevel ?? undefined,
+      manufacturerCode: b.manufacturerCode ?? undefined,
+      shortName: b.shortName ?? undefined,
+      genericName: b.genericName ?? undefined,
+      packing: b.packing ?? undefined,
+      hsCode: b.hsCode ?? undefined,
+      retailPrice: b.retailPrice ?? '0',
+      cutPrice: b.cutPrice ?? '0',
+      purchaseDiscountPct: b.purchaseDiscountPct ?? undefined,
+      salesDiscountPct: b.salesDiscountPct ?? undefined,
+      purchaseSalesTaxPct: b.purchaseSalesTaxPct ?? undefined,
+      purchaseWithholdingTaxPct: b.purchaseWithholdingTaxPct ?? undefined,
+      purchaseFurtherTaxPct: b.purchaseFurtherTaxPct ?? undefined,
+      salesSalesTaxPct: b.salesSalesTaxPct ?? undefined,
+      salesWithholdingTaxPct: b.salesWithholdingTaxPct ?? undefined,
+      salesFurtherTaxPct: b.salesFurtherTaxPct ?? undefined,
+      saleType: b.saleType ?? undefined,
+      saleRatePct: b.saleRatePct ?? undefined,
+      sroSchedule: b.sroSchedule ?? undefined,
+      sroItemSerial: b.sroItemSerial ?? undefined,
+      isHerbal: b.isHerbal ?? false,
+      isNarcotic: b.isNarcotic ?? false,
+      isFridged: b.isFridged ?? false,
+      isSurgical: b.isSurgical ?? false,
+      staxBeforeDiscount: b.staxBeforeDiscount ?? false,
+      staxOnRetail: b.staxOnRetail ?? false,
+      staxOnBonusSale: b.staxOnBonusSale ?? false,
+      staxOnBonusPurchase: b.staxOnBonusPurchase ?? false,
+      tradePriceAllBatches: b.tradePriceAllBatches ?? false,
+      autoPriceFromRetail: b.autoPriceFromRetail ?? false,
+      printNetPriceOnInvoice: b.printNetPriceOnInvoice ?? false,
+      isActive: b.isActive ?? true,
     });
     await repo.save(row);
 
@@ -274,7 +344,40 @@ export async function updateProduct(req: Request, b: UpdateProductInput): Promis
   if (b.costingMethod !== undefined) row.costingMethod = b.costingMethod ?? undefined;
   if (b.minStock !== undefined) row.minStock = b.minStock ?? undefined;
   if (b.reorderLevel !== undefined) row.reorderLevel = b.reorderLevel ?? undefined;
-    await repo.save(row);
+  if (b.manufacturerCode !== undefined) row.manufacturerCode = b.manufacturerCode ?? undefined;
+  if (b.shortName !== undefined) row.shortName = b.shortName ?? undefined;
+  if (b.genericName !== undefined) row.genericName = b.genericName ?? undefined;
+  if (b.packing !== undefined) row.packing = b.packing ?? undefined;
+  if (b.hsCode !== undefined) row.hsCode = b.hsCode ?? undefined;
+  if (b.retailPrice !== undefined) row.retailPrice = b.retailPrice ?? '0';
+  if (b.cutPrice !== undefined) row.cutPrice = b.cutPrice ?? '0';
+  if (b.purchaseDiscountPct !== undefined) row.purchaseDiscountPct = b.purchaseDiscountPct ?? undefined;
+  if (b.salesDiscountPct !== undefined) row.salesDiscountPct = b.salesDiscountPct ?? undefined;
+  if (b.purchaseSalesTaxPct !== undefined) row.purchaseSalesTaxPct = b.purchaseSalesTaxPct ?? undefined;
+  if (b.purchaseWithholdingTaxPct !== undefined)
+    row.purchaseWithholdingTaxPct = b.purchaseWithholdingTaxPct ?? undefined;
+  if (b.purchaseFurtherTaxPct !== undefined) row.purchaseFurtherTaxPct = b.purchaseFurtherTaxPct ?? undefined;
+  if (b.salesSalesTaxPct !== undefined) row.salesSalesTaxPct = b.salesSalesTaxPct ?? undefined;
+  if (b.salesWithholdingTaxPct !== undefined)
+    row.salesWithholdingTaxPct = b.salesWithholdingTaxPct ?? undefined;
+  if (b.salesFurtherTaxPct !== undefined) row.salesFurtherTaxPct = b.salesFurtherTaxPct ?? undefined;
+  if (b.saleType !== undefined) row.saleType = b.saleType ?? undefined;
+  if (b.saleRatePct !== undefined) row.saleRatePct = b.saleRatePct ?? undefined;
+  if (b.sroSchedule !== undefined) row.sroSchedule = b.sroSchedule ?? undefined;
+  if (b.sroItemSerial !== undefined) row.sroItemSerial = b.sroItemSerial ?? undefined;
+  if (b.isHerbal !== undefined) row.isHerbal = b.isHerbal;
+  if (b.isNarcotic !== undefined) row.isNarcotic = b.isNarcotic;
+  if (b.isFridged !== undefined) row.isFridged = b.isFridged;
+  if (b.isSurgical !== undefined) row.isSurgical = b.isSurgical;
+  if (b.staxBeforeDiscount !== undefined) row.staxBeforeDiscount = b.staxBeforeDiscount;
+  if (b.staxOnRetail !== undefined) row.staxOnRetail = b.staxOnRetail;
+  if (b.staxOnBonusSale !== undefined) row.staxOnBonusSale = b.staxOnBonusSale;
+  if (b.staxOnBonusPurchase !== undefined) row.staxOnBonusPurchase = b.staxOnBonusPurchase;
+  if (b.tradePriceAllBatches !== undefined) row.tradePriceAllBatches = b.tradePriceAllBatches;
+  if (b.autoPriceFromRetail !== undefined) row.autoPriceFromRetail = b.autoPriceFromRetail;
+  if (b.printNetPriceOnInvoice !== undefined) row.printNetPriceOnInvoice = b.printNetPriceOnInvoice;
+  if (b.isActive !== undefined) row.isActive = b.isActive;
+  await repo.save(row);
 
   if (b.prices?.length) {
     await dataSource.transaction(async (em) => {

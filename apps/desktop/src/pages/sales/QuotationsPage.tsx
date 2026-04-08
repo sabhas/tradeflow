@@ -109,7 +109,7 @@ export function QuotationsPage() {
   const products = useQuery({
     queryKey: ['products', 'sales-dd'],
     enabled: canRead && panelOpen,
-    queryFn: () => apiFetch<{ data: ProductOpt[] }>('/products?limit=500').then((r) => r.data),
+    queryFn: () => apiFetch<{ data: ProductOpt[] }>('/products?limit=500&activeOnly=true').then((r) => r.data),
   });
 
   const taxProfiles = useQuery({
