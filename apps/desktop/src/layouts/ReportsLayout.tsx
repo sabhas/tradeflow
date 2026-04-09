@@ -4,8 +4,8 @@ import { ReportsSubNav } from '../components/ReportsSubNav';
 export function ReportsLayout() {
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Reporting &amp; analytics</h1>
-      <p className="mt-1 text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Reporting &amp; analytics</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
         Operational, aging, and tax reports; financial statements live under Accounting.
       </p>
       <ReportsSubNav />

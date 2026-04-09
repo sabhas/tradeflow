@@ -101,13 +101,13 @@ export function InventoryMovementsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Inventory movements</h1>
-      <p className="mt-1 text-slate-600">All stock movements with filters.</p>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Inventory movements</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">All stock movements with filters.</p>
       <InventorySubNav />
 
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">Warehouse</span>
+          <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
           <select
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
             value={warehouseId}
@@ -125,7 +125,7 @@ export function InventoryMovementsPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">Product</span>
+          <span className="text-slate-600 dark:text-slate-400">Product</span>
           <select
             className="min-w-[14rem] rounded-md border border-slate-300 px-3 py-2 text-sm"
             value={productId}
@@ -143,7 +143,7 @@ export function InventoryMovementsPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">Type</span>
+          <span className="text-slate-600 dark:text-slate-400">Type</span>
           <select
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
             value={refType}
@@ -160,7 +160,7 @@ export function InventoryMovementsPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">From</span>
+          <span className="text-slate-600 dark:text-slate-400">From</span>
           <input
             type="date"
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -172,7 +172,7 @@ export function InventoryMovementsPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">To</span>
+          <span className="text-slate-600 dark:text-slate-400">To</span>
           <input
             type="date"
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -185,14 +185,14 @@ export function InventoryMovementsPage() {
         </label>
       </div>
 
-      <p className="mb-2 text-xs text-slate-500">
+      <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
         {total} movement{total === 1 ? '' : 's'}
         {movements.isFetching ? ' (updating…)' : ''}
       </p>
 
-      <div className="overflow-x-auto rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="overflow-x-auto rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Type</th>
@@ -219,7 +219,7 @@ export function InventoryMovementsPage() {
               </tr>
             ) : (
               (movements.data?.data ?? []).map((row) => (
-                <tr key={row.id} className="border-t border-slate-100">
+                <tr key={row.id} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="whitespace-nowrap px-4 py-2">{row.movementDate}</td>
                   <td className="px-4 py-2">{REF_TYPES.find((t) => t.value === row.refType)?.label ?? row.refType}</td>
                   <td className="px-4 py-2">{row.product?.sku ?? '—'}</td>
@@ -229,7 +229,9 @@ export function InventoryMovementsPage() {
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.quantityDelta}</td>
                   <td className="max-w-[120px] truncate px-4 py-2 font-mono text-xs">{row.refId ?? '—'}</td>
-                  <td className="max-w-[160px] truncate px-4 py-2 text-slate-600">{row.notes ?? '—'}</td>
+                  <td className="max-w-[160px] truncate px-4 py-2 text-slate-600 dark:text-slate-400">
+                    {row.notes ?? '—'}
+                  </td>
                 </tr>
               ))
             )}
@@ -241,7 +243,7 @@ export function InventoryMovementsPage() {
         <button
           type="button"
           disabled={offset === 0}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
           onClick={() => setOffset((o) => Math.max(0, o - limit))}
         >
           Previous
@@ -249,7 +251,7 @@ export function InventoryMovementsPage() {
         <button
           type="button"
           disabled={!hasMore}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
           onClick={() => setOffset((o) => o + limit)}
         >
           Next

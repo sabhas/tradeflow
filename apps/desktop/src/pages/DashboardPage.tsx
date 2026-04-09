@@ -94,8 +94,8 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-800">Dashboard</h1>
-        <p className="mt-2 text-slate-600">
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Dashboard</h1>
+        <p className="mt-2 text-slate-600 dark:text-slate-400">
           Welcome, {me?.user ? (me.user as { name: string }).name : user?.name}.
         </p>
       </div>
@@ -111,30 +111,40 @@ export function DashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {!partial?.sales ? (
               <>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales (today)</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">{fmtMoney(d?.salesToday ?? '0')}</p>
+                  <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
+                    {fmtMoney(d?.salesToday ?? '0')}
+                  </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales (MTD)</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">{fmtMoney(d?.salesMtd ?? '0')}</p>
+                  <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
+                    {fmtMoney(d?.salesMtd ?? '0')}
+                  </p>
                   <p className="mt-1 text-xs text-slate-500">From {d?.monthStart}</p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Invoices posted today</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">{d?.invoicesPostedToday ?? 0}</p>
+                  <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
+                    {d?.invoicesPostedToday ?? 0}
+                  </p>
                 </div>
               </>
             ) : null}
             {!partial?.purchases ? (
               <>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Purchases (today)</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">{fmtMoney(d?.purchasesToday ?? '0')}</p>
+                  <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
+                    {fmtMoney(d?.purchasesToday ?? '0')}
+                  </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Purchases (MTD)</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">{fmtMoney(d?.purchasesMtd ?? '0')}</p>
+                  <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
+                    {fmtMoney(d?.purchasesMtd ?? '0')}
+                  </p>
                 </div>
               </>
             ) : null}
@@ -142,11 +152,13 @@ export function DashboardPage() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             {!partial?.sales ? (
-              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="font-medium text-slate-800">Receivables</h2>
-                <p className="mt-1 text-sm text-slate-600">
+              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <h2 className="font-medium text-slate-800 dark:text-slate-100">Receivables</h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Open AR (credit invoices):{' '}
-                  <span className="font-semibold text-slate-900">{fmtMoney(d?.arOpen ?? '0')}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    {fmtMoney(d?.arOpen ?? '0')}
+                  </span>
                 </p>
                 <p className="mt-4 text-xs font-medium uppercase text-slate-500">Aging (as of {d?.asOfDate})</p>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
@@ -174,10 +186,11 @@ export function DashboardPage() {
               </div>
             ) : null}
             {!partial?.purchases ? (
-              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="font-medium text-slate-800">Payables</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Open AP: <span className="font-semibold text-slate-900">{fmtMoney(d?.apOpen ?? '0')}</span>
+              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <h2 className="font-medium text-slate-800 dark:text-slate-100">Payables</h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  Open AP:{' '}
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{fmtMoney(d?.apOpen ?? '0')}</span>
                 </p>
               </div>
             ) : null}
@@ -185,9 +198,9 @@ export function DashboardPage() {
         </>
       )}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="font-medium text-slate-800">Reports</h2>
-        <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-indigo-700">
+      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+        <h2 className="font-medium text-slate-800 dark:text-slate-100">Reports</h2>
+        <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-indigo-700 dark:text-indigo-300">
           <li>
             <Link to="/reports/operational" className="hover:underline">
               Operational reports

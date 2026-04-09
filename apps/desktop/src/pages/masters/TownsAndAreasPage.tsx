@@ -101,8 +101,8 @@ export function TownsAndAreasPage() {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-800">Towns &amp; areas</h1>
-            <p className="mt-1 text-slate-600">
+            <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Towns &amp; areas</h1>
+            <p className="mt-1 text-slate-600 dark:text-slate-400">
               Define area as parent, then map towns under each area.
             </p>
           </div>
@@ -120,15 +120,15 @@ export function TownsAndAreasPage() {
             </button>
           )}
         </div>
-        <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+        <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 dark:bg-slate-950">
               <tr>
                 <th className="px-4 py-3 text-left font-medium">Area</th>
                 {canWrite && <th className="px-4 py-3 text-right font-medium">Actions</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!areas.data?.length && !areas.isLoading && (
                 <tr>
                   <td colSpan={2} className="px-4 py-6 text-slate-500">
@@ -138,7 +138,7 @@ export function TownsAndAreasPage() {
               )}
               {(areas.data || []).map((a) => (
                 <tr key={a.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">{a.name}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{a.name}</td>
                   {canWrite && (
                     <td className="px-4 py-3 text-right">
                       <button
@@ -173,8 +173,8 @@ export function TownsAndAreasPage() {
       <div>
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-800">Towns</h2>
-            <p className="mt-1 text-slate-600">Each town belongs to one area.</p>
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Towns</h2>
+            <p className="mt-1 text-slate-600 dark:text-slate-400">Each town belongs to one area.</p>
           </div>
           <div className="flex flex-wrap items-end gap-3">
             <div>
@@ -208,16 +208,16 @@ export function TownsAndAreasPage() {
             )}
           </div>
         </div>
-        <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+        <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 dark:bg-slate-950">
               <tr>
                 <th className="px-4 py-3 text-left font-medium">Town</th>
                 <th className="px-4 py-3 text-left font-medium">Area</th>
                 {canWrite && <th className="px-4 py-3 text-right font-medium">Actions</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {towns.isLoading && (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
@@ -234,8 +234,8 @@ export function TownsAndAreasPage() {
               )}
               {(towns.data || []).map((t) => (
                 <tr key={t.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">{t.name}</td>
-                  <td className="px-4 py-3 text-slate-700">{t.area?.name ?? '—'}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{t.name}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{t.area?.name ?? '—'}</td>
                   {canWrite && (
                     <td className="px-4 py-3 text-right">
                       <button
@@ -277,7 +277,7 @@ export function TownsAndAreasPage() {
           }}
         >
           <div>
-            <label className="block text-sm font-medium text-slate-700">Name</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
             <input
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={areaName}
@@ -309,7 +309,7 @@ export function TownsAndAreasPage() {
           }}
         >
           <div>
-            <label className="block text-sm font-medium text-slate-700">Area</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Area</label>
             <select
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={townAreaId}
@@ -325,7 +325,7 @@ export function TownsAndAreasPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Town name</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Town name</label>
             <input
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={townName}

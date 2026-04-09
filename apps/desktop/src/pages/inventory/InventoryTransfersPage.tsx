@@ -100,8 +100,8 @@ export function InventoryTransfersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Stock transfers</h1>
-      <p className="mt-1 text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Stock transfers</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
         Move stock between warehouses using FIFO/LIFO/FEFO layer costs (expiry-tracked products use FEFO).
       </p>
       <InventorySubNav />
@@ -123,10 +123,10 @@ export function InventoryTransfersPage() {
       )}
 
       {panelOpen && canWrite && (
-        <div className="mb-8 max-w-3xl space-y-4 rounded-lg bg-white p-6 shadow ring-1 ring-slate-200">
+        <div className="mb-8 max-w-3xl space-y-4 rounded-lg bg-white p-6 shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 dark:shadow-none">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">From warehouse</span>
+              <span className="text-slate-600 dark:text-slate-400">From warehouse</span>
               <select
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={fromWarehouseId}
@@ -141,7 +141,7 @@ export function InventoryTransfersPage() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">To warehouse</span>
+              <span className="text-slate-600 dark:text-slate-400">To warehouse</span>
               <select
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={toWarehouseId}
@@ -156,7 +156,7 @@ export function InventoryTransfersPage() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">Transfer date</span>
+              <span className="text-slate-600 dark:text-slate-400">Transfer date</span>
               <input
                 type="date"
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -165,7 +165,7 @@ export function InventoryTransfersPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              <span className="text-slate-600">Notes (optional)</span>
+              <span className="text-slate-600 dark:text-slate-400">Notes (optional)</span>
               <input
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={notes}
@@ -175,7 +175,7 @@ export function InventoryTransfersPage() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-medium text-slate-700">Lines</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Lines</p>
             {lines.map((line, idx) => (
               <div key={idx} className="flex flex-wrap items-end gap-2">
                 <select
@@ -224,16 +224,16 @@ export function InventoryTransfersPage() {
             type="button"
             disabled={createTransfer.isPending}
             onClick={() => createTransfer.mutate()}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
           >
             Save draft
           </button>
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600">
+          <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-950 dark:text-slate-400">
             <tr>
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">From</th>
@@ -244,7 +244,7 @@ export function InventoryTransfersPage() {
           </thead>
           <tbody>
             {(list.data ?? []).map((t) => (
-              <tr key={t.id} className="border-t border-slate-100">
+              <tr key={t.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-3 py-2">{t.transferDate}</td>
                 <td className="px-3 py-2">{t.fromWarehouse?.name ?? t.fromWarehouseId}</td>
                 <td className="px-3 py-2">{t.toWarehouse?.name ?? t.toWarehouseId}</td>

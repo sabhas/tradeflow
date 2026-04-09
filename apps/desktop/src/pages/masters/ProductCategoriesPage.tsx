@@ -28,12 +28,16 @@ function CategoryTree({
   canWrite: boolean;
 }) {
   return (
-    <ul className={depth === 0 ? 'space-y-1' : 'ml-6 mt-1 space-y-1 border-l border-slate-200 pl-3'}>
+    <ul
+      className={
+        depth === 0 ? 'space-y-1' : 'ml-6 mt-1 space-y-1 border-l border-slate-200 pl-3 dark:border-slate-700'
+      }
+    >
       {nodes.map((n) => (
         <li key={n.id}>
-          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
-            <span className="font-medium text-slate-900">{n.name}</span>
-            <span className="text-sm text-slate-500">{n.code}</span>
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 dark:shadow-none">
+            <span className="font-medium text-slate-900 dark:text-slate-100">{n.name}</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">{n.code}</span>
             {canWrite && (
               <span className="ml-auto flex gap-2">
                 <button
@@ -135,8 +139,8 @@ export function ProductCategoriesPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Product categories</h1>
-          <p className="mt-1 text-slate-600">Hierarchical categories for your catalog</p>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Product categories</h1>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">Hierarchical categories for your catalog</p>
         </div>
         {canWrite && (
           <button
@@ -197,7 +201,7 @@ export function ProductCategoriesPage() {
           }}
         >
           <div>
-            <label className="block text-sm font-medium text-slate-700">Name</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
             <input
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={name}
@@ -206,7 +210,7 @@ export function ProductCategoriesPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Code</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Code</label>
             <input
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={code}
@@ -215,7 +219,7 @@ export function ProductCategoriesPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Parent (optional)</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Parent (optional)</label>
             <select
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={parentId}

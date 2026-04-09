@@ -88,18 +88,20 @@ export function InventoryOpeningBalancePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Opening balance</h1>
-      <p className="mt-1 text-slate-600">Post initial quantities per product for a warehouse and effective date.</p>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Opening balance</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
+        Post initial quantities per product for a warehouse and effective date.
+      </p>
       <InventorySubNav />
 
       {error && (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
-      <div className="max-w-3xl space-y-4 rounded-lg bg-white p-6 shadow ring-1 ring-slate-200">
+      <div className="max-w-3xl space-y-4 rounded-lg bg-white p-6 shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 dark:shadow-none">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">Warehouse</span>
+            <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
             <select
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={warehouseId}
@@ -114,7 +116,7 @@ export function InventoryOpeningBalancePage() {
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">Movement date</span>
+            <span className="text-slate-600 dark:text-slate-400">Movement date</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -126,7 +128,7 @@ export function InventoryOpeningBalancePage() {
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">Lines</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Lines</span>
             <button
               type="button"
               className="text-sm text-indigo-600 hover:text-indigo-800"
@@ -139,9 +141,9 @@ export function InventoryOpeningBalancePage() {
           </div>
 
           {lines.map((line, idx) => (
-            <div key={idx} className="flex flex-wrap items-end gap-2 border-b border-slate-100 pb-3">
+            <div key={idx} className="flex flex-wrap items-end gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
               <label className="min-w-[12rem] flex-1 flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Product</span>
+                <span className="text-slate-600 dark:text-slate-400">Product</span>
                 <select
                   className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                   value={line.productId}
@@ -159,7 +161,7 @@ export function InventoryOpeningBalancePage() {
                 </select>
               </label>
               <label className="w-28 flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Qty</span>
+                <span className="text-slate-600 dark:text-slate-400">Qty</span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -171,7 +173,7 @@ export function InventoryOpeningBalancePage() {
                 />
               </label>
               <label className="w-32 flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Unit cost</span>
+                <span className="text-slate-600 dark:text-slate-400">Unit cost</span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -184,7 +186,7 @@ export function InventoryOpeningBalancePage() {
                 />
               </label>
               <label className="w-28 flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Batch</span>
+                <span className="text-slate-600 dark:text-slate-400">Batch</span>
                 <input
                   className="rounded-md border border-slate-300 px-2 py-2 text-sm"
                   placeholder="Opt."
@@ -195,7 +197,7 @@ export function InventoryOpeningBalancePage() {
                 />
               </label>
               <label className="w-36 flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Expiry</span>
+                <span className="text-slate-600 dark:text-slate-400">Expiry</span>
                 <input
                   type="date"
                   className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"

@@ -3,7 +3,38 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    @apply bg-slate-50 dark:bg-slate-950;
+  }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  }
+
+  /* Forms */
+  input,
+  select,
+  textarea {
+    @apply bg-white text-slate-900 placeholder:text-slate-400;
+    @apply border border-slate-300;
+    @apply focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500;
+    @apply dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500;
+    @apply dark:border-slate-700 dark:focus:ring-indigo-400 dark:focus:border-indigo-400;
+  }
+
+  /* Tables (keeps pages consistent without per-table edits) */
+  table {
+    @apply text-slate-800 dark:text-slate-200;
+  }
+  thead {
+    @apply bg-slate-50 dark:bg-slate-900;
+  }
+  tbody {
+    @apply bg-white dark:bg-slate-900;
+  }
+  th {
+    @apply text-slate-600 dark:text-slate-400;
+  }
+  td {
+    @apply text-slate-800 dark:text-slate-200;
   }
 }

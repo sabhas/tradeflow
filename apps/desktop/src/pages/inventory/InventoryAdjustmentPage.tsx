@@ -88,8 +88,8 @@ export function InventoryAdjustmentPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Stock adjustment</h1>
-      <p className="mt-1 text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Stock adjustment</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
         Increase or decrease quantities with a reason (damage, count correction, expiry, etc.). Negative stock is blocked.
       </p>
       <InventorySubNav />
@@ -98,10 +98,10 @@ export function InventoryAdjustmentPage() {
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
-      <div className="max-w-3xl space-y-4 rounded-lg bg-white p-6 shadow ring-1 ring-slate-200">
+      <div className="max-w-3xl space-y-4 rounded-lg bg-white p-6 shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 dark:shadow-none">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-            <span className="text-slate-600">Warehouse</span>
+            <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
             <select
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={warehouseId}
@@ -116,7 +116,7 @@ export function InventoryAdjustmentPage() {
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-            <span className="text-slate-600">Reason</span>
+            <span className="text-slate-600 dark:text-slate-400">Reason</span>
             <input
               type="text"
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -126,20 +126,20 @@ export function InventoryAdjustmentPage() {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">Movement date (optional)</span>
+            <span className="text-slate-600 dark:text-slate-400">Movement date (optional)</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={movementDate}
               onChange={(e) => setMovementDate(e.target.value)}
             />
-            <span className="text-xs text-slate-500">Defaults to today if empty.</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Defaults to today if empty.</span>
           </label>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">Lines</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Lines</span>
             <button
               type="button"
               className="text-sm text-indigo-600 hover:text-indigo-800"
@@ -150,9 +150,9 @@ export function InventoryAdjustmentPage() {
           </div>
 
           {lines.map((line, idx) => (
-            <div key={idx} className="flex flex-wrap items-end gap-2 border-b border-slate-100 pb-3">
+            <div key={idx} className="flex flex-wrap items-end gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
               <label className="min-w-[12rem] flex-1 flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Product</span>
+                <span className="text-slate-600 dark:text-slate-400">Product</span>
                 <select
                   className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                   value={line.productId}
@@ -170,7 +170,7 @@ export function InventoryAdjustmentPage() {
                 </select>
               </label>
               <label className="w-36 flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Qty delta (+/−)</span>
+                <span className="text-slate-600 dark:text-slate-400">Qty delta (+/−)</span>
                 <input
                   type="text"
                   inputMode="decimal"

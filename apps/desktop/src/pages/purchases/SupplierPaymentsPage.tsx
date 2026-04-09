@@ -80,8 +80,8 @@ export function SupplierPaymentsPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Supplier payments</h1>
-          <p className="mt-1 text-slate-600">Pay suppliers and allocate to open invoices (AP + cash journal)</p>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Supplier payments</h1>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">Pay suppliers and allocate to open invoices (AP + cash journal)</p>
         </div>
         {canWrite && (
           <button
@@ -107,9 +107,9 @@ export function SupplierPaymentsPage() {
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Supplier</th>
@@ -118,7 +118,7 @@ export function SupplierPaymentsPage() {
           </thead>
           <tbody>
             {(list.data ?? []).map((r) => (
-              <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/80">
+              <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-800/50">
                 <td className="px-4 py-3">{r.paymentDate}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{r.amount}</td>
@@ -133,18 +133,18 @@ export function SupplierPaymentsPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Record supplier payment</h2>
-              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" onClick={() => setPanelOpen(false)}>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Record supplier payment</h2>
+              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
                 ×
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+            <div className="mt-4 space-y-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
               Allocations must exactly equal the payment amount. Open balances load when you pick a supplier.
             </div>
 
             <label className="mt-4 block text-sm">
-              <span className="text-slate-600">Supplier</span>
+              <span className="text-slate-600 dark:text-slate-400">Supplier</span>
               <select
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={supplierId}
@@ -159,7 +159,7 @@ export function SupplierPaymentsPage() {
               </select>
             </label>
             <label className="mt-3 block text-sm">
-              <span className="text-slate-600">Payment date</span>
+              <span className="text-slate-600 dark:text-slate-400">Payment date</span>
               <input
                 type="date"
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -168,7 +168,7 @@ export function SupplierPaymentsPage() {
               />
             </label>
             <label className="mt-3 block text-sm">
-              <span className="text-slate-600">Total amount</span>
+              <span className="text-slate-600 dark:text-slate-400">Total amount</span>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={amount}
@@ -176,7 +176,7 @@ export function SupplierPaymentsPage() {
               />
             </label>
             <label className="mt-3 block text-sm">
-              <span className="text-slate-600">Method</span>
+              <span className="text-slate-600 dark:text-slate-400">Method</span>
               <select
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={paymentMethod}
@@ -188,7 +188,7 @@ export function SupplierPaymentsPage() {
               </select>
             </label>
             <label className="mt-3 block text-sm">
-              <span className="text-slate-600">Reference</span>
+              <span className="text-slate-600 dark:text-slate-400">Reference</span>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={reference}
@@ -240,7 +240,7 @@ export function SupplierPaymentsPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" className="rounded-lg border border-slate-300 px-4 py-2 text-sm" onClick={() => setPanelOpen(false)}>
+              <button type="button" className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
                 Cancel
               </button>
               {canWrite && (

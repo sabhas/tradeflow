@@ -75,8 +75,8 @@ export function InventoryStockPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Current stock</h1>
-      <p className="mt-1 text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Current stock</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
         Balances by product and warehouse. Layer value uses FIFO/LIFO/FEFO stock layers; legacy column uses product cost
         price.
       </p>
@@ -84,7 +84,7 @@ export function InventoryStockPage() {
 
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">Warehouse</span>
+          <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
           <select
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
             value={warehouseId}
@@ -99,7 +99,7 @@ export function InventoryStockPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">Product</span>
+          <span className="text-slate-600 dark:text-slate-400">Product</span>
           <select
             className="min-w-[14rem] rounded-md border border-slate-300 px-3 py-2 text-sm"
             value={productId}
@@ -115,9 +115,9 @@ export function InventoryStockPage() {
         </label>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">SKU</th>
               <th className="px-4 py-3 text-left font-medium">Product</th>
@@ -142,7 +142,7 @@ export function InventoryStockPage() {
               </tr>
             ) : (
               (balances.data ?? []).map((row) => (
-                <tr key={row.id} className="border-t border-slate-100">
+                <tr key={row.id} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="px-4 py-2">{row.product?.sku ?? '—'}</td>
                   <td className="px-4 py-2">{row.product?.name ?? row.productId}</td>
                   <td className="px-4 py-2">

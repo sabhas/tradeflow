@@ -65,17 +65,19 @@ export function InventoryHealthReportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Inventory health</h1>
-      <p className="mt-1 text-slate-600">Low stock, dead stock, and slow-moving SKUs.</p>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Inventory health</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">Low stock, dead stock, and slow-moving SKUs.</p>
       <ReportsSubNav />
 
       {canInv && (
         <section className="mt-8">
-          <h2 className="text-lg font-medium text-slate-800">Low stock</h2>
-          <p className="mt-1 text-sm text-slate-600">Where on-hand quantity is below min or reorder level.</p>
-          <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">Low stock</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Where on-hand quantity is below min or reorder level.
+          </p>
+          <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
+              <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-950 dark:text-slate-400">
                 <tr>
                   <th className="px-3 py-2">SKU</th>
                   <th className="px-3 py-2">Product</th>
@@ -87,7 +89,7 @@ export function InventoryHealthReportsPage() {
               </thead>
               <tbody>
                 {((lowStock.data?.data ?? []) as Record<string, string>[]).map((r, i) => (
-                  <tr key={i} className="border-t border-slate-100">
+                  <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="px-3 py-2">{r.productSku}</td>
                     <td className="px-3 py-2">{r.productName}</td>
                     <td className="px-3 py-2">{r.warehouseName}</td>
@@ -107,11 +109,13 @@ export function InventoryHealthReportsPage() {
 
       {canInv && (
         <section className="mt-10">
-          <h2 className="text-lg font-medium text-slate-800">Dead stock</h2>
-          <p className="mt-1 text-sm text-slate-600">On-hand quantity with no sales in the lookback window.</p>
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">Dead stock</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            On-hand quantity with no sales in the lookback window.
+          </p>
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">As of</span>
+              <span className="text-slate-600 dark:text-slate-400">As of</span>
               <input
                 type="date"
                 className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
@@ -120,7 +124,7 @@ export function InventoryHealthReportsPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">Days without sale</span>
+              <span className="text-slate-600 dark:text-slate-400">Days without sale</span>
               <input
                 type="number"
                 min={1}
@@ -130,9 +134,9 @@ export function InventoryHealthReportsPage() {
               />
             </label>
           </div>
-          <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
+              <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-950 dark:text-slate-400">
                 <tr>
                   <th className="px-3 py-2">SKU</th>
                   <th className="px-3 py-2">Product</th>
@@ -142,7 +146,7 @@ export function InventoryHealthReportsPage() {
               </thead>
               <tbody>
                 {(dead.data?.data ?? []).map((r, i) => (
-                  <tr key={i} className="border-t border-slate-100">
+                  <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="px-3 py-2">{r.productSku}</td>
                     <td className="px-3 py-2">{r.productName}</td>
                     <td className="px-3 py-2">{r.warehouseName}</td>
@@ -160,11 +164,13 @@ export function InventoryHealthReportsPage() {
 
       {canSales && (
         <section className="mt-10">
-          <h2 className="text-lg font-medium text-slate-800">Slow-moving</h2>
-          <p className="mt-1 text-sm text-slate-600">Lowest quantity sold in the selected period.</p>
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">Slow-moving</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Lowest quantity sold in the selected period.
+          </p>
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">From</span>
+              <span className="text-slate-600 dark:text-slate-400">From</span>
               <input
                 type="date"
                 className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
@@ -173,7 +179,7 @@ export function InventoryHealthReportsPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">To</span>
+              <span className="text-slate-600 dark:text-slate-400">To</span>
               <input
                 type="date"
                 className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
@@ -182,7 +188,7 @@ export function InventoryHealthReportsPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">Limit</span>
+              <span className="text-slate-600 dark:text-slate-400">Limit</span>
               <input
                 type="number"
                 min={1}
@@ -193,9 +199,9 @@ export function InventoryHealthReportsPage() {
               />
             </label>
           </div>
-          <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
+              <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-950 dark:text-slate-400">
                 <tr>
                   <th className="px-3 py-2">SKU</th>
                   <th className="px-3 py-2">Product</th>
@@ -204,7 +210,7 @@ export function InventoryHealthReportsPage() {
               </thead>
               <tbody>
                 {(slow.data?.data ?? []).map((r, i) => (
-                  <tr key={i} className="border-t border-slate-100">
+                  <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="px-3 py-2">{r.productSku}</td>
                     <td className="px-3 py-2">{r.productName}</td>
                     <td className="px-3 py-2 text-right">{r.quantitySold}</td>

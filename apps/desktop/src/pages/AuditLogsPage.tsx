@@ -22,11 +22,13 @@ const PAGE_SIZE = 50;
 
 function JsonBlock({ value }: { value: unknown }) {
   if (value === undefined || value === null) {
-    return <span className="text-slate-400">—</span>;
+    return <span className="text-slate-400 dark:text-slate-500">—</span>;
   }
   const text = JSON.stringify(value, null, 2);
   return (
-    <pre className="max-h-48 overflow-auto rounded bg-slate-50 p-3 text-xs text-slate-700">{text}</pre>
+    <pre className="max-h-48 overflow-auto rounded bg-slate-50 p-3 text-xs text-slate-700 dark:bg-slate-950 dark:text-slate-300">
+      {text}
+    </pre>
   );
 }
 
@@ -73,14 +75,16 @@ export function AuditLogsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Audit logs</h1>
-      <p className="mt-1 text-slate-600">Append-only history of create, update, and delete operations.</p>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Audit logs</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
+        Append-only history of create, update, and delete operations.
+      </p>
 
-      <div className="mt-6 grid gap-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid gap-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/50 sm:grid-cols-2 lg:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700">Entity</span>
+          <span className="font-medium text-slate-700 dark:text-slate-300">Entity</span>
           <input
-            className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
             placeholder="e.g. Product"
             value={entity}
             onChange={(e) => {
@@ -90,9 +94,9 @@ export function AuditLogsPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700">Entity id</span>
+          <span className="font-medium text-slate-700 dark:text-slate-300">Entity id</span>
           <input
-            className="rounded-md border border-slate-300 px-3 py-2 font-mono text-xs text-slate-900 shadow-sm"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
             placeholder="UUID"
             value={entityId}
             onChange={(e) => {
@@ -102,9 +106,9 @@ export function AuditLogsPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700">User id</span>
+          <span className="font-medium text-slate-700 dark:text-slate-300">User id</span>
           <input
-            className="rounded-md border border-slate-300 px-3 py-2 font-mono text-xs text-slate-900 shadow-sm"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
             placeholder="UUID"
             value={userId}
             onChange={(e) => {
@@ -114,10 +118,10 @@ export function AuditLogsPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700">From (ISO date/time)</span>
+          <span className="font-medium text-slate-700 dark:text-slate-300">From (ISO date/time)</span>
           <input
             type="datetime-local"
-            className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
             value={dateFrom}
             onChange={(e) => {
               setDateFrom(e.target.value);
@@ -126,10 +130,10 @@ export function AuditLogsPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700">To (ISO date/time)</span>
+          <span className="font-medium text-slate-700 dark:text-slate-300">To (ISO date/time)</span>
           <input
             type="datetime-local"
-            className="rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
             value={dateTo}
             onChange={(e) => {
               setDateTo(e.target.value);
@@ -139,22 +143,30 @@ export function AuditLogsPage() {
         </label>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow">
+      <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         {isLoading ? (
-          <div className="py-12 text-center text-slate-500">Loading…</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400">Loading…</div>
         ) : (
           <table className="min-w-full table-fixed">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 dark:bg-slate-950">
               <tr>
                 <th className="w-10 px-2 py-3" />
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Time</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">User</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Action</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Entity</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Id</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Time
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                  User
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Action
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Entity
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">Id</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {logs.map((log) => {
                 const open = expanded.has(log.id);
                 return (
@@ -165,31 +177,37 @@ export function AuditLogsPage() {
                           type="button"
                           aria-expanded={open}
                           onClick={() => toggleRow(log.id)}
-                          className="rounded p-1 text-slate-500 hover:bg-slate-100"
+                          className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                         >
                           {open ? '▼' : '▶'}
                         </button>
                       </td>
-                      <td className="px-4 py-3 align-top text-sm text-slate-600">
+                      <td className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-400">
                         {new Date(log.createdAt).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 align-top font-mono text-xs text-slate-700">{log.userId}</td>
-                      <td className="px-4 py-3 align-top text-sm">{log.action}</td>
-                      <td className="px-4 py-3 align-top text-sm">{log.entity}</td>
-                      <td className="px-4 py-3 align-top font-mono text-xs text-slate-500">
+                      <td className="px-4 py-3 align-top font-mono text-xs text-slate-700 dark:text-slate-300">
+                        {log.userId}
+                      </td>
+                      <td className="px-4 py-3 align-top text-sm text-slate-800 dark:text-slate-200">{log.action}</td>
+                      <td className="px-4 py-3 align-top text-sm text-slate-800 dark:text-slate-200">{log.entity}</td>
+                      <td className="px-4 py-3 align-top font-mono text-xs text-slate-500 dark:text-slate-400">
                         {log.entityId || '—'}
                       </td>
                     </tr>
                     {open && (
-                      <tr className="bg-slate-50/90">
+                      <tr className="bg-slate-50/90 dark:bg-slate-800/40">
                         <td colSpan={6} className="px-6 py-4">
                           <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                              <div className="mb-1 text-xs font-medium uppercase text-slate-500">Old value</div>
+                              <div className="mb-1 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">
+                                Old value
+                              </div>
                               <JsonBlock value={log.oldValue} />
                             </div>
                             <div>
-                              <div className="mb-1 text-xs font-medium uppercase text-slate-500">New value</div>
+                              <div className="mb-1 text-xs font-medium uppercase text-slate-500 dark:text-slate-400">
+                                New value
+                              </div>
                               <JsonBlock value={log.newValue} />
                             </div>
                           </div>
@@ -203,11 +221,13 @@ export function AuditLogsPage() {
           </table>
         )}
         {logs.length === 0 && !isLoading && (
-          <div className="py-12 text-center text-slate-500">No audit entries match your filters</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400">
+            No audit entries match your filters
+          </div>
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-4 text-sm text-slate-600">
+      <div className="mt-4 flex items-center justify-between gap-4 text-sm text-slate-600 dark:text-slate-400">
         <span>
           {total === 0 ? '0 entries' : `${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} of ${total}`}
           {isFetching && !isLoading ? ' · updating…' : ''}
@@ -217,7 +237,7 @@ export function AuditLogsPage() {
             type="button"
             disabled={page <= 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40"
+            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Previous
           </button>
@@ -225,7 +245,7 @@ export function AuditLogsPage() {
             type="button"
             disabled={page + 1 >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40"
+            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Next
           </button>

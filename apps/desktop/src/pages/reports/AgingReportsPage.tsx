@@ -119,8 +119,8 @@ export function AgingReportsPage() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-800">Aging</h2>
-      <p className="mt-1 text-sm text-slate-600">
+      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Aging</h2>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
         Open posted credit sales invoices (receivables) and supplier invoices (payables) by due-date bucket.
       </p>
 
@@ -129,7 +129,9 @@ export function AgingReportsPage() {
           <button
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === 'recv' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+              tab === 'recv'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
             }`}
             onClick={() => setTab('recv')}
           >
@@ -140,7 +142,9 @@ export function AgingReportsPage() {
           <button
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === 'pay' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+              tab === 'pay'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
             }`}
             onClick={() => setTab('pay')}
           >
@@ -149,9 +153,9 @@ export function AgingReportsPage() {
         )}
       </div>
 
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         <label className="flex max-w-xs flex-col gap-1 text-sm">
-          <span className="text-slate-600">As of</span>
+          <span className="text-slate-600 dark:text-slate-400">As of</span>
           <input
             type="date"
             className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -169,7 +173,7 @@ export function AgingReportsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportRecvExcel().catch(() => {})}
                 disabled={!recv.data.data.length}
               >
@@ -177,16 +181,16 @@ export function AgingReportsPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportRecvPdf}
                 disabled={!recv.data.data.length}
               >
                 PDF
               </button>
             </div>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
                     <th className="px-3 py-2 text-left">Customer</th>
                     <th className="px-3 py-2 text-right">Current</th>
@@ -199,7 +203,7 @@ export function AgingReportsPage() {
                 </thead>
                 <tbody>
                   {recv.data.data.map((r) => (
-                    <tr key={r.customerId} className="border-t border-slate-100">
+                    <tr key={r.customerId} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{r.customerName}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.buckets.current}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d1_30}</td>
@@ -227,7 +231,7 @@ export function AgingReportsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportPayExcel().catch(() => {})}
                 disabled={!pay.data.data.length}
               >
@@ -235,16 +239,16 @@ export function AgingReportsPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportPayPdf}
                 disabled={!pay.data.data.length}
               >
                 PDF
               </button>
             </div>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
                     <th className="px-3 py-2 text-left">Supplier</th>
                     <th className="px-3 py-2 text-right">Current</th>
@@ -257,7 +261,7 @@ export function AgingReportsPage() {
                 </thead>
                 <tbody>
                   {pay.data.data.map((r) => (
-                    <tr key={r.supplierId} className="border-t border-slate-100">
+                    <tr key={r.supplierId} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{r.supplierName}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.buckets.current}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d1_30}</td>

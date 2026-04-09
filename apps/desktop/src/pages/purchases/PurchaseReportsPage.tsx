@@ -90,15 +90,19 @@ export function PurchaseReportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Purchase reports</h1>
-      <p className="mt-1 text-slate-600">Supplier statement, payables aging, and pricing history</p>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Purchase reports</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
+        Supplier statement, payables aging, and pricing history
+      </p>
       <PurchaseSubNav />
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            tab === 'statement' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-800'
+            tab === 'statement'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
           }`}
           onClick={() => setTab('statement')}
         >
@@ -107,7 +111,9 @@ export function PurchaseReportsPage() {
         <button
           type="button"
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            tab === 'aging' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-800'
+            tab === 'aging'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
           }`}
           onClick={() => setTab('aging')}
         >
@@ -116,7 +122,9 @@ export function PurchaseReportsPage() {
         <button
           type="button"
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            tab === 'pricing' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-800'
+            tab === 'pricing'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
           }`}
           onClick={() => setTab('pricing')}
         >
@@ -125,10 +133,10 @@ export function PurchaseReportsPage() {
       </div>
 
       {tab === 'statement' && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="block text-sm">
-              <span className="text-slate-600">Supplier</span>
+              <span className="text-slate-600 dark:text-slate-400">Supplier</span>
               <select
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={supplierId}
@@ -143,7 +151,7 @@ export function PurchaseReportsPage() {
               </select>
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">From</span>
+              <span className="text-slate-600 dark:text-slate-400">From</span>
               <input
                 type="date"
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -152,7 +160,7 @@ export function PurchaseReportsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">To</span>
+              <span className="text-slate-600 dark:text-slate-400">To</span>
               <input
                 type="date"
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -173,7 +181,7 @@ export function PurchaseReportsPage() {
               </div>
               <table className="mt-4 min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-slate-600">
+                  <tr className="border-b border-slate-200 text-left text-slate-600 dark:border-slate-800 dark:text-slate-400">
                     <th className="py-2 pr-4">Date</th>
                     <th className="py-2 pr-4">Ref</th>
                     <th className="py-2 pr-4 text-right">Debit</th>
@@ -183,7 +191,10 @@ export function PurchaseReportsPage() {
                 </thead>
                 <tbody>
                   {statement.data.lines.map((row, i) => (
-                    <tr key={`${row.kind}-${i}`} className="border-t border-slate-100 hover:bg-slate-50/80">
+                    <tr
+                      key={`${row.kind}-${i}`}
+                      className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                    >
                       <td className="py-2 pr-4 tabular-nums">{row.date}</td>
                       <td className="py-2 pr-4">{row.ref}</td>
                       <td className="py-2 pr-4 text-right tabular-nums">{row.debit}</td>
@@ -199,9 +210,9 @@ export function PurchaseReportsPage() {
       )}
 
       {tab === 'aging' && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <label className="block max-w-xs text-sm">
-            <span className="text-slate-600">As of</span>
+            <span className="text-slate-600 dark:text-slate-400">As of</span>
             <input
               type="date"
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -211,7 +222,7 @@ export function PurchaseReportsPage() {
           </label>
           <table className="mt-6 min-w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-slate-600">
+              <tr className="border-b border-slate-200 text-left text-slate-600 dark:border-slate-800 dark:text-slate-400">
                 <th className="py-2 pr-4">Supplier</th>
                 <th className="py-2 pr-4 text-right">Open</th>
                 <th className="py-2 pr-4 text-right">Current</th>
@@ -223,7 +234,10 @@ export function PurchaseReportsPage() {
             </thead>
             <tbody>
               {(aging.data?.data ?? []).map((r) => (
-                <tr key={r.supplierId} className="border-t border-slate-100 hover:bg-slate-50/80">
+                <tr
+                  key={r.supplierId}
+                  className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                >
                   <td className="py-2 pr-4">{r.supplierName}</td>
                   <td className="py-2 pr-4 text-right tabular-nums">{r.totalOpen}</td>
                   <td className="py-2 pr-4 text-right tabular-nums">{r.buckets.current}</td>
@@ -242,9 +256,9 @@ export function PurchaseReportsPage() {
       )}
 
       {tab === 'pricing' && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <label className="block max-w-md text-sm">
-            <span className="text-slate-600">Supplier</span>
+            <span className="text-slate-600 dark:text-slate-400">Supplier</span>
             <select
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
               value={supplierId}
@@ -260,7 +274,7 @@ export function PurchaseReportsPage() {
           </label>
           <table className="mt-6 min-w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-slate-600">
+              <tr className="border-b border-slate-200 text-left text-slate-600 dark:border-slate-800 dark:text-slate-400">
                 <th className="py-2 pr-4">Date</th>
                 <th className="py-2 pr-4">Source</th>
                 <th className="py-2 pr-4">Product</th>
@@ -269,7 +283,10 @@ export function PurchaseReportsPage() {
             </thead>
             <tbody>
               {(pricing.data ?? []).map((r) => (
-                <tr key={`${r.source}-${r.lineId}`} className="border-t border-slate-100 hover:bg-slate-50/80">
+                <tr
+                  key={`${r.source}-${r.lineId}`}
+                  className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                >
                   <td className="py-2 pr-4 tabular-nums">{r.date}</td>
                   <td className="py-2 pr-4 capitalize">{r.source.replace('_', ' ')}</td>
                   <td className="py-2 pr-4">{productName(r.productId)}</td>

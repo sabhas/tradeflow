@@ -58,10 +58,10 @@ export function ReportsHubPage() {
         <Link
           key={c.to}
           to={c.to}
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:shadow-none dark:hover:border-indigo-500/40"
         >
-          <h2 className="text-lg font-semibold text-slate-800">{c.title}</h2>
-          <p className="mt-2 text-sm text-slate-600">{c.description}</p>
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{c.title}</h2>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{c.description}</p>
         </Link>
       ))}
     </div>

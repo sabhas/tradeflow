@@ -34,8 +34,8 @@ export function ImportHubPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Import data</h1>
-      <p className="mt-1 text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Import data</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
         Download a template, fill rows, then upload. Errors are reported by row.
       </p>
 
@@ -47,11 +47,11 @@ export function ImportHubPage() {
             <li key={c.to}>
               <Link
                 to={c.to}
-                className="flex h-full flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-100 transition hover:border-indigo-200 hover:ring-indigo-100"
+                className="flex h-full flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-100 transition hover:border-indigo-200 hover:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800 dark:hover:border-indigo-500/40 dark:hover:ring-indigo-950"
               >
-                <span className="text-lg font-medium text-slate-900">{c.title}</span>
-                <span className="mt-2 flex-1 text-sm text-slate-600">{c.description}</span>
-                <span className="mt-4 text-sm font-medium text-indigo-600">Open →</span>
+                <span className="text-lg font-medium text-slate-900 dark:text-slate-100">{c.title}</span>
+                <span className="mt-2 flex-1 text-sm text-slate-600 dark:text-slate-400">{c.description}</span>
+                <span className="mt-4 text-sm font-medium text-indigo-600 dark:text-indigo-400">Open →</span>
               </Link>
             </li>
           ))}

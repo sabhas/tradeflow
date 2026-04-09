@@ -203,8 +203,8 @@ export function SupplierInvoicesPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Supplier invoices</h1>
-          <p className="mt-1 text-slate-600">Match to GRN where needed; post to accounting and update landed cost</p>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Supplier invoices</h1>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">Match to GRN where needed; post to accounting and update landed cost</p>
         </div>
         {canWrite && (
           <button
@@ -235,9 +235,9 @@ export function SupplierInvoicesPage() {
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Number</th>
@@ -293,17 +293,17 @@ export function SupplierInvoicesPage() {
 
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">{editingId ? 'Edit invoice' : 'New supplier invoice'}</h2>
-              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" onClick={() => setPanelOpen(false)}>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{editingId ? 'Edit invoice' : 'New supplier invoice'}</h2>
+              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
                 ×
               </button>
             </div>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
-                <span className="text-slate-600">Supplier</span>
+                <span className="text-slate-600 dark:text-slate-400">Supplier</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={supplierId}
@@ -318,7 +318,7 @@ export function SupplierInvoicesPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Supplier ref / invoice #</span>
+                <span className="text-slate-600 dark:text-slate-400">Supplier ref / invoice #</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={invoiceNumber}
@@ -326,7 +326,7 @@ export function SupplierInvoicesPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Invoice date</span>
+                <span className="text-slate-600 dark:text-slate-400">Invoice date</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -335,7 +335,7 @@ export function SupplierInvoicesPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Due date (optional)</span>
+                <span className="text-slate-600 dark:text-slate-400">Due date (optional)</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -344,7 +344,7 @@ export function SupplierInvoicesPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">GRN id (optional link)</span>
+                <span className="text-slate-600 dark:text-slate-400">GRN id (optional link)</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
                   value={grnId}
@@ -353,7 +353,7 @@ export function SupplierInvoicesPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">PO id (optional)</span>
+                <span className="text-slate-600 dark:text-slate-400">PO id (optional)</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
                   value={purchaseOrderId}
@@ -404,7 +404,7 @@ export function SupplierInvoicesPage() {
                 </div>
               )}
               <label className="block text-sm sm:col-span-2">
-                <span className="text-slate-600">Header discount</span>
+                <span className="text-slate-600 dark:text-slate-400">Header discount</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={headerDiscount}
@@ -413,7 +413,7 @@ export function SupplierInvoicesPage() {
               </label>
             </div>
             <label className="mt-4 block text-sm">
-              <span className="text-slate-600">Notes</span>
+              <span className="text-slate-600 dark:text-slate-400">Notes</span>
               <textarea
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 rows={2}
@@ -434,7 +434,7 @@ export function SupplierInvoicesPage() {
             </div>
             <div className="mt-2 space-y-2">
               {lines.map((line, idx) => (
-                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-12 sm:items-end">
+                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:grid-cols-12 sm:items-end">
                   <label className="sm:col-span-3">
                     <span className="text-xs text-slate-500">Product</span>
                     <select
@@ -550,7 +550,7 @@ export function SupplierInvoicesPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" className="rounded-lg border border-slate-300 px-4 py-2 text-sm" onClick={() => setPanelOpen(false)}>
+              <button type="button" className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
                 Cancel
               </button>
               {canWrite && (

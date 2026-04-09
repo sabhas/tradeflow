@@ -268,15 +268,19 @@ export function TaxReportsPage() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-800">Tax</h2>
-      <p className="mt-1 text-sm text-slate-600">Collected, paid, and period summary from posted documents.</p>
+      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Tax</h2>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        Collected, paid, and period summary from posted documents.
+      </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {canCollected && (
           <button
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === 'collected' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+              tab === 'collected'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
             }`}
             onClick={() => setTab('collected')}
           >
@@ -287,7 +291,9 @@ export function TaxReportsPage() {
           <button
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === 'paid' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+              tab === 'paid'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
             }`}
             onClick={() => setTab('paid')}
           >
@@ -298,7 +304,9 @@ export function TaxReportsPage() {
           <button
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === 'summary' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+              tab === 'summary'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
             }`}
             onClick={() => setTab('summary')}
           >
@@ -307,10 +315,10 @@ export function TaxReportsPage() {
         )}
       </div>
 
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         <div className="flex flex-wrap items-end gap-4">
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">From</span>
+            <span className="text-slate-600 dark:text-slate-400">From</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -319,7 +327,7 @@ export function TaxReportsPage() {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">To</span>
+            <span className="text-slate-600 dark:text-slate-400">To</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -329,7 +337,7 @@ export function TaxReportsPage() {
           </label>
           {canTaxMasters && tab !== 'summary' && (
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">Tax profile</span>
+              <span className="text-slate-600 dark:text-slate-400">Tax profile</span>
               <select
                 className="min-w-[200px] rounded-md border border-slate-300 px-2 py-1.5"
                 value={taxProfileId}
@@ -355,13 +363,13 @@ export function TaxReportsPage() {
         {tab === 'collected' && collected.data && (
           <div className="mt-6">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Total tax:{' '}
                 <span className="font-medium tabular-nums">{collected.data?.meta.totalTax ?? '—'}</span>
               </p>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportCollectedExcel().catch(() => {})}
                 disabled={!collected.data?.data?.length}
               >
@@ -369,16 +377,16 @@ export function TaxReportsPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportCollectedPdf}
                 disabled={!collected.data?.data?.length}
               >
                 PDF
               </button>
             </div>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
                     <th className="px-3 py-2 text-left">Date</th>
                     <th className="px-3 py-2 text-left">Customer</th>
@@ -390,7 +398,7 @@ export function TaxReportsPage() {
                 </thead>
                 <tbody>
                   {(collected.data?.data ?? []).map((r) => (
-                    <tr key={r.lineId} className="border-t border-slate-100">
+                    <tr key={r.lineId} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{r.invoiceDate}</td>
                       <td className="px-3 py-2">{r.customerName}</td>
                       <td className="px-3 py-2">
@@ -419,13 +427,13 @@ export function TaxReportsPage() {
         {tab === 'paid' && paid.data && (
           <div className="mt-6">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Total tax:{' '}
                 <span className="font-medium tabular-nums">{paid.data?.meta.totalTax ?? '—'}</span>
               </p>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportPaidExcel().catch(() => {})}
                 disabled={!paid.data?.data?.length}
               >
@@ -433,16 +441,16 @@ export function TaxReportsPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportPaidPdf}
                 disabled={!paid.data?.data?.length}
               >
                 PDF
               </button>
             </div>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
                     <th className="px-3 py-2 text-left">Date</th>
                     <th className="px-3 py-2 text-left">Supplier</th>
@@ -455,7 +463,7 @@ export function TaxReportsPage() {
                 </thead>
                 <tbody>
                   {(paid.data?.data ?? []).map((r) => (
-                    <tr key={r.lineId} className="border-t border-slate-100">
+                    <tr key={r.lineId} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{r.invoiceDate}</td>
                       <td className="px-3 py-2">{r.supplierName}</td>
                       <td className="px-3 py-2">{r.supplierInvoiceNumber}</td>
@@ -485,7 +493,7 @@ export function TaxReportsPage() {
         {tab === 'summary' && summary.data && (
           <div className="mt-6">
             {(summary.data.meta.partial.collected || summary.data.meta.partial.paid) && (
-              <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
                 {summary.data.meta.partial.collected
                   ? 'Collected totals are not shown (sales:read required). '
                   : ''}
@@ -494,7 +502,7 @@ export function TaxReportsPage() {
                   : ''}
               </p>
             )}
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Posted invoices:{' '}
               <span className="font-medium tabular-nums">
                 {summary.data.data.breakdown.collectedInvoiceCount}
@@ -505,7 +513,7 @@ export function TaxReportsPage() {
                 {summary.data.data.breakdown.paidInvoiceCount}
               </span>
             </p>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Total collected{' '}
               <span className="font-medium tabular-nums">{summary.data.meta.totalCollected}</span>
               {' · '}
@@ -516,7 +524,7 @@ export function TaxReportsPage() {
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportSummaryExcel().catch(() => {})}
                 disabled={!summary.data.data.byProfile.length}
               >
@@ -524,16 +532,16 @@ export function TaxReportsPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportSummaryPdf}
                 disabled={!summary.data.data.byProfile.length}
               >
                 PDF
               </button>
             </div>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
                     <th className="px-3 py-2 text-left">Tax profile</th>
                     <th className="px-3 py-2 text-right">Rate</th>
@@ -547,7 +555,7 @@ export function TaxReportsPage() {
                   {summary.data.data.byProfile.map((r, i) => {
                     const net = (parseFloat(r.collected) - parseFloat(r.paid)).toFixed(4);
                     return (
-                      <tr key={`${r.taxProfileName}-${i}`} className="border-t border-slate-100">
+                      <tr key={`${r.taxProfileName}-${i}`} className="border-t border-slate-100 dark:border-slate-800">
                         <td className="px-3 py-2">{r.taxProfileName}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.taxProfileRate ?? '—'}</td>
                         <td className="px-3 py-2">{r.taxProfileIsInclusive ? 'Yes' : 'No'}</td>

@@ -59,16 +59,16 @@ export function RecycleBinPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Recycle bin</h1>
-      <p className="mt-1 text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Recycle bin</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
         Soft-deleted records can be restored here. Purge / retention policies are not enabled yet.
       </p>
 
       <div className="mt-6 flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700">Entity type</span>
+          <span className="font-medium text-slate-700 dark:text-slate-300">Entity type</span>
           <select
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
             value={entity}
             onChange={(e) => {
               setEntity(e.target.value as EntityType);
@@ -84,29 +84,35 @@ export function RecycleBinPage() {
         </label>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg bg-white shadow">
+      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white shadow dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         {isLoading ? (
-          <div className="py-12 text-center text-slate-500">Loading…</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400">Loading…</div>
         ) : (
           <table className="min-w-full">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 dark:bg-slate-950">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Deleted</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Label</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Id</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Deleted
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Label
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">Id</th>
                 {canRestore && (
-                  <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Actions</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Actions
+                  </th>
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td className="px-4 py-3 text-sm text-slate-600">
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                     {new Date(r.deletedAt).toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-800">{r.label}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-500">{r.id}</td>
+                  <td className="px-4 py-3 text-sm text-slate-800 dark:text-slate-200">{r.label}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{r.id}</td>
                   {canRestore && (
                     <td className="px-4 py-3 text-right">
                       <button
@@ -134,11 +140,13 @@ export function RecycleBinPage() {
           </table>
         )}
         {rows.length === 0 && !isLoading && (
-          <div className="py-12 text-center text-slate-500">No deleted items for this type</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400">
+            No deleted items for this type
+          </div>
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-4 text-sm text-slate-600">
+      <div className="mt-4 flex items-center justify-between gap-4 text-sm text-slate-600 dark:text-slate-400">
         <span>
           {total === 0 ? '0 items' : `${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} of ${total}`}
           {isFetching && !isLoading ? ' · updating…' : ''}
@@ -148,7 +156,7 @@ export function RecycleBinPage() {
             type="button"
             disabled={page <= 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40"
+            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Previous
           </button>
@@ -156,7 +164,7 @@ export function RecycleBinPage() {
             type="button"
             disabled={page + 1 >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40"
+            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Next
           </button>
@@ -164,7 +172,7 @@ export function RecycleBinPage() {
       </div>
 
       {restore.isError && (
-        <p className="mt-4 text-sm text-red-600">
+        <p className="mt-4 text-sm text-red-600 dark:text-red-400">
           {(restore.error as Error)?.message || 'Restore failed'}
         </p>
       )}

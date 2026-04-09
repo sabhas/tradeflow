@@ -215,15 +215,19 @@ export function OperationalReportsPage() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-800">Operational reports</h2>
-      <p className="mt-1 text-sm text-slate-600">Posted sales and inventory movements for the selected period.</p>
+      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Operational reports</h2>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        Posted sales and inventory movements for the selected period.
+      </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {canSales && (
           <button
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === 'daily' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+              tab === 'daily'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
             }`}
             onClick={() => setTab('daily')}
           >
@@ -234,7 +238,9 @@ export function OperationalReportsPage() {
           <button
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === 'movement' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+              tab === 'movement'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
             }`}
             onClick={() => setTab('movement')}
           >
@@ -245,7 +251,9 @@ export function OperationalReportsPage() {
           <button
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === 'fast' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+              tab === 'fast'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
             }`}
             onClick={() => setTab('fast')}
           >
@@ -254,10 +262,10 @@ export function OperationalReportsPage() {
         )}
       </div>
 
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         <div className="flex flex-wrap items-end gap-4">
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">From</span>
+            <span className="text-slate-600 dark:text-slate-400">From</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -266,7 +274,7 @@ export function OperationalReportsPage() {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">To</span>
+            <span className="text-slate-600 dark:text-slate-400">To</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -277,7 +285,7 @@ export function OperationalReportsPage() {
           {tab === 'daily' && canSales && (
             <>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Customer</span>
+                <span className="text-slate-600 dark:text-slate-400">Customer</span>
                 <select
                   className="min-w-[200px] rounded-md border border-slate-300 px-2 py-1.5"
                   value={customerId}
@@ -292,7 +300,7 @@ export function OperationalReportsPage() {
                 </select>
               </label>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Warehouse</span>
+                <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
                 <select
                   className="min-w-[200px] rounded-md border border-slate-300 px-2 py-1.5"
                   value={warehouseId}
@@ -311,7 +319,7 @@ export function OperationalReportsPage() {
           {tab === 'movement' && canInventory && (
             <>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Product</span>
+                <span className="text-slate-600 dark:text-slate-400">Product</span>
                 <select
                   className="min-w-[220px] rounded-md border border-slate-300 px-2 py-1.5"
                   value={productId}
@@ -326,7 +334,7 @@ export function OperationalReportsPage() {
                 </select>
               </label>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Warehouse</span>
+                <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
                 <select
                   className="min-w-[200px] rounded-md border border-slate-300 px-2 py-1.5"
                   value={warehouseId}
@@ -345,7 +353,7 @@ export function OperationalReportsPage() {
           {tab === 'fast' && canSales && (
             <>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Limit</span>
+                <span className="text-slate-600 dark:text-slate-400">Limit</span>
                 <input
                   type="number"
                   min={1}
@@ -356,7 +364,7 @@ export function OperationalReportsPage() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Sort by</span>
+                <span className="text-slate-600 dark:text-slate-400">Sort by</span>
                 <select
                   className="rounded-md border border-slate-300 px-2 py-1.5"
                   value={sortBy}
@@ -377,7 +385,7 @@ export function OperationalReportsPage() {
         {tab === 'daily' && daily.data && (
           <div className="mt-6">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Invoices:{' '}
                 <span className="font-medium tabular-nums">{daily.data.meta.invoiceCount as number}</span>
                 {' · '}
@@ -386,7 +394,7 @@ export function OperationalReportsPage() {
               </p>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportDailyExcel().catch(() => {})}
                 disabled={!daily.data.data.length}
               >
@@ -394,16 +402,16 @@ export function OperationalReportsPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportDailyPdf}
                 disabled={!daily.data.data.length}
               >
                 PDF
               </button>
             </div>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
                     <th className="px-3 py-2 text-left">Date</th>
                     <th className="px-3 py-2 text-right">Invoices</th>
@@ -412,7 +420,7 @@ export function OperationalReportsPage() {
                 </thead>
                 <tbody>
                   {daily.data.data.map((r) => (
-                    <tr key={r.date} className="border-t border-slate-100">
+                    <tr key={r.date} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{r.date}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.count}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.totalAmount}</td>
@@ -434,12 +442,12 @@ export function OperationalReportsPage() {
         {tab === 'movement' && movement.data && (
           <div className="mt-6">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Rows: <span className="font-medium">{movement.data.meta.rowCount as number}</span>
               </p>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportMovementExcel().catch(() => {})}
                 disabled={!movement.data.data.length}
               >
@@ -447,16 +455,16 @@ export function OperationalReportsPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportMovementPdf}
                 disabled={!movement.data.data.length}
               >
                 PDF
               </button>
             </div>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
                     <th className="px-3 py-2 text-left">Date</th>
                     <th className="px-3 py-2 text-left">Product</th>
@@ -468,7 +476,7 @@ export function OperationalReportsPage() {
                 </thead>
                 <tbody>
                   {movement.data.data.map((r) => (
-                    <tr key={r.movementId} className="border-t border-slate-100">
+                    <tr key={r.movementId} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2 whitespace-nowrap">{r.date}</td>
                       <td className="px-3 py-2">
                         <span className="text-slate-500">{r.productSku}</span> {r.productName}
@@ -497,7 +505,7 @@ export function OperationalReportsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportFastExcel().catch(() => {})}
                 disabled={!fast.data.data.length}
               >
@@ -505,16 +513,16 @@ export function OperationalReportsPage() {
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportFastPdf}
                 disabled={!fast.data.data.length}
               >
                 PDF
               </button>
             </div>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
                     <th className="px-3 py-2 text-left">Product</th>
                     <th className="px-3 py-2 text-right">Qty sold</th>
@@ -523,7 +531,7 @@ export function OperationalReportsPage() {
                 </thead>
                 <tbody>
                   {fast.data.data.map((r) => (
-                    <tr key={r.productId} className="border-t border-slate-100">
+                    <tr key={r.productId} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">
                         <span className="text-slate-500">{r.productSku}</span> {r.productName}
                       </td>

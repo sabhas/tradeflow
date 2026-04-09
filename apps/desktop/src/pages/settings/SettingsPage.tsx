@@ -134,24 +134,24 @@ export function SettingsPage() {
   });
 
   if (!canRead) {
-    return <p className="text-slate-600">You do not have permission to view settings.</p>;
+    return <p className="text-slate-600 dark:text-slate-400">You do not have permission to view settings.</p>;
   }
 
   if (settings.isError) {
     return (
       <div className="max-w-4xl space-y-2">
-        <h1 className="text-2xl font-semibold text-slate-800">Settings</h1>
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Settings</h1>
         <p className="text-red-600">
           {(settings.error as Error)?.message || 'Could not load settings.'}
         </p>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           If this mentions company settings not being initialized, run database migrations and seed (or ask your
           administrator to create company settings in the database).
         </p>
         <button
           type="button"
-          className="rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-300"
-          onClick={() => settings.refetch()}
+          className="rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+          onClick={() => void qc.invalidateQueries({ queryKey: ['settings', 'general'] })}
         >
           Try again
         </button>
@@ -160,18 +160,18 @@ export function SettingsPage() {
   }
 
   if (settings.isPending) {
-    return <p className="text-slate-600">Loading settings…</p>;
+    return <p className="text-slate-600 dark:text-slate-400">Loading settings…</p>;
   }
 
   if (!settings.data) {
     return (
       <div className="max-w-4xl space-y-2">
-        <h1 className="text-2xl font-semibold text-slate-800">Settings</h1>
-        <p className="text-slate-600">No settings data was returned.</p>
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Settings</h1>
+        <p className="text-slate-600 dark:text-slate-400">No settings data was returned.</p>
         <button
           type="button"
-          className="rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-300"
-          onClick={() => settings.refetch()}
+          className="rounded-md bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+          onClick={() => void qc.invalidateQueries({ queryKey: ['settings', 'general'] })}
         >
           Try again
         </button>
@@ -183,15 +183,15 @@ export function SettingsPage() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-800">Settings</h1>
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Settings</h1>
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2 dark:border-slate-800">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              tab === t.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              tab === t.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
             }`}
           >
             {t.label}
@@ -200,14 +200,14 @@ export function SettingsPage() {
       </div>
 
       {tab === 'company' && (
-        <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-medium text-slate-900">Company profile</h2>
-          <p className="text-sm text-slate-600">
+        <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Company profile</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Shown on printed invoices and reports. Logo can be a public image URL.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm">
-              <span className="text-slate-600">Company name</span>
+              <span className="text-slate-600 dark:text-slate-400">Company name</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.companyName ?? ''}
@@ -216,7 +216,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Legal name</span>
+              <span className="text-slate-600 dark:text-slate-400">Legal name</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.legalName ?? ''}
@@ -225,7 +225,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm sm:col-span-2">
-              <span className="text-slate-600">Address line 1</span>
+              <span className="text-slate-600 dark:text-slate-400">Address line 1</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.addressLine1 ?? ''}
@@ -234,7 +234,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm sm:col-span-2">
-              <span className="text-slate-600">Address line 2</span>
+              <span className="text-slate-600 dark:text-slate-400">Address line 2</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.addressLine2 ?? ''}
@@ -243,7 +243,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">City</span>
+              <span className="text-slate-600 dark:text-slate-400">City</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.city ?? ''}
@@ -252,7 +252,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">State / region</span>
+              <span className="text-slate-600 dark:text-slate-400">State / region</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.state ?? ''}
@@ -261,7 +261,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Postal code</span>
+              <span className="text-slate-600 dark:text-slate-400">Postal code</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.postalCode ?? ''}
@@ -270,7 +270,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Country</span>
+              <span className="text-slate-600 dark:text-slate-400">Country</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.country ?? ''}
@@ -279,7 +279,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Phone</span>
+              <span className="text-slate-600 dark:text-slate-400">Phone</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.phone ?? ''}
@@ -288,7 +288,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Email</span>
+              <span className="text-slate-600 dark:text-slate-400">Email</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.email ?? ''}
@@ -297,7 +297,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm sm:col-span-2">
-              <span className="text-slate-600">Tax registration (VAT / GST / etc.)</span>
+              <span className="text-slate-600 dark:text-slate-400">Tax registration (VAT / GST / etc.)</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.taxRegistrationNumber ?? ''}
@@ -306,7 +306,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm sm:col-span-2">
-              <span className="text-slate-600">Logo URL</span>
+              <span className="text-slate-600 dark:text-slate-400">Logo URL</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.logoUrl ?? ''}
@@ -342,13 +342,13 @@ export function SettingsPage() {
             </button>
           )}
           {data.logoUrl ? (
-            <div className="rounded border border-slate-200 p-4">
-              <p className="mb-2 text-sm font-medium text-slate-700">Preview</p>
-              <div className="flex items-start gap-4 border-b border-slate-100 pb-4">
+            <div className="rounded border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+              <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Preview</p>
+              <div className="flex items-start gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
                 <img src={data.logoUrl} alt="" className="max-h-16 max-w-[200px] object-contain" />
                 <div>
-                  <p className="font-semibold text-slate-900">{data.companyName}</p>
-                  {data.legalName ? <p className="text-sm text-slate-600">{data.legalName}</p> : null}
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{data.companyName}</p>
+                  {data.legalName ? <p className="text-sm text-slate-600 dark:text-slate-400">{data.legalName}</p> : null}
                 </div>
               </div>
             </div>
@@ -357,14 +357,14 @@ export function SettingsPage() {
       )}
 
       {tab === 'fy' && (
-        <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-medium text-slate-900">Financial year</h2>
-          <p className="text-sm text-slate-600">
+        <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Financial year</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Used for period labels (e.g. “This financial year” in reports). Current label:{' '}
             <strong>{data.currentFinancialYearLabel}</strong>
           </p>
           <label className="block max-w-xs text-sm">
-            <span className="text-slate-600">First month of financial year</span>
+            <span className="text-slate-600 dark:text-slate-400">First month of financial year</span>
             <select
               className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
               value={data.financialYearStartMonth}
@@ -381,7 +381,7 @@ export function SettingsPage() {
             </select>
           </label>
           <label className="block max-w-md text-sm">
-            <span className="text-slate-600">Override label (optional)</span>
+            <span className="text-slate-600 dark:text-slate-400">Override label (optional)</span>
             <input
               className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
               value={data.financialYearLabelOverride ?? ''}
@@ -409,15 +409,15 @@ export function SettingsPage() {
       )}
 
       {tab === 'currency' && (
-        <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-medium text-slate-900">Currency & rounding</h2>
-          <p className="text-sm text-slate-600">
+        <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Currency & rounding</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Affects sales document totals, tax lines, and how amounts appear on invoices. Inventory default costing
             (FIFO/LIFO) applies to non–expiry-tracked products; expiry-tracked products use FEFO.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm">
-              <span className="text-slate-600">Default currency (ISO code)</span>
+              <span className="text-slate-600 dark:text-slate-400">Default currency (ISO code)</span>
               <input
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 uppercase"
                 maxLength={3}
@@ -427,7 +427,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Rounding mode</span>
+              <span className="text-slate-600 dark:text-slate-400">Rounding mode</span>
               <select
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
                 value={data.roundingMode}
@@ -442,7 +442,7 @@ export function SettingsPage() {
               </select>
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Money decimal places</span>
+              <span className="text-slate-600 dark:text-slate-400">Money decimal places</span>
               <input
                 type="number"
                 min={0}
@@ -454,7 +454,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Quantity decimal places</span>
+              <span className="text-slate-600 dark:text-slate-400">Quantity decimal places</span>
               <input
                 type="number"
                 min={0}
@@ -466,7 +466,7 @@ export function SettingsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Default inventory costing (non-expiry products)</span>
+              <span className="text-slate-600 dark:text-slate-400">Default inventory costing (non-expiry products)</span>
               <select
                 className="mt-1 w-full max-w-xs rounded border border-slate-300 px-2 py-1.5"
                 value={data.inventoryCostingMethod ?? 'fifo'}
@@ -478,7 +478,7 @@ export function SettingsPage() {
               </select>
             </label>
             <label className="block text-sm sm:col-span-2">
-              <span className="text-slate-600">Default invoice template</span>
+              <span className="text-slate-600 dark:text-slate-400">Default invoice template</span>
               <select
                 className="mt-1 w-full max-w-md rounded border border-slate-300 px-2 py-1.5"
                 value={data.defaultInvoiceTemplateId ?? ''}
@@ -522,19 +522,19 @@ export function SettingsPage() {
       )}
 
       {tab === 'templates' && (
-        <section className="space-y-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-medium text-slate-900">Invoice templates</h2>
-          <p className="text-sm text-slate-600">
+        <section className="space-y-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Invoice templates</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Control which blocks appear on the printable invoice. Create additional templates (e.g. simplified)
             and pick one per invoice or set a default above.
           </p>
           {templates.isLoading ? (
-            <p className="text-slate-600">Loading templates…</p>
+            <p className="text-slate-600 dark:text-slate-400">Loading templates…</p>
           ) : (
             <ul className="space-y-4">
               {(templates.data || []).map((t) => (
-                <li key={t.id} className="rounded border border-slate-100 p-4">
-                  <div className="font-medium text-slate-900">{t.name}</div>
+                <li key={t.id} className="rounded border border-slate-100 p-4 dark:border-slate-800 dark:bg-slate-900/30">
+                  <div className="font-medium text-slate-900 dark:text-slate-100">{t.name}</div>
                   <div className="mt-3 flex flex-wrap gap-4 text-sm">
                     {(
                       [
@@ -566,8 +566,8 @@ export function SettingsPage() {
             </ul>
           )}
           {canWrite && (
-            <div className="border-t border-slate-100 pt-4">
-              <h3 className="text-sm font-medium text-slate-800">New template</h3>
+            <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
+              <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">New template</h3>
               <div className="mt-2 flex flex-wrap items-end gap-3">
                 <label className="text-sm">
                   Name

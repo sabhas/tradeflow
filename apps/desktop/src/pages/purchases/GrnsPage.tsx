@@ -160,8 +160,8 @@ export function GrnsPage() {
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Goods receipt (GRN)</h1>
-          <p className="mt-1 text-slate-600">Record stock in from suppliers; posting updates inventory and PO receipts</p>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Goods receipt (GRN)</h1>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">Record stock in from suppliers; posting updates inventory and PO receipts</p>
         </div>
         {canWrite && (
           <button
@@ -201,9 +201,9 @@ export function GrnsPage() {
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Supplier</th>
@@ -240,22 +240,22 @@ export function GrnsPage() {
 
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">New goods receipt</h2>
-              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" onClick={() => setPanelOpen(false)}>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">New goods receipt</h2>
+              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
                 ×
               </button>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-              <span className="font-medium text-slate-700">Tip:</span>
+            <div className="mt-4 flex flex-wrap gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+              <span className="font-medium text-slate-700 dark:text-slate-200">Tip:</span>
               <span>Link from a purchase order to pre-fill lines, or create a standalone receipt for a supplier.</span>
             </div>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm sm:col-span-2">
-                <span className="text-slate-600">Purchase order (optional)</span>
+                <span className="text-slate-600 dark:text-slate-400">Purchase order (optional)</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
                   placeholder="Paste PO id or use Receive link from orders list"
@@ -265,7 +265,7 @@ export function GrnsPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Supplier</span>
+                <span className="text-slate-600 dark:text-slate-400">Supplier</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={supplierId}
@@ -281,7 +281,7 @@ export function GrnsPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Warehouse</span>
+                <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={warehouseId}
@@ -297,7 +297,7 @@ export function GrnsPage() {
                 </select>
               </label>
               <label className="block text-sm sm:col-span-2">
-                <span className="text-slate-600">Receipt date</span>
+                <span className="text-slate-600 dark:text-slate-400">Receipt date</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -308,7 +308,7 @@ export function GrnsPage() {
             </div>
 
             <div className="mt-4 flex justify-between">
-              <span className="text-sm font-medium text-slate-700">Lines</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Lines</span>
               {!purchaseOrderId && (
                 <button
                   type="button"
@@ -333,12 +333,15 @@ export function GrnsPage() {
             </div>
             <div className="mt-2 space-y-2">
               {lines.map((line, idx) => (
-                <div key={idx} className="space-y-2 rounded-lg border border-slate-200 p-3">
+                <div
+                  key={idx}
+                  className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40"
+                >
                   <div className="grid gap-2 sm:grid-cols-12 sm:items-end">
                   <label className="sm:col-span-5">
                     <span className="text-xs text-slate-500">Product</span>
                     {purchaseOrderId && eligible.data?.lines[idx]?.productName ? (
-                      <div className="mt-0.5 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm">
+                      <div className="mt-0.5 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950">
                         {eligible.data.lines[idx].productName}
                       </div>
                     ) : (
@@ -429,7 +432,7 @@ export function GrnsPage() {
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => {
                   setPanelOpen(false);
                   setSearchParams({});

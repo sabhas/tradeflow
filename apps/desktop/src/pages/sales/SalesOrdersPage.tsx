@@ -247,8 +247,8 @@ export function SalesOrdersPage() {
     <div>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Sales orders</h1>
-          <p className="mt-1 text-slate-600">Confirm orders → partial or full invoice</p>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Sales orders</h1>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">Confirm orders → partial or full invoice</p>
         </div>
         {canWrite && (
           <button
@@ -277,9 +277,9 @@ export function SalesOrdersPage() {
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Status</th>
@@ -289,7 +289,7 @@ export function SalesOrdersPage() {
           </thead>
           <tbody>
             {(list.data ?? []).map((r) => (
-              <tr key={r.id} className="border-t border-slate-100">
+              <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.orderDate}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{r.total}</td>
@@ -346,16 +346,16 @@ export function SalesOrdersPage() {
 
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">{editingId ? 'Edit order' : 'New order'}</h2>
-              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" onClick={() => setPanelOpen(false)}>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{editingId ? 'Edit order' : 'New order'}</h2>
+              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
                 ×
               </button>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
-                <span className="text-slate-600">Customer</span>
+                <span className="text-slate-600 dark:text-slate-400">Customer</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={customerId}
@@ -370,7 +370,7 @@ export function SalesOrdersPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Order date</span>
+                <span className="text-slate-600 dark:text-slate-400">Order date</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -379,7 +379,7 @@ export function SalesOrdersPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Default warehouse</span>
+                <span className="text-slate-600 dark:text-slate-400">Default warehouse</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={warehouseId}
@@ -394,7 +394,7 @@ export function SalesOrdersPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Salesperson</span>
+                <span className="text-slate-600 dark:text-slate-400">Salesperson</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={salespersonId}
@@ -409,7 +409,7 @@ export function SalesOrdersPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Invoice-level discount</span>
+                <span className="text-slate-600 dark:text-slate-400">Invoice-level discount</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={headerDiscount}
@@ -418,7 +418,7 @@ export function SalesOrdersPage() {
               </label>
             </div>
             <label className="mt-4 block text-sm">
-              <span className="text-slate-600">Notes</span>
+              <span className="text-slate-600 dark:text-slate-400">Notes</span>
               <textarea
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 rows={2}
@@ -438,7 +438,7 @@ export function SalesOrdersPage() {
             </div>
             <div className="mt-2 space-y-2">
               {lines.map((line, idx) => (
-                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-12 sm:items-end">
+                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:grid-cols-12 sm:items-end">
                   <label className="sm:col-span-4">
                     <span className="text-xs text-slate-500">Product</span>
                     <select
@@ -540,7 +540,7 @@ export function SalesOrdersPage() {
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => setPanelOpen(false)}
               >
                 Cancel
@@ -560,12 +560,12 @@ export function SalesOrdersPage() {
 
       {convertOpen && convertDetail.data && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-slate-900">Create invoice from order</h2>
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Create invoice from order</h2>
             <p className="mt-1 text-sm text-slate-600">Set quantity to invoice per line (remaining pre-filled).</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="block text-sm sm:col-span-2">
-                <span className="text-slate-600">Ship from warehouse</span>
+                <span className="text-slate-600 dark:text-slate-400">Ship from warehouse</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={invWarehouse}
@@ -580,7 +580,7 @@ export function SalesOrdersPage() {
                 </select>
               </label>
               <label className="block text-sm sm:col-span-2">
-                <span className="text-slate-600">Payment</span>
+                <span className="text-slate-600 dark:text-slate-400">Payment</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={invPayment}
@@ -615,7 +615,7 @@ export function SalesOrdersPage() {
               })}
             </ul>
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" className="rounded-lg border border-slate-300 px-4 py-2 text-sm" onClick={() => setConvertOpen(false)}>
+              <button type="button" className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" onClick={() => setConvertOpen(false)}>
                 Cancel
               </button>
               <button

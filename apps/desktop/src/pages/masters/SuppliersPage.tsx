@@ -80,7 +80,7 @@ export function SuppliersPage() {
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-slate-800">Suppliers</h1>
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Suppliers</h1>
         {canWrite && (
           <button
             type="button"
@@ -104,15 +104,15 @@ export function SuppliersPage() {
           </button>
         )}
       </div>
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Name</th>
               {canWrite && <th className="px-4 py-3 text-right font-medium">Actions</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
             {isLoading && (
               <tr>
                 <td colSpan={2} className="px-4 py-8 text-center text-slate-500">
@@ -170,7 +170,7 @@ export function SuppliersPage() {
           }}
         >
           <div>
-            <label className="block text-sm font-medium text-slate-700">Name</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
             <input
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={name}
@@ -179,7 +179,7 @@ export function SuppliersPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Address</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Address</label>
             <input
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={address}
@@ -188,7 +188,7 @@ export function SuppliersPage() {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-slate-700">City</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">City</label>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={city}
@@ -196,7 +196,7 @@ export function SuppliersPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">Contact</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Contact</label>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={contact}
@@ -206,7 +206,7 @@ export function SuppliersPage() {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Telephone</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Telephone</label>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={telephone}
@@ -214,7 +214,7 @@ export function SuppliersPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">Mobile no</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Mobile no</label>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={mobileNo}
@@ -224,7 +224,7 @@ export function SuppliersPage() {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Email</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={email}
@@ -232,7 +232,7 @@ export function SuppliersPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">Website</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Website</label>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={website}
@@ -242,7 +242,7 @@ export function SuppliersPage() {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-slate-700">NTN</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">NTN</label>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={ntn}
@@ -250,7 +250,7 @@ export function SuppliersPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">STN</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">STN</label>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={stn}

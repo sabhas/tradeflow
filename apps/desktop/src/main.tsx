@@ -5,6 +5,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { store } from './store';
 import App from './App';
 import './index.css';
+import { applyThemeToDocument } from './lib/theme';
+
+let lastTheme = store.getState().app.theme;
+applyThemeToDocument(lastTheme);
+store.subscribe(() => {
+  const t = store.getState().app.theme;
+  if (t !== lastTheme) {
+    lastTheme = t;
+    applyThemeToDocument(t);
+  }
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {

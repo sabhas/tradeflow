@@ -172,8 +172,8 @@ export function QuotationsPage() {
     <div>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Quotations</h1>
-          <p className="mt-1 text-slate-600">Draft quotes → convert to sales order</p>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Quotations</h1>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">Draft quotes → convert to sales order</p>
         </div>
         {canWrite && (
           <button
@@ -201,9 +201,9 @@ export function QuotationsPage() {
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Status</th>
@@ -213,7 +213,7 @@ export function QuotationsPage() {
           </thead>
           <tbody>
             {(list.data ?? []).map((r) => (
-              <tr key={r.id} className="border-t border-slate-100">
+              <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.quotationDate}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{r.total}</td>
@@ -260,18 +260,18 @@ export function QuotationsPage() {
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div
-            className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+            className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none"
             role="dialog"
             aria-modal="true"
             aria-labelledby="qv-title"
           >
             <div className="flex items-center justify-between gap-4">
-              <h2 id="qv-title" className="text-lg font-semibold text-slate-900">
+              <h2 id="qv-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {editingId ? 'Edit quotation' : 'New quotation'}
               </h2>
               <button
                 type="button"
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                 onClick={() => setPanelOpen(false)}
                 aria-label="Close"
               >
@@ -281,7 +281,7 @@ export function QuotationsPage() {
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
-                <span className="text-slate-600">Customer</span>
+                <span className="text-slate-600 dark:text-slate-400">Customer</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={customerId}
@@ -296,7 +296,7 @@ export function QuotationsPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Quote date</span>
+                <span className="text-slate-600 dark:text-slate-400">Quote date</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -305,7 +305,7 @@ export function QuotationsPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Valid until</span>
+                <span className="text-slate-600 dark:text-slate-400">Valid until</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -314,7 +314,7 @@ export function QuotationsPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Invoice-level discount</span>
+                <span className="text-slate-600 dark:text-slate-400">Invoice-level discount</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={headerDiscount}
@@ -324,7 +324,7 @@ export function QuotationsPage() {
             </div>
 
             <label className="mt-4 block text-sm">
-              <span className="text-slate-600">Notes</span>
+              <span className="text-slate-600 dark:text-slate-400">Notes</span>
               <textarea
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 rows={2}
@@ -348,7 +348,7 @@ export function QuotationsPage() {
                 {lines.map((line, idx) => (
                   <div
                     key={idx}
-                    className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-12 sm:items-end"
+                    className="grid gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:grid-cols-12 sm:items-end"
                   >
                     <label className="sm:col-span-4">
                       <span className="text-xs text-slate-500">Product</span>

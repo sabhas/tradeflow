@@ -251,14 +251,14 @@ export function InvoicesPage() {
     <div>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Invoices</h1>
-          <p className="mt-1 text-slate-600">Draft, post (stock + accounts), print</p>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Invoices</h1>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">Draft, post (stock + accounts), print</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canRead && (
             <button
               type="button"
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
               onClick={() =>
                 downloadAuthenticatedFile('/export/invoices', 'invoices-export.xlsx').catch((e: Error) =>
                   alert(e.message)
@@ -298,9 +298,9 @@ export function InvoicesPage() {
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Status</th>
@@ -311,7 +311,7 @@ export function InvoicesPage() {
           </thead>
           <tbody>
             {(list.data ?? []).map((r) => (
-              <tr key={r.id} className="border-t border-slate-100">
+              <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.invoiceDate}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
                 <td className="px-4 py-3">{r.paymentType}</td>
@@ -365,17 +365,17 @@ export function InvoicesPage() {
 
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">{editingId ? 'Edit invoice' : 'New invoice'}</h2>
-              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" onClick={() => setPanelOpen(false)}>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{editingId ? 'Edit invoice' : 'New invoice'}</h2>
+              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
                 ×
               </button>
             </div>
 
             <div className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 p-3">
               <label className="text-sm">
-                <span className="text-slate-600">Barcode / scan</span>
+                <span className="text-slate-600 dark:text-slate-400">Barcode / scan</span>
                 <input
                   className="mt-0.5 w-48 rounded-md border border-slate-300 px-2 py-1.5"
                   value={barcode}
@@ -401,7 +401,7 @@ export function InvoicesPage() {
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
-                <span className="text-slate-600">Customer</span>
+                <span className="text-slate-600 dark:text-slate-400">Customer</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={customerId}
@@ -416,7 +416,7 @@ export function InvoicesPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Warehouse (posting)</span>
+                <span className="text-slate-600 dark:text-slate-400">Warehouse (posting)</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={warehouseId}
@@ -431,7 +431,7 @@ export function InvoicesPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Salesperson</span>
+                <span className="text-slate-600 dark:text-slate-400">Salesperson</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={salespersonId}
@@ -447,7 +447,7 @@ export function InvoicesPage() {
               </label>
               {canPickTemplate && (
                 <label className="block text-sm">
-                  <span className="text-slate-600">Invoice template</span>
+                  <span className="text-slate-600 dark:text-slate-400">Invoice template</span>
                   <select
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                     value={invoiceTemplateId}
@@ -463,7 +463,7 @@ export function InvoicesPage() {
                 </label>
               )}
               <label className="block text-sm">
-                <span className="text-slate-600">Invoice date</span>
+                <span className="text-slate-600 dark:text-slate-400">Invoice date</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -472,7 +472,7 @@ export function InvoicesPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Due date (optional)</span>
+                <span className="text-slate-600 dark:text-slate-400">Due date (optional)</span>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -481,7 +481,7 @@ export function InvoicesPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Payment</span>
+                <span className="text-slate-600 dark:text-slate-400">Payment</span>
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={paymentType}
@@ -492,7 +492,7 @@ export function InvoicesPage() {
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600">Invoice discount</span>
+                <span className="text-slate-600 dark:text-slate-400">Invoice discount</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={headerDiscount}
@@ -501,7 +501,7 @@ export function InvoicesPage() {
               </label>
             </div>
             <label className="mt-4 block text-sm">
-              <span className="text-slate-600">Notes</span>
+              <span className="text-slate-600 dark:text-slate-400">Notes</span>
               <textarea
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 rows={2}
@@ -522,7 +522,7 @@ export function InvoicesPage() {
             </div>
             <div className="mt-2 space-y-2">
               {lines.map((line, idx) => (
-                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-12 sm:items-end">
+                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:grid-cols-12 sm:items-end">
                   <label className="sm:col-span-4">
                     <span className="text-xs text-slate-500">Product</span>
                     <select
@@ -625,7 +625,7 @@ export function InvoicesPage() {
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => setPanelOpen(false)}
               >
                 Cancel

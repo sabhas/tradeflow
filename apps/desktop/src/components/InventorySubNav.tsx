@@ -15,14 +15,16 @@ export function InventorySubNav() {
   const visible = links.filter((l) => hasPermission(permissions, l.permission));
 
   return (
-    <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+    <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 pb-3 dark:border-slate-700">
       {visible.map((l) => (
         <NavLink
           key={l.to}
           to={l.to}
           className={({ isActive }) =>
             `rounded-md px-3 py-1.5 text-sm font-medium ${
-              isActive ? 'bg-indigo-100 text-indigo-900' : 'text-slate-600 hover:bg-slate-100'
+              isActive
+                ? 'bg-indigo-100 text-indigo-900 dark:bg-indigo-950/80 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
             }`
           }
         >

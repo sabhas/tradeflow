@@ -53,7 +53,7 @@ export function PaymentTermsPage() {
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-slate-800">Payment terms</h1>
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Payment terms</h1>
         {canWrite && (
           <button
             type="button"
@@ -69,16 +69,16 @@ export function PaymentTermsPage() {
           </button>
         )}
       </div>
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Name</th>
               <th className="px-4 py-3 text-left font-medium">Net days</th>
               {canWrite && <th className="px-4 py-3 text-right font-medium">Actions</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
             {isLoading && (
               <tr>
                 <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
@@ -129,7 +129,7 @@ export function PaymentTermsPage() {
           }}
         >
           <div>
-            <label className="block text-sm font-medium text-slate-700">Name</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
             <input
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={name}
@@ -138,7 +138,7 @@ export function PaymentTermsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">Net days</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Net days</label>
             <input
               type="number"
               min={0}

@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
 import { AccountingSubNav } from '../../components/AccountingSubNav';
 import { hasPermission } from '../../lib/permissions';
@@ -208,13 +207,15 @@ function CoaTreeView({
               <button
                 type="button"
                 className={`flex min-w-0 flex-1 items-baseline gap-2 rounded-md px-2 py-1.5 text-left ${
-                  isSel ? 'bg-indigo-100 text-indigo-950 ring-1 ring-indigo-300/60' : 'text-slate-800 hover:bg-slate-200/60'
+                  isSel
+                    ? 'bg-indigo-100 text-indigo-950 ring-1 ring-indigo-300/60 dark:bg-indigo-950/80 dark:text-indigo-100 dark:ring-indigo-500/40'
+                    : 'text-slate-800 hover:bg-slate-200/60 dark:text-slate-200 dark:hover:bg-slate-800/60'
                 }`}
                 onClick={() => onSelect(id)}
               >
                 <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
                 {code !== null && (
-                  <span className="shrink-0 font-mono text-xs text-slate-500">{code}</span>
+                  <span className="shrink-0 font-mono text-xs text-slate-500 dark:text-slate-400">{code}</span>
                 )}
               </button>
             </div>
@@ -391,7 +392,7 @@ export function ChartOfAccountsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-800">Chart of accounts</h1>
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Chart of accounts</h1>
         <AccountingSubNav />
       </div>
 
@@ -412,21 +413,21 @@ export function ChartOfAccountsPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             onClick={expandAll}
           >
             Expand all
           </button>
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             onClick={collapseAll}
           >
             Collapse all
           </button>
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             onClick={refreshAll}
           >
             Refresh
@@ -443,8 +444,8 @@ export function ChartOfAccountsPage() {
         </div>
       </div>
 
-      <div className="flex min-h-[min(68vh,560px)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:flex-row">
-        <div className="max-h-[40vh] w-full shrink-0 overflow-y-auto border-b border-slate-200 bg-slate-50 px-3 py-3 lg:max-h-none lg:w-[min(100%,360px)] lg:border-b-0 lg:border-r">
+      <div className="flex min-h-[min(68vh,560px)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none lg:flex-row">
+        <div className="max-h-[40vh] w-full shrink-0 overflow-y-auto border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-950 lg:max-h-none lg:w-[min(100%,360px)] lg:border-b-0 lg:border-r">
           {accounts.isLoading && <p className="text-sm text-slate-600">Loading…</p>}
           {accounts.isError && (
             <p className="text-sm text-red-600">{(accounts.error as Error).message}</p>
@@ -467,21 +468,21 @@ export function ChartOfAccountsPage() {
         </div>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
-            <h2 className="text-sm font-medium text-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="text-sm font-medium text-slate-800 dark:text-slate-100">
               Posting accounts
               <span className="ml-2 font-normal text-slate-500">({leafCountUnderSelection})</span>
             </h2>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="sticky top-0 z-0 border-b border-slate-200 bg-slate-50">
+              <thead className="sticky top-0 z-0 border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
                 <tr>
                   <th className="px-4 py-2.5 font-medium text-slate-700">Code</th>
                   <th className="px-4 py-2.5 font-medium text-slate-700">Name</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {tableRows.length === 0 ? (
                   <tr>
                     <td colSpan={2} className="px-4 py-10 text-center text-slate-500">
@@ -490,9 +491,11 @@ export function ChartOfAccountsPage() {
                   </tr>
                 ) : (
                   tableRows.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50/80">
-                      <td className="whitespace-nowrap px-4 py-2 font-mono text-slate-800">{row.code}</td>
-                      <td className="px-4 py-2 text-slate-800">{row.name}</td>
+                    <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60">
+                      <td className="whitespace-nowrap px-4 py-2 font-mono text-slate-800 dark:text-slate-100">
+                        {row.code}
+                      </td>
+                      <td className="px-4 py-2 text-slate-800 dark:text-slate-100">{row.name}</td>
                     </tr>
                   ))
                 )}
@@ -503,11 +506,11 @@ export function ChartOfAccountsPage() {
       </div>
 
       {showAdd && canWrite && (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-800">New account</h3>
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">New account</h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">Code</span>
+              <span className="text-slate-600 dark:text-slate-400">Code</span>
               <input
                 className="rounded-md border border-slate-300 px-2 py-1.5"
                 value={form.code}
@@ -515,7 +518,7 @@ export function ChartOfAccountsPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              <span className="text-slate-600">Name</span>
+              <span className="text-slate-600 dark:text-slate-400">Name</span>
               <input
                 className="rounded-md border border-slate-300 px-2 py-1.5"
                 value={form.name}
@@ -523,7 +526,7 @@ export function ChartOfAccountsPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600">Type</span>
+              <span className="text-slate-600 dark:text-slate-400">Type</span>
               <select
                 className="rounded-md border border-slate-300 px-2 py-1.5"
                 value={form.type}
@@ -539,7 +542,7 @@ export function ChartOfAccountsPage() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm sm:col-span-2 lg:col-span-4">
-              <span className="text-slate-600">Parent account (optional)</span>
+              <span className="text-slate-600 dark:text-slate-400">Parent account (optional)</span>
               <select
                 className="rounded-md border border-slate-300 px-2 py-1.5"
                 value={form.parentId}
@@ -563,7 +566,11 @@ export function ChartOfAccountsPage() {
             >
               Create
             </button>
-            <button type="button" className="text-sm text-slate-600 hover:underline" onClick={() => setShowAdd(false)}>
+            <button
+              type="button"
+              className="text-sm text-slate-600 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
+              onClick={() => setShowAdd(false)}
+            >
               Cancel
             </button>
           </div>
@@ -573,24 +580,24 @@ export function ChartOfAccountsPage() {
         </section>
       )}
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         <button
           type="button"
-          className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-50"
+          className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800/80"
           onClick={() => setShowDefaults((v) => !v)}
           aria-expanded={showDefaults}
         >
           Cash and bank defaults
-          <span className="text-slate-400">{showDefaults ? '▼' : '▶'}</span>
+          <span className="text-slate-400 dark:text-slate-500">{showDefaults ? '▼' : '▶'}</span>
         </button>
         {showDefaults && settings.data && (
-          <div className="border-t border-slate-200 px-4 py-4">
-            <p className="text-sm text-slate-600">
+          <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-800">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Used when posting receipts and supplier payments (cash vs bank / transfer / card).
             </p>
             <div className="mt-4 flex flex-wrap items-end gap-4">
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Default cash</span>
+                <span className="text-slate-600 dark:text-slate-400">Default cash</span>
                 <select
                   className="rounded-md border border-slate-300 px-2 py-1.5 text-sm min-w-[14rem]"
                   value={cashId || settings.data.defaultCashAccountId}
@@ -605,7 +612,7 @@ export function ChartOfAccountsPage() {
                 </select>
               </label>
               <label className="flex flex-col gap-1 text-sm">
-                <span className="text-slate-600">Default bank</span>
+                <span className="text-slate-600 dark:text-slate-400">Default bank</span>
                 <select
                   className="rounded-md border border-slate-300 px-2 py-1.5 text-sm min-w-[14rem]"
                   value={bankId || settings.data.defaultBankAccountId}
@@ -622,7 +629,7 @@ export function ChartOfAccountsPage() {
               {canWrite && (
                 <button
                   type="button"
-                  className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
                   disabled={saveSettings.isPending || !cashId || !bankId}
                   onClick={() => saveSettings.mutate()}
                 >

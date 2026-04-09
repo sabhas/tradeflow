@@ -160,8 +160,8 @@ export function FinancialReportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Financial reports</h1>
-      <p className="mt-1 text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Financial reports</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
         Trial balance, profit &amp; loss, balance sheet, and expense analysis from posted journals
       </p>
       <AccountingSubNav />
@@ -188,9 +188,9 @@ export function FinancialReportsPage() {
       </div>
 
       {(tab === 'tb' || tab === 'pl' || tab === 'exp') && (
-        <div className="mt-4 flex flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mt-4 flex flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">From</span>
+            <span className="text-slate-600 dark:text-slate-400">From</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -199,7 +199,7 @@ export function FinancialReportsPage() {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">To</span>
+            <span className="text-slate-600 dark:text-slate-400">To</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -211,14 +211,14 @@ export function FinancialReportsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportTbExcel().catch(() => {})}
               >
                 Excel
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportTbPdf}
               >
                 PDF
@@ -229,14 +229,14 @@ export function FinancialReportsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportPlExcel().catch(() => {})}
               >
                 Excel
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportPlPdf}
               >
                 PDF
@@ -247,14 +247,14 @@ export function FinancialReportsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => exportExpExcel().catch(() => {})}
               >
                 Excel
               </button>
               <button
                 type="button"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={exportExpPdf}
               >
                 PDF
@@ -265,9 +265,9 @@ export function FinancialReportsPage() {
       )}
 
       {tab === 'bs' && (
-        <div className="mt-4 flex flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mt-4 flex flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-600">As of</span>
+            <span className="text-slate-600 dark:text-slate-400">As of</span>
             <input
               type="date"
               className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -296,7 +296,7 @@ export function FinancialReportsPage() {
 
       {tab === 'tb' && tb.data && (
         <div className="mt-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Totals — Debit: {tb.data.meta.totalDebit} · Credit: {tb.data.meta.totalCredit}
           </p>
           <ReportTable rows={tb.data.data} />
@@ -305,7 +305,7 @@ export function FinancialReportsPage() {
 
       {tab === 'pl' && pl.data && (
         <div className="mt-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Income (net): {pl.data.meta.incomeNet} · Expenses (net): {pl.data.meta.expenseNet} · Net:{' '}
             {pl.data.meta.netProfit}
           </p>
@@ -315,7 +315,7 @@ export function FinancialReportsPage() {
 
       {tab === 'bs' && bs.data && (
         <div className="mt-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Assets: {bs.data.meta.totalAssets} · Liabilities: {bs.data.meta.totalLiabilities} · Equity:{' '}
             {bs.data.meta.totalEquity} · L+E: {bs.data.meta.liabilitiesPlusEquity}
           </p>
@@ -325,7 +325,7 @@ export function FinancialReportsPage() {
 
       {tab === 'exp' && exp.data && (
         <div className="mt-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Total net expense:{' '}
             <span className="font-medium tabular-nums">{exp.data.meta.totalNetExpense}</span>
           </p>
@@ -338,15 +338,15 @@ export function FinancialReportsPage() {
 
 function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
   return (
-    <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
       <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50">
+        <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
           <tr>
-            <th className="px-4 py-2 font-medium text-slate-700">Code</th>
-            <th className="px-4 py-2 font-medium text-slate-700">Name</th>
-            <th className="px-4 py-2 font-medium text-slate-700">Debit</th>
-            <th className="px-4 py-2 font-medium text-slate-700">Credit</th>
-            <th className="px-4 py-2 font-medium text-slate-700">Net expense</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Code</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Name</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Debit</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Credit</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Net expense</th>
           </tr>
         </thead>
         <tbody>
@@ -358,9 +358,9 @@ function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
             </tr>
           ) : (
             rows.map((r) => (
-              <tr key={r.accountId} className="border-b border-slate-100">
+              <tr key={r.accountId} className="border-b border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-2 font-mono">{r.code}</td>
-                <td className="px-4 py-2 text-slate-800">{r.name}</td>
+                <td className="px-4 py-2 text-slate-800 dark:text-slate-100">{r.name}</td>
                 <td className="px-4 py-2 font-mono">{r.debit}</td>
                 <td className="px-4 py-2 font-mono">{r.credit}</td>
                 <td className="px-4 py-2 font-mono">{r.netExpense}</td>
@@ -375,15 +375,15 @@ function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
 
 function ReportTable({ rows }: { rows: TbRow[] }) {
   return (
-    <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
       <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50">
+        <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
           <tr>
-            <th className="px-4 py-2 font-medium text-slate-700">Code</th>
-            <th className="px-4 py-2 font-medium text-slate-700">Name</th>
-            <th className="px-4 py-2 font-medium text-slate-700">Type</th>
-            <th className="px-4 py-2 font-medium text-slate-700">Debit</th>
-            <th className="px-4 py-2 font-medium text-slate-700">Credit</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Code</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Name</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Type</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Debit</th>
+            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Credit</th>
           </tr>
         </thead>
         <tbody>
@@ -395,10 +395,10 @@ function ReportTable({ rows }: { rows: TbRow[] }) {
             </tr>
           ) : (
             rows.map((r) => (
-              <tr key={r.accountId} className="border-b border-slate-100">
+              <tr key={r.accountId} className="border-b border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-2 font-mono">{r.code}</td>
-                <td className="px-4 py-2 text-slate-800">{r.name}</td>
-                <td className="px-4 py-2 text-slate-600">{r.type}</td>
+                <td className="px-4 py-2 text-slate-800 dark:text-slate-100">{r.name}</td>
+                <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{r.type}</td>
                 <td className="px-4 py-2 font-mono">{r.debit}</td>
                 <td className="px-4 py-2 font-mono">{r.credit}</td>
               </tr>

@@ -363,7 +363,7 @@ export function ProductsPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Products</h1>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Products</h1>
 
         </div>
         <div className="flex flex-wrap gap-2">
@@ -376,7 +376,7 @@ export function ProductsPage() {
                   'products-export.xlsx'
                 ).catch((e: Error) => alert(e.message))
               }
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
             >
               Export Excel
             </button>
@@ -395,7 +395,7 @@ export function ProductsPage() {
 
       <div className="mt-6 flex flex-wrap gap-4">
         <div>
-          <label className="block text-xs font-medium text-slate-600">Category</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">Category</label>
           <select
             className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
             value={categoryId}
@@ -410,7 +410,7 @@ export function ProductsPage() {
           </select>
         </div>
         <div className="min-w-[200px] flex-1">
-          <label className="block text-xs font-medium text-slate-600">Search</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">Search</label>
           <input
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
             placeholder="Name, SKU, barcode, generic, packing…"
@@ -420,22 +420,22 @@ export function ProductsPage() {
         </div>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">SKU</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">Supplier</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">Name</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">Packing</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">Active</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">Selling</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">Batch</th>
-              <th className="px-4 py-3 text-left font-medium text-slate-700">Expiry</th>
-              {canWrite && <th className="px-4 py-3 text-right font-medium text-slate-700">Actions</th>}
+              <th className="px-4 py-3 text-left font-medium text-slate-700 dark:text-slate-300">SKU</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-700 dark:text-slate-300">Supplier</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-700 dark:text-slate-300">Name</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-700 dark:text-slate-300">Packing</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-700 dark:text-slate-300">Active</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-700 dark:text-slate-300">Selling</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-700 dark:text-slate-300">Batch</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-700 dark:text-slate-300">Expiry</th>
+              {canWrite && <th className="px-4 py-3 text-right font-medium text-slate-700 dark:text-slate-300">Actions</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
             {products.isLoading && (
               <tr>
                 <td colSpan={canWrite ? 9 : 8} className="px-4 py-8 text-center text-slate-500">
@@ -446,9 +446,9 @@ export function ProductsPage() {
             {!products.isLoading &&
               rows.map((p) => (
                 <tr key={p.id}>
-                  <td className="px-4 py-3 font-mono text-slate-800">{p.sku}</td>
-                  <td className="px-4 py-3 text-slate-700">{p.supplier?.name ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-900">
+                  <td className="px-4 py-3 font-mono text-slate-800 dark:text-slate-100">{p.sku}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{p.supplier?.name ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-900 dark:text-slate-100">
                     {p.name}
                     {p.isNarcotic ? (
                       <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">N</span>
@@ -458,8 +458,8 @@ export function ProductsPage() {
                     ) : null}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{p.packing ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-700">{p.isActive !== false ? 'Yes' : 'No'}</td>
-                  <td className="px-4 py-3 text-slate-700">{p.sellingPrice}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{p.isActive !== false ? 'Yes' : 'No'}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{p.sellingPrice}</td>
                   <td className="px-4 py-3">{p.batchTracked ? 'Yes' : 'No'}</td>
                   <td className="px-4 py-3">{p.expiryTracked ? 'Yes' : 'No'}</td>
                   {canWrite && (
@@ -508,10 +508,10 @@ export function ProductsPage() {
         >
           <div className="space-y-6">
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">General</h3>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">General</h3>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700">Name</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.name}
@@ -520,7 +520,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700">Supplier / manufacturer</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Supplier / manufacturer</label>
                   <select
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.supplierId}
@@ -539,7 +539,7 @@ export function ProductsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">SKU</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">SKU</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.sku}
@@ -548,7 +548,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Manufacturer code</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Manufacturer code</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.manufacturerCode}
@@ -557,7 +557,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Barcode</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Barcode</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.barcode}
@@ -565,7 +565,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Short name</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Short name</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.shortName}
@@ -573,7 +573,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Category</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Category</label>
                   <select
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.categoryId}
@@ -588,7 +588,7 @@ export function ProductsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Generic name</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Generic name</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.genericName}
@@ -596,7 +596,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Unit</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Unit</label>
                   <select
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.unitId}
@@ -611,7 +611,7 @@ export function ProductsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Packing</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Packing</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.packing}
@@ -620,7 +620,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700">HS code</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">HS code</label>
                   <input
                     className="mt-1 w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.hsCode}
@@ -631,10 +631,10 @@ export function ProductsPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Pricing & inventory</h3>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Pricing & inventory</h3>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Cost price</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Cost price</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.costPrice}
@@ -642,7 +642,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Selling price (trade / base)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Selling price (trade / base)</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.sellingPrice}
@@ -650,7 +650,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Retail price</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Retail price</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.retailPrice}
@@ -658,7 +658,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Cut price</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Cut price</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.cutPrice}
@@ -691,7 +691,7 @@ export function ProductsPage() {
                 </div>
                 <div />
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Min stock</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Min stock</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.minStock}
@@ -699,7 +699,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Reorder level</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Reorder level</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.reorderLevel}
@@ -710,13 +710,13 @@ export function ProductsPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Discount & tax rates (%)</h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Discount & tax rates (%)</h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Defaults for purchasing and sales; document-level tax may still apply from your tax engine.
               </p>
               <div className="mt-3 flex flex-col gap-4 lg:flex-row">
                 <div className="flex-1 rounded-lg border border-slate-200 p-3">
-                  <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Purchase</div>
+                  <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Purchase</div>
                   <div className="mt-2 grid gap-3 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs text-slate-600">Discount</label>
@@ -753,7 +753,7 @@ export function ProductsPage() {
                   </div>
                 </div>
                 <div className="flex-1 rounded-lg border border-slate-200 p-3">
-                  <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales</div>
+                  <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Sales</div>
                   <div className="mt-2 grid gap-3 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs text-slate-600">Discount</label>
@@ -793,10 +793,10 @@ export function ProductsPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Regulatory / FBR reference</h3>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Regulatory / FBR reference</h3>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Sale type</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Sale type</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.saleType}
@@ -804,7 +804,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Sale rate (%)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Sale rate (%)</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.saleRatePct}
@@ -812,7 +812,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">SRO schedule</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">SRO schedule</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.sroSchedule}
@@ -820,7 +820,7 @@ export function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">SRO item serial</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">SRO item serial</label>
                   <input
                     className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.sroItemSerial}
@@ -831,7 +831,7 @@ export function ProductsPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Classification & behaviour</h3>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Classification & behaviour</h3>
               <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
                 {(
                   [
@@ -901,8 +901,8 @@ export function ProductsPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Stock costing</h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Stock costing</h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Empty uses company default. Expiry-tracked products always allocate by FEFO (earliest expiry first).
               </p>
               <select
@@ -923,7 +923,7 @@ export function ProductsPage() {
           </div>
 
           <div className="border-t border-slate-200 pt-4">
-            <h3 className="text-sm font-semibold text-slate-800">Price levels</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Price levels</h3>
             <div className="mt-2 space-y-2">
               {form.priceRows.map((row, idx) => {
                 const pl = (priceLevels.data || []).find((p) => p.id === row.priceLevelId);

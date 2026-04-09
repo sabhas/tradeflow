@@ -56,8 +56,8 @@ export function ImportProductsPage() {
           ← Import hub
         </Link>
       </div>
-      <h1 className="text-2xl font-semibold text-slate-800">Import products</h1>
-      <p className="mt-1 text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Import products</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
         Columns: category (code or name), sku, name, unit (code), optional barcode, costPrice, sellingPrice,
         batchTracked, expiryTracked.
       </p>
@@ -65,27 +65,27 @@ export function ImportProductsPage() {
       <div className="mt-6 flex flex-wrap gap-3">
         <button
           type="button"
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           onClick={() => downloadAuthenticatedFile('/import/products/template?format=xlsx', 'products-template.xlsx')}
         >
           Template (.xlsx)
         </button>
         <button
           type="button"
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           onClick={() => downloadAuthenticatedFile('/import/products/template?format=csv', 'products-template.csv')}
         >
           Template (.csv)
         </button>
       </div>
 
-      <div className="mt-8 rounded-lg border border-dashed border-slate-300 bg-slate-50/80 p-6">
-        <label className="block text-sm font-medium text-slate-700">
+      <div className="mt-8 rounded-lg border border-dashed border-slate-300 bg-slate-50/80 p-6 dark:border-slate-600 dark:bg-slate-900/60">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
           File (Excel or CSV, UTF-8)
           <input
             type="file"
             accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-            className="mt-2 block w-full text-sm text-slate-600"
+            className="mt-2 block w-full text-sm text-slate-600 dark:text-slate-400"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
@@ -105,7 +105,7 @@ export function ImportProductsPage() {
 
       {result && (
         <div className="mt-6 space-y-3">
-          <p className="text-sm text-slate-800">
+          <p className="text-sm text-slate-800 dark:text-slate-200">
             Imported <strong>{result.successCount}</strong> row(s).
             {result.errors.length > 0 && (
               <>
@@ -115,21 +115,21 @@ export function ImportProductsPage() {
             )}
           </p>
           {result.errors.length > 0 && (
-            <div className="overflow-auto rounded-lg border border-slate-200 bg-white">
+            <div className="overflow-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-950">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-slate-700">Row</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-700">Field</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-700">Message</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {result.errors.map((e, i) => (
                     <tr key={i}>
                       <td className="px-3 py-2 tabular-nums">{e.row}</td>
                       <td className="px-3 py-2">{e.field ?? '—'}</td>
-                      <td className="px-3 py-2 text-slate-800">{e.message}</td>
+                      <td className="px-3 py-2 text-slate-800 dark:text-slate-200">{e.message}</td>
                     </tr>
                   ))}
                 </tbody>

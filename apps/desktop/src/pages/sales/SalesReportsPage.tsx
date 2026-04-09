@@ -70,15 +70,17 @@ export function SalesReportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Sales reports</h1>
-      <p className="mt-1 text-slate-600">Customer statement and receivables aging</p>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Sales reports</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">Customer statement and receivables aging</p>
       <SalesSubNav />
 
       <div className="mt-4 flex gap-2">
         <button
           type="button"
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            tab === 'statement' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+            tab === 'statement'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
           }`}
           onClick={() => setTab('statement')}
         >
@@ -87,7 +89,9 @@ export function SalesReportsPage() {
         <button
           type="button"
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            tab === 'aging' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+            tab === 'aging'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
           }`}
           onClick={() => setTab('aging')}
         >
@@ -96,10 +100,10 @@ export function SalesReportsPage() {
       </div>
 
       {tab === 'statement' && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="block text-sm">
-              <span className="text-slate-600">Customer</span>
+              <span className="text-slate-600 dark:text-slate-400">Customer</span>
               <select
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={customerId}
@@ -114,7 +118,7 @@ export function SalesReportsPage() {
               </select>
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">From</span>
+              <span className="text-slate-600 dark:text-slate-400">From</span>
               <input
                 type="date"
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -123,7 +127,7 @@ export function SalesReportsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">To</span>
+              <span className="text-slate-600 dark:text-slate-400">To</span>
               <input
                 type="date"
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -135,13 +139,13 @@ export function SalesReportsPage() {
 
           {statement.data && (
             <div className="mt-6">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Opening: <span className="font-medium tabular-nums">{statement.data.openingBalance}</span> · Closing:{' '}
                 <span className="font-medium tabular-nums">{statement.data.closingBalance}</span>
               </p>
-              <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+              <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50">
+                  <thead className="bg-slate-50 dark:bg-slate-900">
                     <tr>
                       <th className="px-3 py-2 text-left">Date</th>
                       <th className="px-3 py-2 text-left">Type</th>
@@ -153,7 +157,7 @@ export function SalesReportsPage() {
                   </thead>
                   <tbody>
                     {statement.data.lines.map((row, i) => (
-                      <tr key={i} className="border-t border-slate-100">
+                      <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
                         <td className="px-3 py-2">{row.date}</td>
                         <td className="px-3 py-2 capitalize">{row.kind}</td>
                         <td className="px-3 py-2">{row.ref}</td>
@@ -171,9 +175,9 @@ export function SalesReportsPage() {
       )}
 
       {tab === 'aging' && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <label className="inline-block text-sm">
-            <span className="text-slate-600">As of</span>
+            <span className="text-slate-600 dark:text-slate-400">As of</span>
             <input
               type="date"
               className="ml-2 rounded-md border border-slate-300 px-3 py-2"
@@ -181,9 +185,9 @@ export function SalesReportsPage() {
               onChange={(e) => setAsOf(e.target.value)}
             />
           </label>
-          <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
+          <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-50">
+              <thead className="bg-slate-50 dark:bg-slate-900">
                 <tr>
                   <th className="px-3 py-2 text-left">Customer</th>
                   <th className="px-3 py-2 text-right">Total open</th>
@@ -196,7 +200,7 @@ export function SalesReportsPage() {
               </thead>
               <tbody>
                 {(aging.data?.data ?? []).map((r) => (
-                  <tr key={r.customerId} className="border-t border-slate-100">
+                  <tr key={r.customerId} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="px-3 py-2">{r.customerName}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.totalOpen}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.buckets.current}</td>

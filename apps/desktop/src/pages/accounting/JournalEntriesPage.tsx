@@ -164,13 +164,13 @@ export function JournalEntriesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Journal entries</h1>
-      <p className="mt-1 text-slate-600">Manual journals (draft → post). Source documents stay read-only here.</p>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Journal entries</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">Manual journals (draft → post). Source documents stay read-only here.</p>
       <AccountingSubNav />
 
-      <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">Status</span>
+          <span className="text-slate-600 dark:text-slate-400">Status</span>
           <select
             className="rounded-md border border-slate-300 px-2 py-1.5"
             value={status}
@@ -182,7 +182,7 @@ export function JournalEntriesPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">From</span>
+          <span className="text-slate-600 dark:text-slate-400">From</span>
           <input
             type="date"
             className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -191,7 +191,7 @@ export function JournalEntriesPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600">To</span>
+          <span className="text-slate-600 dark:text-slate-400">To</span>
           <input
             type="date"
             className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -202,13 +202,13 @@ export function JournalEntriesPage() {
       </div>
 
       {canWrite && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-medium text-slate-800">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">
             {editingId ? 'Edit draft' : 'New journal (draft)'}
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <label className="flex flex-col gap-1 text-sm">
-              <span>Entry date</span>
+              <span className="text-slate-700 dark:text-slate-300">Entry date</span>
               <input
                 type="date"
                 className="rounded-md border border-slate-300 px-2 py-1.5"
@@ -217,7 +217,7 @@ export function JournalEntriesPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span>Reference</span>
+              <span className="text-slate-700 dark:text-slate-300">Reference</span>
               <input
                 className="rounded-md border border-slate-300 px-2 py-1.5"
                 value={reference}
@@ -225,7 +225,7 @@ export function JournalEntriesPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm sm:col-span-3">
-              <span>Description</span>
+              <span className="text-slate-700 dark:text-slate-300">Description</span>
               <input
                 className="rounded-md border border-slate-300 px-2 py-1.5"
                 value={description}
@@ -237,7 +237,7 @@ export function JournalEntriesPage() {
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-600">
+                <tr className="border-b border-slate-200 text-slate-600 dark:border-slate-800 dark:text-slate-400">
                   <th className="py-2 pr-2">Account</th>
                   <th className="py-2 pr-2">Debit</th>
                   <th className="py-2 pr-2">Credit</th>
@@ -246,7 +246,7 @@ export function JournalEntriesPage() {
               </thead>
               <tbody>
                 {lines.map((l, i) => (
-                  <tr key={i} className="border-b border-slate-100">
+                  <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="py-2 pr-2">
                       <select
                         className="w-full max-w-xs rounded-md border border-slate-300 px-2 py-1.5"
@@ -300,14 +300,16 @@ export function JournalEntriesPage() {
               </tbody>
             </table>
           </div>
-          <p className={`mt-2 text-sm ${balanced ? 'text-emerald-700' : 'text-amber-700'}`}>
+          <p
+            className={`mt-2 text-sm ${balanced ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300'}`}
+          >
             Debits: {debitTot.toFixed(4)} · Credits: {creditTot.toFixed(4)}
             {!balanced && ' · Must balance before save/post'}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
               onClick={addLine}
             >
               Add line
@@ -316,7 +318,7 @@ export function JournalEntriesPage() {
               <>
                 <button
                   type="button"
-                  className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
+                  className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
                   disabled={patchMut.isPending || !balanced}
                   onClick={() => patchMut.mutate()}
                 >
@@ -324,7 +326,7 @@ export function JournalEntriesPage() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                   onClick={resetForm}
                 >
                   Cancel edit
@@ -349,34 +351,36 @@ export function JournalEntriesPage() {
         </div>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
+          <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
             <tr>
-              <th className="px-4 py-2 font-medium text-slate-700">Date</th>
-              <th className="px-4 py-2 font-medium text-slate-700">Reference</th>
-              <th className="px-4 py-2 font-medium text-slate-700">Status</th>
-              <th className="px-4 py-2 font-medium text-slate-700">Source</th>
-              {canWrite && <th className="px-4 py-2 font-medium text-slate-700">Actions</th>}
+              <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Date</th>
+              <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Reference</th>
+              <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Status</th>
+              <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Source</th>
+              {canWrite && (
+                <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {(list.data ?? []).map((j) => (
-              <tr key={j.id} className="border-b border-slate-100">
+              <tr key={j.id} className="border-b border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-2">{j.entryDate}</td>
-                <td className="px-4 py-2 font-mono text-slate-700">{j.reference || '—'}</td>
+                <td className="px-4 py-2 font-mono text-slate-700 dark:text-slate-300">{j.reference || '—'}</td>
                 <td className="px-4 py-2">
                   <span
                     className={
                       j.status === 'posted'
-                        ? 'rounded bg-emerald-100 px-2 py-0.5 text-emerald-800'
-                        : 'rounded bg-amber-100 px-2 py-0.5 text-amber-900'
+                        ? 'rounded bg-emerald-100 px-2 py-0.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                        : 'rounded bg-amber-100 px-2 py-0.5 text-amber-900 dark:bg-amber-950 dark:text-amber-200'
                     }
                   >
                     {j.status}
                   </span>
                 </td>
-                <td className="px-4 py-2 text-slate-600">{j.sourceType || 'manual'}</td>
+                <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{j.sourceType || 'manual'}</td>
                 {canWrite && (
                   <td className="px-4 py-2">
                     <div className="flex flex-wrap gap-2">

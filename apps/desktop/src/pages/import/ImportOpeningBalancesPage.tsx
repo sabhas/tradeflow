@@ -59,17 +59,20 @@ export function ImportOpeningBalancesPage() {
           ← Import hub
         </Link>
       </div>
-      <h1 className="text-2xl font-semibold text-slate-800">Import opening balances</h1>
-      <p className="mt-1 text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Import opening balances</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
         Use the <strong>Inventory</strong> sheet: warehouseCode, movementDate (YYYY-MM-DD), productSku, quantity,
         unitCost. Optional <strong>Journal</strong> sheet for balanced lines (accountCode, debit, credit) — requires{' '}
-        <code className="rounded bg-slate-100 px-1 text-xs">accounting:write</code>.
+        <code className="rounded bg-slate-100 px-1 text-xs dark:bg-slate-800 dark:text-slate-200">
+          accounting:write
+        </code>
+        .
       </p>
 
       <div className="mt-6 flex flex-wrap gap-3">
         <button
           type="button"
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           onClick={() =>
             downloadAuthenticatedFile('/import/opening-balances/template?format=xlsx', 'opening-balances-template.xlsx')
           }
@@ -78,7 +81,7 @@ export function ImportOpeningBalancesPage() {
         </button>
         <button
           type="button"
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           onClick={() =>
             downloadAuthenticatedFile('/import/opening-balances/template?format=csv', 'opening-inventory-template.csv')
           }
@@ -87,13 +90,13 @@ export function ImportOpeningBalancesPage() {
         </button>
       </div>
 
-      <div className="mt-8 rounded-lg border border-dashed border-slate-300 bg-slate-50/80 p-6">
-        <label className="block text-sm font-medium text-slate-700">
+      <div className="mt-8 rounded-lg border border-dashed border-slate-300 bg-slate-50/80 p-6 dark:border-slate-600 dark:bg-slate-900/60">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
           File (Excel with Inventory / Journal sheets, or CSV for inventory columns only)
           <input
             type="file"
             accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-            className="mt-2 block w-full text-sm text-slate-600"
+            className="mt-2 block w-full text-sm text-slate-600 dark:text-slate-400"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
@@ -112,7 +115,7 @@ export function ImportOpeningBalancesPage() {
       )}
 
       {result && (
-        <div className="mt-6 space-y-3 text-sm text-slate-800">
+        <div className="mt-6 space-y-3 text-sm text-slate-800 dark:text-slate-200">
           <p>
             Completed <strong>{result.successCount}</strong> batch(es) / entries.
           </p>
@@ -129,15 +132,15 @@ export function ImportOpeningBalancesPage() {
             </p>
           )}
           {result.errors.length > 0 && (
-            <div className="overflow-auto rounded-lg border border-slate-200 bg-white">
+            <div className="overflow-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-slate-50 dark:bg-slate-950">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-slate-700">Row</th>
                     <th className="px-3 py-2 text-left font-medium text-slate-700">Message</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {result.errors.map((e, i) => (
                     <tr key={i}>
                       <td className="px-3 py-2 tabular-nums">{e.row}</td>

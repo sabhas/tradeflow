@@ -213,13 +213,13 @@ export function CustomersPage() {
     <div>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Customers</h1>
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Customers</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           {canRead && (
             <button
               type="button"
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
               onClick={() =>
                 downloadAuthenticatedFile('/export/customers', 'customers-export.xlsx').catch((e: Error) =>
                   alert(e.message)
@@ -243,9 +243,9 @@ export function CustomersPage() {
           )}
         </div>
       </div>
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Name</th>
               <th className="px-4 py-3 text-left font-medium">Town</th>
@@ -255,7 +255,7 @@ export function CustomersPage() {
               {canWrite && <th className="px-4 py-3 text-right font-medium">Actions</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
             {isLoading && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
@@ -265,10 +265,10 @@ export function CustomersPage() {
             )}
             {(data || []).map((r) => (
               <tr key={r.id}>
-                <td className="px-4 py-3 font-medium text-slate-900">{r.name}</td>
-                <td className="px-4 py-3 text-slate-700">{r.town?.name ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-700">{r.area?.name ?? '—'}</td>
-                <td className="px-4 py-3 text-slate-700">{r.type}</td>
+                <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{r.name}</td>
+                <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.town?.name ?? '—'}</td>
+                <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.area?.name ?? '—'}</td>
+                <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.type}</td>
                 <td className="px-4 py-3">{r.creditLimit}</td>
                 {canWrite && (
                   <td className="px-4 py-3 text-right">
@@ -308,23 +308,23 @@ export function CustomersPage() {
           }}
         >
           {!hasCustomerTypes && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
               No customer types found. Create one first under Masters → Customer types.
             </div>
           )}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Identity</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Identity</p>
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-slate-700">Name</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
                 <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-slate-700">Long name (optional)</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Long name (optional)</label>
                 <input className={inputCls} value={longName} onChange={(e) => setLongName(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Type</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Type</label>
                 <select
                   className={inputCls}
                   value={type}
@@ -343,10 +343,10 @@ export function CustomersPage() {
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Address</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Address</p>
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-slate-700">Street address</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Street address</label>
                 <textarea
                   className={`${inputCls} min-h-[72px]`}
                   value={address}
@@ -356,7 +356,7 @@ export function CustomersPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Area</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Area</label>
                 <select
                   className={inputCls}
                   value={areaId}
@@ -375,7 +375,7 @@ export function CustomersPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Town</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Town</label>
                 <select
                   className={inputCls}
                   value={townId}
@@ -392,42 +392,42 @@ export function CustomersPage() {
                 </select>
               </div>
             </div>
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
               Manage lists under Masters → Towns &amp; areas.
             </p>
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contact</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Contact</p>
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700">Telephone</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Telephone</label>
                 <input className={inputCls} value={telephone} onChange={(e) => setTelephone(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Mobile</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Mobile</label>
                 <input className={inputCls} value={mobile} onChange={(e) => setMobile(e.target.value)} />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-slate-700">Contact person</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Contact person</label>
                 <input className={inputCls} value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
               </div>
             </div>
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tax &amp; license</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tax &amp; license</p>
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700">NTN</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">NTN</label>
                 <input className={inputCls} value={ntn} onChange={(e) => setNtn(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">STN</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">STN</label>
                 <input className={inputCls} value={stn} onChange={(e) => setStn(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Sales tax status</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Sales tax status</label>
                 <select
                   className={inputCls}
                   value={salesTaxStatus}
@@ -446,16 +446,16 @@ export function CustomersPage() {
                   checked={isFiler}
                   onChange={(e) => setIsFiler(e.target.checked)}
                 />
-                <label htmlFor="isFiler" className="text-sm font-medium text-slate-700">
+                <label htmlFor="isFiler" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Active tax filer
                 </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">License no.</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">License no.</label>
                 <input className={inputCls} value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">License expiry</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">License expiry</label>
                 <input
                   className={inputCls}
                   type="date"
@@ -467,14 +467,14 @@ export function CustomersPage() {
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Terms</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Terms</p>
             <div className="mt-2 grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700">Credit limit</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Credit limit</label>
                 <input className={inputCls} value={creditLimit} onChange={(e) => setCreditLimit(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">Payment terms</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Payment terms</label>
                 <select className={inputCls} value={paymentTermsId} onChange={(e) => setPaymentTermsId(e.target.value)}>
                   <option value="">— None —</option>
                   {(paymentTerms.data || []).map((p) => (
@@ -485,7 +485,7 @@ export function CustomersPage() {
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-slate-700">Tax profile</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Tax profile</label>
                 <select className={inputCls} value={taxProfileId} onChange={(e) => setTaxProfileId(e.target.value)}>
                   <option value="">— None —</option>
                   {(taxProfiles.data || []).map((p) => (

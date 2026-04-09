@@ -7,7 +7,7 @@ export function ProtectedLayout() {
   const sidebarOpen = useAppSelector((s) => s.app.sidebarOpen);
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       <Sidebar />
       <div className={`flex flex-col flex-1 min-w-0 transition-all ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
         <Header />

@@ -142,8 +142,8 @@ export function ReceiptsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800">Receipts</h1>
-      <p className="mt-1 text-slate-600">Record customer payments and allocate to credit invoices</p>
+      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Receipts</h1>
+      <p className="mt-1 text-slate-600 dark:text-slate-400">Record customer payments and allocate to credit invoices</p>
       <SalesSubNav />
 
       {error && (
@@ -151,11 +151,11 @@ export function ReceiptsPage() {
       )}
 
       {canPost && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <h2 className="text-base font-semibold text-slate-800">New receipt</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block text-sm">
-              <span className="text-slate-600">Customer</span>
+              <span className="text-slate-600 dark:text-slate-400">Customer</span>
               <select
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={customerId}
@@ -170,7 +170,7 @@ export function ReceiptsPage() {
               </select>
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Date</span>
+              <span className="text-slate-600 dark:text-slate-400">Date</span>
               <input
                 type="date"
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
@@ -179,7 +179,7 @@ export function ReceiptsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Amount</span>
+              <span className="text-slate-600 dark:text-slate-400">Amount</span>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={amount}
@@ -187,7 +187,7 @@ export function ReceiptsPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="text-slate-600">Method</span>
+              <span className="text-slate-600 dark:text-slate-400">Method</span>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={paymentMethod}
@@ -195,7 +195,7 @@ export function ReceiptsPage() {
               />
             </label>
             <label className="block text-sm sm:col-span-2">
-              <span className="text-slate-600">Reference</span>
+              <span className="text-slate-600 dark:text-slate-400">Reference</span>
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={reference}
@@ -229,7 +229,7 @@ export function ReceiptsPage() {
                   </thead>
                   <tbody>
                     {(openInvoices.data ?? []).map((i) => (
-                      <tr key={i.id} className="border-t border-slate-100">
+                      <tr key={i.id} className="border-t border-slate-100 dark:border-slate-800">
                         <td className="px-3 py-2">
                           <input
                             type="checkbox"
@@ -273,12 +273,12 @@ export function ReceiptsPage() {
         </div>
       )}
 
-      <div className="mt-8 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200">
+      <div className="mt-8 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <h2 className="border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800">
           Recent receipts
         </h2>
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-right font-medium">Amount</th>
@@ -287,7 +287,7 @@ export function ReceiptsPage() {
           </thead>
           <tbody>
             {(list.data ?? []).map((r) => (
-              <tr key={r.id} className="border-t border-slate-100">
+              <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.receiptDate}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{r.amount}</td>
                 <td className="px-4 py-3">{r.paymentMethod}</td>
