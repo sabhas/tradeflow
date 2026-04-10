@@ -1,7 +1,7 @@
 import type { Request } from 'express';
-import { EntityManager, IsNull } from 'typeorm';
+import { Between, EntityManager, FindOptionsWhere, IsNull, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import type { z } from 'zod';
-import { JournalEntry, JournalLine } from '@tradeflow/db';
+import { Account, JournalEntry, JournalLine } from '@tradeflow/db';
 import { createJournalEntrySchema, updateJournalEntrySchema } from '@tradeflow/shared';
 import { getPagination } from '../utils/pagination';
 import { parseDecimalStrict } from '../utils/decimal';
@@ -37,12 +37,16 @@ export function serializeJournalEntry(e: JournalEntry, lines?: JournalLine[]) {
     updatedAt: e.updatedAt,
     deletedAt: e.deletedAt ?? null,
     lines:
-      lines?.map((l) => ({
-        id: l.id,
-        accountId: l.accountId,
-        debit: l.debit,
-        credit: l.credit,
-      })) ?? undefined,
+      lines?.map((l) => {
+        const acc = (l as JournalLine & { account?: Account }).account;
+        return {
+          id: l.id,
+          accountId: l.accountId,
+          debit: l.debit,
+          credit: l.credit,
+          account: acc ? { code: acc.code, name: acc.name } : undefined,
+        };
+      }) ?? undefined,
   };
 }
 
@@ -86,19 +90,36 @@ export async function listJournalEntries(req: Request): Promise<ControllerResult
   const dateFrom = (req.query.dateFrom as string | undefined)?.slice(0, 10);
   const dateTo = (req.query.dateTo as string | undefined)?.slice(0, 10);
 
-  const qb = JournalEntry
-    .createQueryBuilder('je')
-    .where('je.deleted_at IS NULL')
-    .orderBy('je.entry_date', 'DESC')
-    .addOrderBy('je.created_at', 'DESC')
-    .take(limit)
-    .skip(offset);
-  if (status) qb.andWhere('je.status = :st', { st: status });
-  if (dateFrom) qb.andWhere('je.entry_date >= :df', { df: dateFrom });
-  if (dateTo) qb.andWhere('je.entry_date <= :dt', { dt: dateTo });
+  const where: FindOptionsWhere<JournalEntry> = {
+    deletedAt: IsNull(),
+  };
+  if (status) where.status = status;
+  if (dateFrom && dateTo) {
+    where.entryDate = Between(dateFrom, dateTo);
+  } else if (dateFrom) {
+    where.entryDate = MoreThanOrEqual(dateFrom);
+  } else if (dateTo) {
+    where.entryDate = LessThanOrEqual(dateTo);
+  }
 
-  const [rows, total] = await qb.getManyAndCount();
-  return ok({ data: rows.map((r) => serializeJournalEntry(r)), meta: { total, limit, offset } });
+  const total = await JournalEntry.count({ where });
+  const rows = await JournalEntry.find({
+    where,
+    relations: ['lines', 'lines.account'],
+    order: { entryDate: 'DESC', createdAt: 'DESC' },
+    take: limit,
+    skip: offset,
+  });
+
+  for (const r of rows) {
+    if (r.lines?.length) {
+      r.lines.sort((a, b) => a.id.localeCompare(b.id));
+    }
+  }
+  return ok({
+    data: rows.map((r) => serializeJournalEntry(r, r.lines)),
+    meta: { total, limit, offset },
+  });
 }
 
 export async function getJournalEntry(req: Request): Promise<ControllerResult> {

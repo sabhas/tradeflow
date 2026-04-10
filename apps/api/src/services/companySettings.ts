@@ -10,10 +10,13 @@ export function isBankPaymentMethod(paymentMethod: string): boolean {
 export async function getCompanyAccountingSettings(
   manager: EntityManager
 ): Promise<{ cashId: string; bankId: string }> {
-  const row = await manager.getRepository(CompanySettings).findOne({
-    order: { id: 'ASC' },
-    relations: ['defaultCashAccount', 'defaultBankAccount'],
-  });
+  const row = (
+    await manager.getRepository(CompanySettings).find({
+      order: { id: 'ASC' },
+      take: 1,
+      relations: ['defaultCashAccount', 'defaultBankAccount'],
+    })
+  )[0];
   if (row) {
     return { cashId: row.defaultCashAccountId, bankId: row.defaultBankAccountId };
   }
@@ -36,10 +39,13 @@ export async function resolveLiquidAccountId(
 }
 
 export async function getCompanySettingsRow(manager: EntityManager): Promise<CompanySettings> {
-  const row = await manager.getRepository(CompanySettings).findOne({
-    order: { id: 'ASC' },
-    relations: ['defaultInvoiceTemplate'],
-  });
+  const row = (
+    await manager.getRepository(CompanySettings).find({
+      order: { id: 'ASC' },
+      take: 1,
+      relations: ['defaultInvoiceTemplate'],
+    })
+  )[0];
   if (!row) throw new Error('Company settings not initialized');
   return row;
 }

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { AccountingSubNav } from '../../components/AccountingSubNav';
+import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -14,7 +15,24 @@ type JournalRow = {
   description: string | null;
   status: string;
   sourceType: string | null;
+  lines?: Array<{
+    id?: string;
+    accountId: string;
+    debit: string;
+    credit: string;
+    account?: { code: string; name: string };
+  }>;
 };
+
+function formatJournalAmount(s: string) {
+  const n = parseFloat(s || '0');
+  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
+function accountLabel(line: NonNullable<JournalRow['lines']>[number]) {
+  if (line.account) return `${line.account.code} ${line.account.name}`;
+  return line.accountId;
+}
 
 export function JournalEntriesPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
@@ -33,6 +51,7 @@ export function JournalEntriesPage() {
     { accountId: '', debit: '0', credit: '0' },
   ]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   const listParams = useMemo(() => {
     const q = new URLSearchParams();
@@ -67,6 +86,11 @@ export function JournalEntriesPage() {
     ]);
   };
 
+  const closeJournalForm = () => {
+    setFormOpen(false);
+    resetForm();
+  };
+
   const loadDraft = async (id: string) => {
     const row = await apiFetch<{ data: JournalRow & { lines: JournalLine[] } }>(`/journal-entries/${id}`).then(
       (r) => r.data
@@ -83,6 +107,7 @@ export function JournalEntriesPage() {
         credit: l.credit,
       }))
     );
+    setFormOpen(true);
   };
 
   const createMut = useMutation({
@@ -102,7 +127,7 @@ export function JournalEntriesPage() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['journal-entries'] });
-      resetForm();
+      closeJournalForm();
     },
   });
 
@@ -123,7 +148,7 @@ export function JournalEntriesPage() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['journal-entries'] });
-      resetForm();
+      closeJournalForm();
     },
   });
 
@@ -145,7 +170,7 @@ export function JournalEntriesPage() {
     mutationFn: (id: string) => apiFetch(`/journal-entries/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['journal-entries'] });
-      resetForm();
+      closeJournalForm();
     },
   });
 
@@ -168,50 +193,228 @@ export function JournalEntriesPage() {
       <p className="mt-1 text-slate-600 dark:text-slate-400">Manual journals (draft → post). Source documents stay read-only here.</p>
       <AccountingSubNav />
 
-      <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600 dark:text-slate-400">Status</span>
-          <select
-            className="rounded-md border border-slate-300 px-2 py-1.5"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="draft">Draft</option>
-            <option value="posted">Posted</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600 dark:text-slate-400">From</span>
-          <input
-            type="date"
-            className="rounded-md border border-slate-300 px-2 py-1.5"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-600 dark:text-slate-400">To</span>
-          <input
-            type="date"
-            className="rounded-md border border-slate-300 px-2 py-1.5"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-        </label>
-      </div>
+      <section className="mt-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">Journal register</h2>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              Filters apply to the list below. Each row shows the full line detail: accounts and debit/credit amounts.
+            </p>
+          </div>
+          {canWrite && (
+            <button
+              type="button"
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+              onClick={() => {
+                resetForm();
+                setFormOpen(true);
+              }}
+            >
+              New journal entry
+            </button>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-600 dark:text-slate-400">Status</span>
+            <select
+              className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-900"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="draft">Draft</option>
+              <option value="posted">Posted</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-600 dark:text-slate-400">From</span>
+            <input
+              type="date"
+              className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-900"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-600 dark:text-slate-400">To</span>
+            <input
+              type="date"
+              className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-900"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
+              <tr>
+                <th className="whitespace-nowrap px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Date</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Reference</th>
+                <th className="max-w-[12rem] px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Description</th>
+                <th className="min-w-[18rem] px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Lines</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Status</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Source</th>
+                {canWrite && (
+                  <th className="whitespace-nowrap px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Actions</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {list.isLoading ? (
+                <tr>
+                  <td
+                    className="px-4 py-8 text-slate-500"
+                    colSpan={canWrite ? 7 : 6}
+                  >
+                    Loading journal entries…
+                  </td>
+                </tr>
+              ) : list.isError ? (
+                <tr>
+                  <td className="px-4 py-8 text-red-600" colSpan={canWrite ? 7 : 6}>
+                    {(list.error as Error).message}
+                  </td>
+                </tr>
+              ) : (list.data ?? []).length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-slate-500" colSpan={canWrite ? 7 : 6}>
+                    No journal entries for these filters.
+                  </td>
+                </tr>
+              ) : (
+                (list.data ?? []).map((j) => (
+                  <tr key={j.id} className="border-b border-slate-100 dark:border-slate-800">
+                    <td className="whitespace-nowrap px-4 py-2 align-top">{j.entryDate}</td>
+                    <td className="max-w-[10rem] whitespace-pre-wrap break-words px-4 py-2 align-top font-mono text-slate-700 dark:text-slate-300">
+                      {j.reference || '—'}
+                    </td>
+                    <td
+                      className="max-w-[14rem] px-4 py-2 align-top text-slate-600 dark:text-slate-400"
+                      title={j.description || undefined}
+                    >
+                      {j.description ? (
+                        <span className="line-clamp-2">{j.description}</span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="min-w-[18rem] max-w-xl px-4 py-2 align-top">
+                      {(j.lines ?? []).length > 0 ? (
+                        <ul className="space-y-1.5 text-xs">
+                          {(j.lines ?? []).map((line) => (
+                            <li
+                              key={line.id ?? `${line.accountId}-${line.debit}-${line.credit}`}
+                              className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5"
+                            >
+                              <span className="min-w-0 font-medium text-slate-800 dark:text-slate-200">
+                                {accountLabel(line)}
+                              </span>
+                              <span className="font-mono tabular-nums text-slate-600 dark:text-slate-400">
+                                {parseFloat(line.debit || '0') > 0 && (
+                                  <span className="text-emerald-700 dark:text-emerald-400">
+                                    Dr {formatJournalAmount(line.debit)}
+                                  </span>
+                                )}
+                                {parseFloat(line.credit || '0') > 0 && (
+                                  <span className="text-sky-800 dark:text-sky-300">
+                                    Cr {formatJournalAmount(line.credit)}
+                                  </span>
+                                )}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2 align-top">
+                      <span
+                        className={
+                          j.status === 'posted'
+                            ? 'rounded bg-emerald-100 px-2 py-0.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                            : 'rounded bg-amber-100 px-2 py-0.5 text-amber-900 dark:bg-amber-950 dark:text-amber-200'
+                        }
+                      >
+                        {j.status}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2 align-top text-slate-600 dark:text-slate-400">
+                      {j.sourceType || 'manual'}
+                    </td>
+                    {canWrite && (
+                      <td className="whitespace-nowrap px-4 py-2 align-top">
+                        <div className="flex flex-wrap gap-2">
+                          {j.status === 'draft' && !j.sourceType && (
+                            <>
+                              <button
+                                type="button"
+                                className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+                                onClick={() => loadDraft(j.id)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="text-sm text-emerald-700 hover:underline dark:text-emerald-400"
+                                onClick={() => postMut.mutate(j.id)}
+                              >
+                                Post
+                              </button>
+                              <button
+                                type="button"
+                                className="text-sm text-red-600 hover:underline dark:text-red-400"
+                                onClick={() => {
+                                  if (confirm('Delete this draft?')) delMut.mutate(j.id);
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                          {j.status === 'posted' && (
+                            <button
+                              type="button"
+                              className="text-sm text-slate-700 hover:underline dark:text-slate-300"
+                              onClick={() => {
+                                if (confirm('Create a reversing journal entry (today’s date)?')) {
+                                  reverseMut.mutate(j.id);
+                                }
+                              }}
+                            >
+                              Reverse
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {canWrite && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-          <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">
-            {editingId ? 'Edit draft' : 'New journal (draft)'}
-          </h2>
+        <MastersModal
+          title={editingId ? 'Edit draft' : 'New journal (draft)'}
+          open={formOpen}
+          onClose={closeJournalForm}
+          wide
+        >
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Add or change a draft. Posted entries are edited only via reversal from the register.
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-slate-700 dark:text-slate-300">Entry date</span>
               <input
                 type="date"
-                className="rounded-md border border-slate-300 px-2 py-1.5"
+                className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-900"
                 value={entryDate}
                 onChange={(e) => setEntryDate(e.target.value)}
               />
@@ -219,7 +422,7 @@ export function JournalEntriesPage() {
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-slate-700 dark:text-slate-300">Reference</span>
               <input
-                className="rounded-md border border-slate-300 px-2 py-1.5"
+                className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-900"
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
               />
@@ -227,7 +430,7 @@ export function JournalEntriesPage() {
             <label className="flex flex-col gap-1 text-sm sm:col-span-3">
               <span className="text-slate-700 dark:text-slate-300">Description</span>
               <input
-                className="rounded-md border border-slate-300 px-2 py-1.5"
+                className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-900"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -249,7 +452,7 @@ export function JournalEntriesPage() {
                   <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="py-2 pr-2">
                       <select
-                        className="w-full max-w-xs rounded-md border border-slate-300 px-2 py-1.5"
+                        className="w-full max-w-xs rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-900"
                         value={l.accountId}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -266,7 +469,7 @@ export function JournalEntriesPage() {
                     </td>
                     <td className="py-2 pr-2">
                       <input
-                        className="w-28 rounded-md border border-slate-300 px-2 py-1.5 font-mono"
+                        className="w-28 rounded-md border border-slate-300 px-2 py-1.5 font-mono dark:border-slate-600 dark:bg-slate-900"
                         value={l.debit}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -276,7 +479,7 @@ export function JournalEntriesPage() {
                     </td>
                     <td className="py-2 pr-2">
                       <input
-                        className="w-28 rounded-md border border-slate-300 px-2 py-1.5 font-mono"
+                        className="w-28 rounded-md border border-slate-300 px-2 py-1.5 font-mono dark:border-slate-600 dark:bg-slate-900"
                         value={l.credit}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -288,7 +491,7 @@ export function JournalEntriesPage() {
                       {lines.length > 2 && (
                         <button
                           type="button"
-                          className="text-xs text-red-600 hover:underline"
+                          className="text-xs text-red-600 hover:underline dark:text-red-400"
                           onClick={() => removeLine(i)}
                         >
                           Remove
@@ -327,9 +530,9 @@ export function JournalEntriesPage() {
                 <button
                   type="button"
                   className="rounded-md border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                  onClick={resetForm}
+                  onClick={closeJournalForm}
                 >
-                  Cancel edit
+                  Cancel
                 </button>
               </>
             ) : (
@@ -344,94 +547,13 @@ export function JournalEntriesPage() {
             )}
           </div>
           {(createMut.isError || patchMut.isError) && (
-            <p className="mt-2 text-sm text-red-600">
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
               {((createMut.error || patchMut.error) as Error).message}
             </p>
           )}
-        </div>
+        </MastersModal>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
-            <tr>
-              <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Date</th>
-              <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Reference</th>
-              <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Status</th>
-              <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Source</th>
-              {canWrite && (
-                <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Actions</th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {(list.data ?? []).map((j) => (
-              <tr key={j.id} className="border-b border-slate-100 dark:border-slate-800">
-                <td className="px-4 py-2">{j.entryDate}</td>
-                <td className="px-4 py-2 font-mono text-slate-700 dark:text-slate-300">{j.reference || '—'}</td>
-                <td className="px-4 py-2">
-                  <span
-                    className={
-                      j.status === 'posted'
-                        ? 'rounded bg-emerald-100 px-2 py-0.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
-                        : 'rounded bg-amber-100 px-2 py-0.5 text-amber-900 dark:bg-amber-950 dark:text-amber-200'
-                    }
-                  >
-                    {j.status}
-                  </span>
-                </td>
-                <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{j.sourceType || 'manual'}</td>
-                {canWrite && (
-                  <td className="px-4 py-2">
-                    <div className="flex flex-wrap gap-2">
-                      {j.status === 'draft' && !j.sourceType && (
-                        <>
-                          <button
-                            type="button"
-                            className="text-sm text-indigo-600 hover:underline"
-                            onClick={() => loadDraft(j.id)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="text-sm text-emerald-700 hover:underline"
-                            onClick={() => postMut.mutate(j.id)}
-                          >
-                            Post
-                          </button>
-                          <button
-                            type="button"
-                            className="text-sm text-red-600 hover:underline"
-                            onClick={() => {
-                              if (confirm('Delete this draft?')) delMut.mutate(j.id);
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                      {j.status === 'posted' && (
-                        <button
-                          type="button"
-                          className="text-sm text-slate-700 hover:underline"
-                          onClick={() => {
-                            if (confirm('Create a reversing journal entry (today’s date)?')) {
-                              reverseMut.mutate(j.id);
-                            }
-                          }}
-                        >
-                          Reverse
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
       {(postMut.isError || reverseMut.isError) && (
         <p className="mt-2 text-sm text-red-600">
           {((postMut.error || reverseMut.error) as Error).message}

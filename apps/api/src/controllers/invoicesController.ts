@@ -88,10 +88,13 @@ export async function getInvoicePdfHtml(req: Request): Promise<ControllerResult>
       relations: ['paymentTerms'],
     }));
   const name = cust?.name ?? 'Customer';
-  const company = await CompanySettings.findOne({
-    order: { id: 'ASC' },
-    relations: ['defaultInvoiceTemplate'],
-  });
+  const company = (
+    await CompanySettings.find({
+      order: { id: 'ASC' },
+      take: 1,
+      relations: ['defaultInvoiceTemplate'],
+    })
+  )[0];
   if (!company) {
     throw new HttpError(500, { error: 'Company settings not initialized' });
   }
