@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { AccountingSubNav } from '../../components/AccountingSubNav';
+import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -505,80 +506,82 @@ export function ChartOfAccountsPage() {
         </div>
       </div>
 
-      {showAdd && canWrite && (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">New account</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Code</span>
-              <input
-                className="rounded-md border border-slate-300 px-2 py-1.5"
-                value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              <span className="text-slate-600 dark:text-slate-400">Name</span>
-              <input
-                className="rounded-md border border-slate-300 px-2 py-1.5"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Type</span>
-              <select
-                className="rounded-md border border-slate-300 px-2 py-1.5"
-                value={form.type}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, type: e.target.value as (typeof ACCOUNT_TYPES)[number] }))
-                }
-              >
-                {ACCOUNT_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2 lg:col-span-4">
-              <span className="text-slate-600 dark:text-slate-400">Parent account (optional)</span>
-              <select
-                className="rounded-md border border-slate-300 px-2 py-1.5"
-                value={form.parentId}
-                onChange={(e) => setForm((f) => ({ ...f, parentId: e.target.value }))}
-              >
-                <option value="">None — top level under type</option>
-                {flatAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.code} — {a.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
-              disabled={createAcc.isPending || !form.code.trim() || !form.name.trim()}
-              onClick={() => createAcc.mutate()}
+      <MastersModal
+        title="New account"
+        open={showAdd && canWrite}
+        onClose={() => setShowAdd(false)}
+        wide
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-600 dark:text-slate-400">Code</span>
+            <input
+              className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-950"
+              value={form.code}
+              onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+            <span className="text-slate-600 dark:text-slate-400">Name</span>
+            <input
+              className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-950"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-600 dark:text-slate-400">Type</span>
+            <select
+              className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-950"
+              value={form.type}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, type: e.target.value as (typeof ACCOUNT_TYPES)[number] }))
+              }
             >
-              Create
-            </button>
-            <button
-              type="button"
-              className="text-sm text-slate-600 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
-              onClick={() => setShowAdd(false)}
+              {ACCOUNT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm sm:col-span-2 lg:col-span-4">
+            <span className="text-slate-600 dark:text-slate-400">Parent account (optional)</span>
+            <select
+              className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-950"
+              value={form.parentId}
+              onChange={(e) => setForm((f) => ({ ...f, parentId: e.target.value }))}
             >
-              Cancel
-            </button>
-          </div>
-          {createAcc.isError && (
-            <p className="mt-2 text-sm text-red-600">{(createAcc.error as Error).message}</p>
-          )}
-        </section>
-      )}
+              <option value="">None — top level under type</option>
+              {flatAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.code} — {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+            disabled={createAcc.isPending || !form.code.trim() || !form.name.trim()}
+            onClick={() => createAcc.mutate()}
+          >
+            Create
+          </button>
+          <button
+            type="button"
+            className="text-sm text-slate-600 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
+            onClick={() => setShowAdd(false)}
+          >
+            Cancel
+          </button>
+        </div>
+        {createAcc.isError && (
+          <p className="mt-2 text-sm text-red-600">{(createAcc.error as Error).message}</p>
+        )}
+      </MastersModal>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
         <button
