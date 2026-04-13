@@ -3,21 +3,23 @@ import { Account, JournalEntry, JournalLine } from '@tradeflow/db';
 import { resolveLiquidAccountId } from './companySettings';
 import { parseDecimalStrict } from '../utils/decimal';
 
+/**
+ * GL posting uses control trade receivable / payable (1100 / 2000). Party detail is in
+ * invoices, receipts, payments, and aging — not separate COA codes per customer/supplier.
+ */
 const ACC = {
-  AR: '1200',
+  AR: '1100',
   SALES: '4000',
-  TAX: '2200',
-  INVENTORY: '1300',
-  AP: '2100',
-  INPUT_VAT: '1500',
-  COGS: '5100',
+  TAX: '2100',
+  INVENTORY: '1210',
+  AP: '2000',
+  INPUT_VAT: '1400',
+  COGS: '5000',
 } as const;
 
 async function accountIdByCode(manager: EntityManager, code: string): Promise<string> {
-  const row = await manager
-    .createQueryBuilder(Account, 'a')
-    .getOne();
-  if (!row) throw new Error(`System account ${code} not found. Run migrations.`);
+  const row = await manager.findOne(Account, { where: { code } });
+  if (!row) throw new Error(`GL account with code ${code} not found. Seed or configure chart of accounts.`);
   return row.id;
 }
 
@@ -53,10 +55,10 @@ export async function postSalesInvoiceJournal(
   });
   if (existing) throw new Error('Invoice already has accounting entry');
 
-  const [arId, salesId, taxId] = await Promise.all([
-    accountIdByCode(manager, ACC.AR),
+  const [salesId, taxId, arId] = await Promise.all([
     accountIdByCode(manager, ACC.SALES),
     accountIdByCode(manager, ACC.TAX),
+    accountIdByCode(manager, ACC.AR),
   ]);
 
   const debitAccountId =
@@ -126,9 +128,9 @@ export async function postReceiptJournal(
   });
   if (existing) throw new Error('Receipt already has accounting entry');
 
-  const [arId, liquidId] = await Promise.all([
-    accountIdByCode(manager, ACC.AR),
+  const [liquidId, arId] = await Promise.all([
     resolveLiquidAccountId(manager, params.paymentMethod),
+    accountIdByCode(manager, ACC.AR),
   ]);
 
   const lines = [
@@ -182,10 +184,10 @@ export async function postSupplierInvoiceJournal(
   });
   if (existing) throw new Error('Supplier invoice already has accounting entry');
 
-  const [invId, apId, vatId] = await Promise.all([
+  const [invId, vatId, apId] = await Promise.all([
     accountIdByCode(manager, ACC.INVENTORY),
-    accountIdByCode(manager, ACC.AP),
     accountIdByCode(manager, ACC.INPUT_VAT),
+    accountIdByCode(manager, ACC.AP),
   ]);
 
   const lines: Array<{ accountId: string; debit: string; credit: string }> = [
@@ -239,9 +241,9 @@ export async function postSupplierPaymentJournal(
   });
   if (existing) throw new Error('Supplier payment already has accounting entry');
 
-  const [apId, liquidId] = await Promise.all([
-    accountIdByCode(manager, ACC.AP),
+  const [liquidId, apId] = await Promise.all([
     resolveLiquidAccountId(manager, params.paymentMethod),
+    accountIdByCode(manager, ACC.AP),
   ]);
 
   const payLines = [
