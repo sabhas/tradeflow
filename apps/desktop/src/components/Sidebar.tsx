@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../hooks/useAppSelector';
 import { toggleSidebar } from '../store/slices/appSlice';
@@ -95,16 +95,20 @@ export function Sidebar() {
     return hasPermission(permissions, item.permission);
   };
 
-  const filtered = menuItems
-    .map((item) => {
-      if (item.type === 'group') {
-        const visibleItems = item.items.filter(hasAccess);
-        if (!visibleItems.length) return null;
-        return { ...item, items: visibleItems };
-      }
-      return hasAccess(item) ? item : null;
-    })
-    .filter((item): item is MenuItem => item !== null);
+  const filtered = useMemo(
+    () =>
+      menuItems
+        .map((item) => {
+          if (item.type === 'group') {
+            const visibleItems = item.items.filter(hasAccess);
+            if (!visibleItems.length) return null;
+            return { ...item, items: visibleItems };
+          }
+          return hasAccess(item) ? item : null;
+        })
+        .filter((item): item is MenuItem => item !== null),
+    [permissions],
+  );
 
   useEffect(() => {
     setExpandedGroups((prev) => {
@@ -113,6 +117,10 @@ export function Sidebar() {
         if (item.type !== 'group') return;
         next[item.label] = prev[item.label] ?? true;
       });
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+      if (prevKeys.length !== nextKeys.length) return next;
+      if (nextKeys.every((key) => prev[key] === next[key])) return prev;
       return next;
     });
   }, [filtered]);
