@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { AccountingSubNav } from '../../components/AccountingSubNav';
+import { Combobox } from '../../components/Combobox';
 import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -67,6 +68,17 @@ export function JournalEntriesPage() {
     enabled: canRead,
     queryFn: () => apiFetch<{ data: AccountOpt[] }>('/accounts').then((r) => r.data),
   });
+
+  const accountOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(accounts.data ?? []).map((a) => ({
+        value: a.id,
+        label: `${a.code} ${a.name}`,
+      })),
+    ],
+    [accounts.data]
+  );
 
   const list = useQuery({
     queryKey: ['journal-entries', listParams],
@@ -451,21 +463,19 @@ export function JournalEntriesPage() {
                 {lines.map((l, i) => (
                   <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="py-2 pr-2">
-                      <select
-                        className="w-full max-w-xs rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-900"
+                      <Combobox
+                        className="w-full max-w-xs"
                         value={l.accountId}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setLines((ls) => ls.map((x, j) => (j === i ? { ...x, accountId: v } : x)));
+                        onChange={(v) => {
+                          setLines((ls) =>
+                            ls.map((x, j) => (j === i ? { ...x, accountId: v } : x))
+                          );
                         }}
-                      >
-                        <option value="">—</option>
-                        {(accounts.data ?? []).map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.code} {a.name}
-                          </option>
-                        ))}
-                      </select>
+                        options={accountOptions}
+                        placeholder="Search account…"
+                        disabled={accounts.isLoading}
+                        aria-label="Account"
+                      />
                     </td>
                     <td className="py-2 pr-2">
                       <input
