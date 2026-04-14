@@ -26,8 +26,33 @@ type JournalRow = {
 };
 
 function formatJournalAmount(s: string) {
-  const n = parseFloat(s || '0');
+  const n = parseJournalAmount(s);
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
+function parseJournalAmount(s: string) {
+  const n = parseFloat((s || '0').replace(/,/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeAmountInput(raw: string) {
+  const cleaned = raw.replace(/,/g, '').replace(/[^\d.]/g, '');
+  const firstDot = cleaned.indexOf('.');
+  if (firstDot === -1) return cleaned;
+  return `${cleaned.slice(0, firstDot + 1)}${cleaned.slice(firstDot + 1).replace(/\./g, '')}`;
+}
+
+function formatAmountInput(raw: string) {
+  if (!raw) return '';
+  const cleaned = normalizeAmountInput(raw);
+  if (!cleaned) return '';
+
+  const hasTrailingDot = cleaned.endsWith('.');
+  const [whole, frac = ''] = cleaned.split('.');
+  const wholeFormatted = whole ? Number(whole).toLocaleString() : '0';
+
+  if (hasTrailingDot) return `${wholeFormatted}.`;
+  return frac ? `${wholeFormatted}.${frac}` : wholeFormatted;
 }
 
 function accountLabel(line: NonNullable<JournalRow['lines']>[number]) {
@@ -71,7 +96,6 @@ export function JournalEntriesPage() {
 
   const accountOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(accounts.data ?? []).map((a) => ({
         value: a.id,
         label: `${a.code} ${a.name}`,
@@ -194,24 +218,19 @@ export function JournalEntriesPage() {
   let debitTot = 0;
   let creditTot = 0;
   for (const l of lines) {
-    debitTot += parseFloat(l.debit || '0');
-    creditTot += parseFloat(l.credit || '0');
+    debitTot += parseJournalAmount(l.debit);
+    creditTot += parseJournalAmount(l.credit);
   }
   const balanced = Math.abs(debitTot - creditTot) < 0.0001;
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Journal entries</h1>
-      <p className="mt-1 text-slate-600 dark:text-slate-400">Manual journals (draft → post). Source documents stay read-only here.</p>
       <AccountingSubNav />
 
       <section className="mt-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">Journal register</h2>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-              Filters apply to the list below. Each row shows the full line detail: accounts and debit/credit amounts.
-            </p>
           </div>
           {canWrite && (
             <button
@@ -325,12 +344,12 @@ export function JournalEntriesPage() {
                                 {accountLabel(line)}
                               </span>
                               <span className="font-mono tabular-nums text-slate-600 dark:text-slate-400">
-                                {parseFloat(line.debit || '0') > 0 && (
+                                {parseJournalAmount(line.debit) > 0 && (
                                   <span className="text-emerald-700 dark:text-emerald-400">
                                     Dr {formatJournalAmount(line.debit)}
                                   </span>
                                 )}
-                                {parseFloat(line.credit || '0') > 0 && (
+                                {parseJournalAmount(line.credit) > 0 && (
                                   <span className="text-sky-800 dark:text-sky-300">
                                     Cr {formatJournalAmount(line.credit)}
                                   </span>
@@ -480,9 +499,9 @@ export function JournalEntriesPage() {
                     <td className="py-2 pr-2">
                       <input
                         className="w-28 rounded-md border border-slate-300 px-2 py-1.5 font-mono dark:border-slate-600 dark:bg-slate-900"
-                        value={l.debit}
+                        value={formatAmountInput(l.debit)}
                         onChange={(e) => {
-                          const v = e.target.value;
+                          const v = normalizeAmountInput(e.target.value);
                           setLines((ls) => ls.map((x, j) => (j === i ? { ...x, debit: v } : x)));
                         }}
                       />
@@ -490,9 +509,9 @@ export function JournalEntriesPage() {
                     <td className="py-2 pr-2">
                       <input
                         className="w-28 rounded-md border border-slate-300 px-2 py-1.5 font-mono dark:border-slate-600 dark:bg-slate-900"
-                        value={l.credit}
+                        value={formatAmountInput(l.credit)}
                         onChange={(e) => {
-                          const v = e.target.value;
+                          const v = normalizeAmountInput(e.target.value);
                           setLines((ls) => ls.map((x, j) => (j === i ? { ...x, credit: v } : x)));
                         }}
                       />
@@ -516,7 +535,8 @@ export function JournalEntriesPage() {
           <p
             className={`mt-2 text-sm ${balanced ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300'}`}
           >
-            Debits: {debitTot.toFixed(4)} · Credits: {creditTot.toFixed(4)}
+            Debits: {debitTot.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} · Credits:{' '}
+            {creditTot.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
             {!balanced && ' · Must balance before save/post'}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
