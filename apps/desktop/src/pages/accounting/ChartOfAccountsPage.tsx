@@ -405,10 +405,7 @@ export function ChartOfAccountsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Chart of accounts</h1>
-        <AccountingSubNav />
-      </div>
+      <AccountingSubNav />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex min-w-0 max-w-md flex-1 flex-col gap-1">

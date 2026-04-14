@@ -160,10 +160,6 @@ export function FinancialReportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Financial reports</h1>
-      <p className="mt-1 text-slate-600 dark:text-slate-400">
-        Trial balance, profit &amp; loss, balance sheet, and expense analysis from posted journals
-      </p>
       <AccountingSubNav />
 
       <div className="mt-4 flex flex-wrap gap-2">
