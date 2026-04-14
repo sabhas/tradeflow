@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { InventorySubNav } from '../../components/InventorySubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -48,6 +49,21 @@ export function InventoryTransfersPage() {
     enabled: canRead && panelOpen,
     queryFn: () => apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500&activeOnly=true').then((r) => r.data),
   });
+
+  const warehouseOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: `${w.name} (${w.code})` })),
+    ],
+    [warehouses.data]
+  );
+  const productLineOptions = useMemo(
+    () => [
+      { value: '', label: 'Product' },
+      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
+    ],
+    [products.data]
+  );
 
   useEffect(() => {
     if (!panelOpen || fromWarehouseId || !warehouses.data?.length) return;
@@ -127,33 +143,27 @@ export function InventoryTransfersPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-slate-600 dark:text-slate-400">From warehouse</span>
-              <select
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              <Combobox
+                className="w-full max-w-none"
                 value={fromWarehouseId}
-                onChange={(e) => setFromWarehouseId(e.target.value)}
-              >
-                <option value="">—</option>
-                {(warehouses.data ?? []).map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} ({w.code})
-                  </option>
-                ))}
-              </select>
+                onChange={setFromWarehouseId}
+                options={warehouseOptions}
+                placeholder="Search warehouse…"
+                disabled={warehouses.isLoading}
+                aria-label="From warehouse"
+              />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-slate-600 dark:text-slate-400">To warehouse</span>
-              <select
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              <Combobox
+                className="w-full max-w-none"
                 value={toWarehouseId}
-                onChange={(e) => setToWarehouseId(e.target.value)}
-              >
-                <option value="">—</option>
-                {(warehouses.data ?? []).map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} ({w.code})
-                  </option>
-                ))}
-              </select>
+                onChange={setToWarehouseId}
+                options={warehouseOptions}
+                placeholder="Search warehouse…"
+                disabled={warehouses.isLoading}
+                aria-label="To warehouse"
+              />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-slate-600 dark:text-slate-400">Transfer date</span>
@@ -178,21 +188,16 @@ export function InventoryTransfersPage() {
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Lines</p>
             {lines.map((line, idx) => (
               <div key={idx} className="flex flex-wrap items-end gap-2">
-                <select
-                  className="min-w-[200px] flex-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                <Combobox
+                  className="min-w-[200px] flex-1 max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
                   value={line.productId}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, productId: v } : x)));
-                  }}
-                >
-                  <option value="">Product</option>
-                  {(products.data ?? []).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.sku} — {p.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, productId: v } : x)))}
+                  options={productLineOptions}
+                  placeholder="Search product…"
+                  disabled={products.isLoading}
+                  aria-label="Product"
+                />
                 <input
                   className="w-28 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
                   placeholder="Qty"

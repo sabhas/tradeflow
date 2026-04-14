@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { apiFetch, apiFetchData } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { MastersModal } from '../../components/MastersModal';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { hasPermission } from '../../lib/permissions';
@@ -95,6 +96,16 @@ export function ProductCategoriesPage() {
     enabled: canRead && modal !== null,
     queryFn: () => apiFetchData<CategoryNode[]>('/product-categories'),
   });
+
+  const parentCategoryOptions = useMemo(
+    () => [
+      { value: '', label: '— None —' },
+      ...(flatForParent.data || [])
+        .filter((c) => c.id !== editing?.id)
+        .map((c) => ({ value: c.id, label: `${c.name} (${c.code})` })),
+    ],
+    [flatForParent.data, editing?.id]
+  );
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -220,20 +231,16 @@ export function ProductCategoriesPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Parent (optional)</label>
-            <select
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            <Combobox
+              className="mt-1 w-full max-w-none"
+              inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
-            >
-              <option value="">— None —</option>
-              {(flatForParent.data || [])
-                .filter((c) => c.id !== editing?.id)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.code})
-                  </option>
-                ))}
-            </select>
+              onChange={setParentId}
+              options={parentCategoryOptions}
+              placeholder="Search parent category…"
+              disabled={flatForParent.isLoading}
+              aria-label="Parent category"
+            />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button

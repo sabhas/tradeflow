@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -48,6 +49,14 @@ export function SupplierPaymentsPage() {
     queryFn: () =>
       apiFetch<{ data: OpenInv[] }>(`/supplier-invoices/open?supplierId=${encodeURIComponent(supplierId)}`).then((r) => r.data),
   });
+
+  const supplierOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+    ],
+    [suppliers.data]
+  );
 
   const pay = useMutation({
     mutationFn: async () => {
@@ -145,18 +154,16 @@ export function SupplierPaymentsPage() {
 
             <label className="mt-4 block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Supplier</span>
-              <select
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              <Combobox
+                className="mt-1 w-full max-w-none"
+                inputClassName="rounded-md border border-slate-300 px-3 py-2"
                 value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
-              >
-                <option value="">—</option>
-                {(suppliers.data ?? []).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSupplierId}
+                options={supplierOptions}
+                placeholder="Search supplier…"
+                disabled={suppliers.isLoading}
+                aria-label="Supplier"
+              />
             </label>
             <label className="mt-3 block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Payment date</span>

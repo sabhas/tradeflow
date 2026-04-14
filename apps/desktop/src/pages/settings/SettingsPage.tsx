@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -91,6 +92,14 @@ export function SettingsPage() {
     enabled: canRead,
     queryFn: () => apiFetch<{ data: InvoiceTemplateRow[] }>('/invoice-templates').then((r) => r.data),
   });
+
+  const defaultInvoiceTemplateOptions = useMemo(
+    () => [
+      { value: '', label: '— None —' },
+      ...(templates.data || []).map((t) => ({ value: t.id, label: t.name })),
+    ],
+    [templates.data]
+  );
 
   useEffect(() => {
     if (!settings.data) return;
@@ -479,24 +488,20 @@ export function SettingsPage() {
             </label>
             <label className="block text-sm sm:col-span-2">
               <span className="text-slate-600 dark:text-slate-400">Default invoice template</span>
-              <select
-                className="mt-1 w-full max-w-md rounded border border-slate-300 px-2 py-1.5"
+              <Combobox
+                className="mt-1 w-full max-w-md"
                 value={data.defaultInvoiceTemplateId ?? ''}
-                onChange={(e) =>
+                onChange={(v) =>
                   setForm((f) => ({
                     ...f,
-                    defaultInvoiceTemplateId: e.target.value || null,
+                    defaultInvoiceTemplateId: v || null,
                   }))
                 }
+                options={defaultInvoiceTemplateOptions}
+                placeholder="Search template…"
                 disabled={!canWrite || !templates.data}
-              >
-                <option value="">— None —</option>
-                {(templates.data || []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                aria-label="Default invoice template"
+              />
             </label>
           </div>
           {canWrite && (

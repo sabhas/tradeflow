@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -63,6 +64,14 @@ export function ReceiptsPage() {
     enabled: canRead,
     queryFn: () => apiFetch<{ data: ReceiptRow[] }>('/receipts').then((r) => r.data),
   });
+
+  const customerOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [customers.data]
+  );
 
   useEffect(() => {
     setAllocInvoiceId([]);
@@ -156,18 +165,16 @@ export function ReceiptsPage() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Customer</span>
-              <select
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              <Combobox
+                className="mt-1 w-full max-w-none"
+                inputClassName="rounded-md border border-slate-300 px-3 py-2"
                 value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-              >
-                <option value="">—</option>
-                {(customers.data ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setCustomerId}
+                options={customerOptions}
+                placeholder="Search customer…"
+                disabled={customers.isLoading}
+                aria-label="Customer"
+              />
             </label>
             <label className="block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Date</span>

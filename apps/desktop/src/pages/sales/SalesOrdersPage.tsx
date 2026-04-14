@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -168,6 +169,42 @@ export function SalesOrdersPage() {
     enabled: canRead && panelOpen,
     queryFn: () => apiFetch<{ data: Array<{ id: string; name: string }> }>('/salespersons').then((r) => r.data),
   });
+
+  const customerOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [customers.data]
+  );
+  const warehouseOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
+    ],
+    [warehouses.data]
+  );
+  const salespersonOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(salespersons.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+    ],
+    [salespersons.data]
+  );
+  const productLineOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
+    ],
+    [products.data]
+  );
+  const taxLineOptions = useMemo(
+    () => [
+      { value: '', label: 'Default' },
+      ...(taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
+    ],
+    [taxProfiles.data]
+  );
 
   const save = useMutation({
     mutationFn: async () => {
@@ -356,18 +393,16 @@ export function SalesOrdersPage() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Customer</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {(customers.data ?? []).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setCustomerId}
+                  options={customerOptions}
+                  placeholder="Search customer…"
+                  disabled={customers.isLoading}
+                  aria-label="Customer"
+                />
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Order date</span>
@@ -380,33 +415,29 @@ export function SalesOrdersPage() {
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Default warehouse</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={warehouseId}
-                  onChange={(e) => setWarehouseId(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {(warehouses.data ?? []).map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setWarehouseId}
+                  options={warehouseOptions}
+                  placeholder="Search warehouse…"
+                  disabled={warehouses.isLoading}
+                  aria-label="Default warehouse"
+                />
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Salesperson</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={salespersonId}
-                  onChange={(e) => setSalespersonId(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {(salespersons.data ?? []).map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSalespersonId}
+                  options={salespersonOptions}
+                  placeholder="Search salesperson…"
+                  disabled={salespersons.isLoading}
+                  aria-label="Salesperson"
+                />
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Invoice-level discount</span>
@@ -441,26 +472,27 @@ export function SalesOrdersPage() {
                 <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:grid-cols-12 sm:items-end">
                   <label className="sm:col-span-4">
                     <span className="text-xs text-slate-500">Product</span>
-                    <select
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    <Combobox
+                      className="mt-0.5 w-full max-w-none"
+                      inputClassName="rounded border border-slate-300 px-2 py-1.5 text-sm"
                       value={line.productId}
-                      onChange={(e) => {
-                        const pid = e.target.value;
+                      onChange={(pid) => {
                         const p = products.data?.find((x) => x.id === pid);
                         setLines((prev) => {
                           const next = [...prev];
-                          next[idx] = { ...next[idx], productId: pid, unitPrice: p ? p.sellingPrice : next[idx].unitPrice };
+                          next[idx] = {
+                            ...next[idx],
+                            productId: pid,
+                            unitPrice: p ? p.sellingPrice : next[idx].unitPrice,
+                          };
                           return next;
                         });
                       }}
-                    >
-                      <option value="">—</option>
-                      {(products.data ?? []).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.sku} — {p.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={productLineOptions}
+                      placeholder="Search product…"
+                      disabled={products.isLoading}
+                      aria-label="Product"
+                    />
                   </label>
                   <label className="sm:col-span-2">
                     <span className="text-xs text-slate-500">Qty</span>
@@ -506,24 +538,22 @@ export function SalesOrdersPage() {
                   </label>
                   <label className="sm:col-span-1">
                     <span className="text-xs text-slate-500">Tax</span>
-                    <select
-                      className="mt-0.5 w-full rounded border border-slate-300 px-1 py-1.5 text-xs"
+                    <Combobox
+                      className="mt-0.5 w-full max-w-none"
+                      inputClassName="rounded border border-slate-300 px-1 py-1.5 text-xs"
                       value={line.taxProfileId}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], taxProfileId: e.target.value };
+                          n[idx] = { ...n[idx], taxProfileId: v };
                           return n;
                         })
                       }
-                    >
-                      <option value="">Default</option>
-                      {(taxProfiles.data ?? []).map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={taxLineOptions}
+                      placeholder="Tax…"
+                      disabled={taxProfiles.isLoading}
+                      aria-label="Line tax profile"
+                    />
                   </label>
                   <div className="sm:col-span-1 flex justify-end">
                     <button
@@ -566,18 +596,16 @@ export function SalesOrdersPage() {
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="block text-sm sm:col-span-2">
                 <span className="text-slate-600 dark:text-slate-400">Ship from warehouse</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={invWarehouse}
-                  onChange={(e) => setInvWarehouse(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {(warehouses.data ?? []).map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setInvWarehouse}
+                  options={warehouseOptions}
+                  placeholder="Search warehouse…"
+                  disabled={warehouses.isLoading}
+                  aria-label="Ship from warehouse"
+                />
               </label>
               <label className="block text-sm sm:col-span-2">
                 <span className="text-slate-600 dark:text-slate-400">Payment</span>

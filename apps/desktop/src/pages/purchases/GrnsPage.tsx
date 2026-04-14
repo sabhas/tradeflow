@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -85,6 +86,29 @@ export function GrnsPage() {
     enabled: !!purchaseOrderId && panelOpen,
     queryFn: () => apiFetch<{ data: EligibleResponse }>(`/purchase-orders/${purchaseOrderId}/grn-eligible`).then((r) => r.data),
   });
+
+  const poLinked = !!purchaseOrderId && !!eligible.data;
+  const supplierOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+    ],
+    [suppliers.data]
+  );
+  const warehouseOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
+    ],
+    [warehouses.data]
+  );
+  const productLineOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
+    ],
+    [products.data]
+  );
 
   useEffect(() => {
     if (!eligible.data) return;
@@ -266,35 +290,29 @@ export function GrnsPage() {
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Supplier</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
-                  disabled={!!purchaseOrderId && !!eligible.data}
-                >
-                  <option value="">—</option>
-                  {(suppliers.data ?? []).map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSupplierId}
+                  options={supplierOptions}
+                  placeholder="Search supplier…"
+                  disabled={poLinked || suppliers.isLoading}
+                  aria-label="Supplier"
+                />
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={warehouseId}
-                  onChange={(e) => setWarehouseId(e.target.value)}
-                  disabled={!!purchaseOrderId && !!eligible.data}
-                >
-                  <option value="">—</option>
-                  {(warehouses.data ?? []).map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setWarehouseId}
+                  options={warehouseOptions}
+                  placeholder="Search warehouse…"
+                  disabled={poLinked || warehouses.isLoading}
+                  aria-label="Warehouse"
+                />
               </label>
               <label className="block text-sm sm:col-span-2">
                 <span className="text-slate-600 dark:text-slate-400">Receipt date</span>
@@ -345,24 +363,22 @@ export function GrnsPage() {
                         {eligible.data.lines[idx].productName}
                       </div>
                     ) : (
-                      <select
-                        className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      <Combobox
+                        className="mt-0.5 w-full max-w-none"
+                        inputClassName="rounded border border-slate-300 px-2 py-1.5 text-sm"
                         value={line.productId}
-                        onChange={(e) =>
+                        onChange={(v) =>
                           setLines((prev) => {
                             const n = [...prev];
-                            n[idx] = { ...n[idx], productId: e.target.value };
+                            n[idx] = { ...n[idx], productId: v };
                             return n;
                           })
                         }
-                      >
-                        <option value="">—</option>
-                        {(products.data ?? []).map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.sku} — {p.name}
-                          </option>
-                        ))}
-                      </select>
+                        options={productLineOptions}
+                        placeholder="Search product…"
+                        disabled={products.isLoading}
+                        aria-label="Product"
+                      />
                     )}
                   </label>
                   <label className="sm:col-span-3">

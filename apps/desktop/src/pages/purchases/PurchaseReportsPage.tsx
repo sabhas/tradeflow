@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -81,6 +82,14 @@ export function PurchaseReportsPage() {
     queryFn: () => apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500&activeOnly=true').then((r) => r.data),
   });
 
+  const supplierOptions = useMemo(
+    () => [
+      { value: '', label: '— Select —' },
+      ...(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+    ],
+    [suppliers.data]
+  );
+
   if (!canRead) return <p className="text-slate-600">No permission.</p>;
 
   const productName = (id: string) => {
@@ -137,18 +146,16 @@ export function PurchaseReportsPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Supplier</span>
-              <select
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              <Combobox
+                className="mt-1 w-full max-w-none"
+                inputClassName="rounded-md border border-slate-300 px-3 py-2"
                 value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
-              >
-                <option value="">— Select —</option>
-                {(suppliers.data ?? []).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSupplierId}
+                options={supplierOptions}
+                placeholder="Search supplier…"
+                disabled={suppliers.isLoading}
+                aria-label="Supplier"
+              />
             </label>
             <label className="block text-sm">
               <span className="text-slate-600 dark:text-slate-400">From</span>
@@ -259,18 +266,16 @@ export function PurchaseReportsPage() {
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <label className="block max-w-md text-sm">
             <span className="text-slate-600 dark:text-slate-400">Supplier</span>
-            <select
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            <Combobox
+              className="mt-1 w-full max-w-none"
+              inputClassName="rounded-md border border-slate-300 px-3 py-2"
               value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-            >
-              <option value="">— Select —</option>
-              {(suppliers.data ?? []).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSupplierId}
+              options={supplierOptions}
+              placeholder="Search supplier…"
+              disabled={suppliers.isLoading}
+              aria-label="Supplier"
+            />
           </label>
           <table className="mt-6 min-w-full text-sm">
             <thead>

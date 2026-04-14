@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { InventorySubNav } from '../../components/InventorySubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -48,7 +49,20 @@ export function InventoryAdjustmentPage() {
     },
   });
 
-  const productOptions = products.data ?? [];
+  const warehouseOptions = useMemo(
+    () => [
+      { value: '', label: 'Select…' },
+      ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` })),
+    ],
+    [warehouses.data]
+  );
+  const productLineOptions = useMemo(
+    () => [
+      { value: '', label: 'Select…' },
+      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
+    ],
+    [products.data]
+  );
 
   useEffect(() => {
     if (warehouseId || !warehouses.data?.length) return;
@@ -102,18 +116,15 @@ export function InventoryAdjustmentPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
-            <select
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            <Combobox
+              className="w-full max-w-none"
               value={warehouseId}
-              onChange={(e) => setWarehouseId(e.target.value)}
-            >
-              <option value="">Select…</option>
-              {(warehouses.data ?? []).map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.code} — {w.name}
-                </option>
-              ))}
-            </select>
+              onChange={setWarehouseId}
+              options={warehouseOptions}
+              placeholder="Search warehouse…"
+              disabled={warehouses.isLoading}
+              aria-label="Warehouse"
+            />
           </label>
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             <span className="text-slate-600 dark:text-slate-400">Reason</span>
@@ -153,21 +164,15 @@ export function InventoryAdjustmentPage() {
             <div key={idx} className="flex flex-wrap items-end gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
               <label className="min-w-[12rem] flex-1 flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Product</span>
-                <select
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                <Combobox
+                  className="w-full max-w-none"
                   value={line.productId}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, productId: v } : l)));
-                  }}
-                >
-                  <option value="">Select…</option>
-                  {productOptions.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.sku} — {p.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, productId: v } : l)))}
+                  options={productLineOptions}
+                  placeholder="Search product…"
+                  disabled={products.isLoading}
+                  aria-label="Product"
+                />
               </label>
               <label className="w-36 flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Qty delta (+/−)</span>

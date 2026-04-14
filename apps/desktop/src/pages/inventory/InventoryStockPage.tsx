@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { InventorySubNav } from '../../components/InventorySubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -71,6 +72,21 @@ export function InventoryStockPage() {
     },
   });
 
+  const warehouseOptions = useMemo(
+    () => [
+      { value: '', label: 'All' },
+      ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` })),
+    ],
+    [warehouses.data]
+  );
+  const productOptions = useMemo(
+    () => [
+      { value: '', label: 'All' },
+      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
+    ],
+    [products.data]
+  );
+
   if (!canRead) return <p className="text-slate-600">No permission.</p>;
 
   return (
@@ -85,33 +101,28 @@ export function InventoryStockPage() {
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
-          <select
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          <Combobox
+            inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
             value={warehouseId}
-            onChange={(e) => setWarehouseId(e.target.value)}
-          >
-            <option value="">All</option>
-            {(warehouses.data ?? []).map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.code} — {w.name}
-              </option>
-            ))}
-          </select>
+            onChange={setWarehouseId}
+            options={warehouseOptions}
+            placeholder="All warehouses…"
+            disabled={warehouses.isLoading}
+            aria-label="Warehouse filter"
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-slate-600 dark:text-slate-400">Product</span>
-          <select
-            className="min-w-[14rem] rounded-md border border-slate-300 px-3 py-2 text-sm"
+          <Combobox
+            className="min-w-[14rem]"
+            inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
             value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-          >
-            <option value="">All</option>
-            {(products.data ?? []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.sku} — {p.name}
-              </option>
-            ))}
-          </select>
+            onChange={setProductId}
+            options={productOptions}
+            placeholder="All products…"
+            disabled={products.isLoading}
+            aria-label="Product filter"
+          />
         </label>
       </div>
 

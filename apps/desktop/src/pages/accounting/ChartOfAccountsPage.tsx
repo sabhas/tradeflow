@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { AccountingSubNav } from '../../components/AccountingSubNav';
+import { Combobox } from '../../components/Combobox';
 import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -367,6 +368,18 @@ export function ChartOfAccountsPage() {
 
   const assetAccounts = flatAccounts.filter((a) => a.type === 'asset');
 
+  const parentAccountOptions = useMemo(
+    () => [
+      { value: '', label: 'None — top level under type' },
+      ...flatAccounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` })),
+    ],
+    [flatAccounts]
+  );
+  const assetAccountOptions = useMemo(
+    () => assetAccounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` })),
+    [assetAccounts]
+  );
+
   const openAddWithParent = () => {
     let parentId = '';
     let type = 'expense' as (typeof ACCOUNT_TYPES)[number];
@@ -547,18 +560,15 @@ export function ChartOfAccountsPage() {
           </label>
           <label className="flex flex-col gap-1 text-sm sm:col-span-2 lg:col-span-4">
             <span className="text-slate-600 dark:text-slate-400">Parent account (optional)</span>
-            <select
-              className="rounded-md border border-slate-300 px-2 py-1.5 dark:border-slate-600 dark:bg-slate-950"
+            <Combobox
+              className="w-full min-w-0 sm:min-w-[16rem]"
               value={form.parentId}
-              onChange={(e) => setForm((f) => ({ ...f, parentId: e.target.value }))}
-            >
-              <option value="">None — top level under type</option>
-              {flatAccounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.code} — {a.name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setForm((f) => ({ ...f, parentId: v }))}
+              options={parentAccountOptions}
+              placeholder="Search parent account…"
+              disabled={accounts.isLoading}
+              aria-label="Parent account"
+            />
           </label>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -601,33 +611,27 @@ export function ChartOfAccountsPage() {
             <div className="mt-4 flex flex-wrap items-end gap-4">
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Default cash</span>
-                <select
-                  className="rounded-md border border-slate-300 px-2 py-1.5 text-sm min-w-[14rem]"
+                <Combobox
+                  className="min-w-[14rem]"
                   value={cashId || settings.data.defaultCashAccountId}
-                  onChange={(e) => setCashId(e.target.value)}
-                  disabled={!canWrite}
-                >
-                  {assetAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.code} — {a.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setCashId}
+                  options={assetAccountOptions}
+                  placeholder="Search account…"
+                  disabled={!canWrite || assetAccountOptions.length === 0}
+                  aria-label="Default cash account"
+                />
               </label>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Default bank</span>
-                <select
-                  className="rounded-md border border-slate-300 px-2 py-1.5 text-sm min-w-[14rem]"
+                <Combobox
+                  className="min-w-[14rem]"
                   value={bankId || settings.data.defaultBankAccountId}
-                  onChange={(e) => setBankId(e.target.value)}
-                  disabled={!canWrite}
-                >
-                  {assetAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.code} — {a.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setBankId}
+                  options={assetAccountOptions}
+                  placeholder="Search account…"
+                  disabled={!canWrite || assetAccountOptions.length === 0}
+                  aria-label="Default bank account"
+                />
               </label>
               {canWrite && (
                 <button

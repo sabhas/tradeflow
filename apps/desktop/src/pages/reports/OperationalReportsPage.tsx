@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { downloadXlsx } from '../../lib/downloadXlsx';
 import { hasPermission } from '../../lib/permissions';
 import { printTableAsPdf } from '../../lib/printTable';
@@ -82,6 +83,35 @@ export function OperationalReportsPage() {
       (r) => r.data
     ),
   });
+
+  const customerFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All' },
+      ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [customers.data]
+  );
+  const warehouseFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All' },
+      ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
+    ],
+    [warehouses.data]
+  );
+  const warehouseMvFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All' },
+      ...(warehousesMv.data ?? []).map((w) => ({ value: w.id, label: w.name })),
+    ],
+    [warehousesMv.data]
+  );
+  const productFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All' },
+      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
+    ],
+    [products.data]
+  );
 
   const dailyQs = useMemo(() => {
     const q = new URLSearchParams({ dateFrom, dateTo });
@@ -286,33 +316,29 @@ export function OperationalReportsPage() {
             <>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Customer</span>
-                <select
-                  className="min-w-[200px] rounded-md border border-slate-300 px-2 py-1.5"
+                <Combobox
+                  className="min-w-[200px]"
+                  inputClassName="rounded-md border border-slate-300 px-2 py-1.5"
                   value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {(customers.data ?? []).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setCustomerId}
+                  options={customerFilterOptions}
+                  placeholder="All customers…"
+                  disabled={customers.isLoading}
+                  aria-label="Customer filter"
+                />
               </label>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
-                <select
-                  className="min-w-[200px] rounded-md border border-slate-300 px-2 py-1.5"
+                <Combobox
+                  className="min-w-[200px]"
+                  inputClassName="rounded-md border border-slate-300 px-2 py-1.5"
                   value={warehouseId}
-                  onChange={(e) => setWarehouseId(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {(warehouses.data ?? []).map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setWarehouseId}
+                  options={warehouseFilterOptions}
+                  placeholder="All warehouses…"
+                  disabled={warehouses.isLoading}
+                  aria-label="Warehouse filter"
+                />
               </label>
             </>
           )}
@@ -320,33 +346,29 @@ export function OperationalReportsPage() {
             <>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Product</span>
-                <select
-                  className="min-w-[220px] rounded-md border border-slate-300 px-2 py-1.5"
+                <Combobox
+                  className="min-w-[220px]"
+                  inputClassName="rounded-md border border-slate-300 px-2 py-1.5"
                   value={productId}
-                  onChange={(e) => setProductId(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {(products.data ?? []).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.sku} — {p.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setProductId}
+                  options={productFilterOptions}
+                  placeholder="All products…"
+                  disabled={products.isLoading}
+                  aria-label="Product filter"
+                />
               </label>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
-                <select
-                  className="min-w-[200px] rounded-md border border-slate-300 px-2 py-1.5"
+                <Combobox
+                  className="min-w-[200px]"
+                  inputClassName="rounded-md border border-slate-300 px-2 py-1.5"
                   value={warehouseId}
-                  onChange={(e) => setWarehouseId(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {(warehousesMv.data ?? []).map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setWarehouseId}
+                  options={warehouseMvFilterOptions}
+                  placeholder="All warehouses…"
+                  disabled={warehousesMv.isLoading}
+                  aria-label="Warehouse filter"
+                />
               </label>
             </>
           )}

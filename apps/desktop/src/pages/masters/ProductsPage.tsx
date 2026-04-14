@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { apiFetch, apiFetchData, downloadAuthenticatedFile } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { MastersModal } from '../../components/MastersModal';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { hasPermission } from '../../lib/permissions';
@@ -159,6 +160,29 @@ export function ProductsPage() {
     queryFn: () =>
       apiFetch<{ data: Array<{ id: string; name: string }> }>('/suppliers?limit=500').then((r) => r.data),
   });
+
+  const categoryFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All' },
+      ...(categories.data || []).map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [categories.data]
+  );
+  const supplierFormOptions = useMemo(() => {
+    const list = suppliers.data ?? [];
+    if (list.length === 0) {
+      return [{ value: '', label: 'No suppliers — create one under Masters first' }];
+    }
+    return list.map((s) => ({ value: s.id, label: s.name }));
+  }, [suppliers.data]);
+  const categoryFormOptions = useMemo(
+    () => (categories.data || []).map((c) => ({ value: c.id, label: c.name })),
+    [categories.data]
+  );
+  const unitFormOptions = useMemo(
+    () => (units.data || []).map((u) => ({ value: u.id, label: `${u.name} (${u.code})` })),
+    [units.data]
+  );
 
   const listParams = useMemo(() => {
     const q = new URLSearchParams();
@@ -396,18 +420,16 @@ export function ProductsPage() {
       <div className="mt-6 flex flex-wrap gap-4">
         <div>
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">Category</label>
-          <select
-            className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+          <Combobox
+            className="mt-1 w-full max-w-xs"
+            inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            <option value="">All</option>
-            {(categories.data || []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={setCategoryId}
+            options={categoryFilterOptions}
+            placeholder="All categories…"
+            disabled={categories.isLoading}
+            aria-label="Filter by category"
+          />
         </div>
         <div className="min-w-[200px] flex-1">
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">Search</label>
@@ -521,22 +543,16 @@ export function ProductsPage() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Supplier / manufacturer</label>
-                  <select
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  <Combobox
+                    className="mt-1 w-full max-w-none"
+                    inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.supplierId}
-                    onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))}
-                    required
-                  >
-                    {(suppliers.data ?? []).length === 0 ? (
-                      <option value="">No suppliers — create one under Masters first</option>
-                    ) : (
-                      (suppliers.data ?? []).map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                    onChange={(v) => setForm((f) => ({ ...f, supplierId: v }))}
+                    options={supplierFormOptions}
+                    placeholder="Search supplier…"
+                    disabled={(suppliers.data ?? []).length === 0 || suppliers.isLoading}
+                    aria-label="Supplier"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">SKU</label>
@@ -574,18 +590,16 @@ export function ProductsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Category</label>
-                  <select
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  <Combobox
+                    className="mt-1 w-full max-w-none"
+                    inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.categoryId}
-                    onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
-                    required
-                  >
-                    {(categories.data || []).map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
+                    options={categoryFormOptions}
+                    placeholder="Search category…"
+                    disabled={!categoryFormOptions.length || categories.isLoading}
+                    aria-label="Category"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Generic name</label>
@@ -597,18 +611,16 @@ export function ProductsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Unit</label>
-                  <select
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  <Combobox
+                    className="mt-1 w-full max-w-none"
+                    inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
                     value={form.unitId}
-                    onChange={(e) => setForm((f) => ({ ...f, unitId: e.target.value }))}
-                    required
-                  >
-                    {(units.data || []).map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({u.code})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setForm((f) => ({ ...f, unitId: v }))}
+                    options={unitFormOptions}
+                    placeholder="Search unit…"
+                    disabled={!unitFormOptions.length || units.isLoading}
+                    aria-label="Unit"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Packing</label>

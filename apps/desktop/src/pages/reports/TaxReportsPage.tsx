@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { downloadXlsx } from '../../lib/downloadXlsx';
 import { hasPermission } from '../../lib/permissions';
 import { printTableAsPdf } from '../../lib/printTable';
@@ -98,6 +99,14 @@ export function TaxReportsPage() {
     enabled: canTaxMasters,
     queryFn: () => apiFetch<{ data: TaxProfileOpt[] }>('/tax-profiles').then((r) => r.data),
   });
+
+  const taxProfileFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All' },
+      ...(taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
+    ],
+    [taxProfiles.data]
+  );
 
   const collected = useQuery({
     queryKey: ['reports', 'tax-collected', rangeQs],
@@ -338,18 +347,16 @@ export function TaxReportsPage() {
           {canTaxMasters && tab !== 'summary' && (
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-slate-600 dark:text-slate-400">Tax profile</span>
-              <select
-                className="min-w-[200px] rounded-md border border-slate-300 px-2 py-1.5"
+              <Combobox
+                className="min-w-[200px]"
+                inputClassName="rounded-md border border-slate-300 px-2 py-1.5"
                 value={taxProfileId}
-                onChange={(e) => setTaxProfileId(e.target.value)}
-              >
-                <option value="">All</option>
-                {(taxProfiles.data ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setTaxProfileId}
+                options={taxProfileFilterOptions}
+                placeholder="All profiles…"
+                disabled={taxProfiles.isLoading}
+                aria-label="Tax profile filter"
+              />
             </label>
           )}
         </div>

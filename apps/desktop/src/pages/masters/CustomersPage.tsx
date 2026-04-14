@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData, downloadAuthenticatedFile } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -112,6 +113,42 @@ export function CustomersPage() {
     queryFn: () => apiFetchData<CustomerTypeOpt[]>('/customer-types'),
   });
   const hasCustomerTypes = (customerTypes.data?.length ?? 0) > 0;
+
+  const customerTypeOptions = useMemo(
+    () => [
+      { value: '', label: '— Select —' },
+      ...(customerTypes.data || []).map((ct) => ({ value: ct.name, label: ct.name })),
+    ],
+    [customerTypes.data]
+  );
+  const areaOptions = useMemo(
+    () => [
+      { value: '', label: '— Select —' },
+      ...(areas.data || []).map((a) => ({ value: a.id, label: a.name })),
+    ],
+    [areas.data]
+  );
+  const townOptions = useMemo(
+    () => [
+      { value: '', label: areaId ? '— Select —' : 'Select an area first' },
+      ...(towns.data || []).map((t) => ({ value: t.id, label: t.name })),
+    ],
+    [areaId, towns.data]
+  );
+  const paymentTermsOptions = useMemo(
+    () => [
+      { value: '', label: '— None —' },
+      ...(paymentTerms.data || []).map((p) => ({ value: p.id, label: p.name })),
+    ],
+    [paymentTerms.data]
+  );
+  const taxProfileOptionsMaster = useMemo(
+    () => [
+      { value: '', label: '— None —' },
+      ...(taxProfiles.data || []).map((p) => ({ value: p.id, label: p.name })),
+    ],
+    [taxProfiles.data]
+  );
 
   useEffect(() => {
     if (!open || !areaId) return;
@@ -325,19 +362,16 @@ export function CustomersPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Type</label>
-                <select
-                  className={inputCls}
+                <Combobox
+                  className="mt-1 w-full"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
                   value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  required
-                >
-                  <option value="">— Select —</option>
-                  {(customerTypes.data || []).map((ct) => (
-                    <option key={ct.id} value={ct.name}>
-                      {ct.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setType}
+                  options={customerTypeOptions}
+                  placeholder="Search type…"
+                  disabled={!hasCustomerTypes || customerTypes.isLoading}
+                  aria-label="Customer type"
+                />
               </div>
             </div>
           </div>
@@ -357,39 +391,32 @@ export function CustomersPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Area</label>
-                <select
-                  className={inputCls}
+                <Combobox
+                  className="mt-1 w-full"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
                   value={areaId}
-                  onChange={(e) => {
-                    setAreaId(e.target.value);
+                  onChange={(v) => {
+                    setAreaId(v);
                     setTownId('');
                   }}
-                  required
-                >
-                  <option value="">— Select —</option>
-                  {(areas.data || []).map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
+                  options={areaOptions}
+                  placeholder="Search area…"
+                  disabled={areas.isLoading}
+                  aria-label="Area"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Town</label>
-                <select
-                  className={inputCls}
+                <Combobox
+                  className="mt-1 w-full"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
                   value={townId}
-                  onChange={(e) => setTownId(e.target.value)}
-                  disabled={!areaId}
-                  required
-                >
-                  <option value="">{areaId ? '— Select —' : 'Select an area first'}</option>
-                  {(towns.data || []).map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setTownId}
+                  options={townOptions}
+                  placeholder={areaId ? 'Search town…' : 'Select an area first'}
+                  disabled={!areaId || towns.isLoading}
+                  aria-label="Town"
+                />
               </div>
             </div>
             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
@@ -475,25 +502,29 @@ export function CustomersPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Payment terms</label>
-                <select className={inputCls} value={paymentTermsId} onChange={(e) => setPaymentTermsId(e.target.value)}>
-                  <option value="">— None —</option>
-                  {(paymentTerms.data || []).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                <Combobox
+                  className="mt-1 w-full"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  value={paymentTermsId}
+                  onChange={setPaymentTermsId}
+                  options={paymentTermsOptions}
+                  placeholder="Search terms…"
+                  disabled={paymentTerms.isLoading}
+                  aria-label="Payment terms"
+                />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Tax profile</label>
-                <select className={inputCls} value={taxProfileId} onChange={(e) => setTaxProfileId(e.target.value)}>
-                  <option value="">— None —</option>
-                  {(taxProfiles.data || []).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                <Combobox
+                  className="mt-1 w-full"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  value={taxProfileId}
+                  onChange={setTaxProfileId}
+                  options={taxProfileOptionsMaster}
+                  placeholder="Search tax profile…"
+                  disabled={taxProfiles.isLoading}
+                  aria-label="Tax profile"
+                />
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -94,6 +95,21 @@ export function TownsAndAreasPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['areas'] }),
   });
 
+  const areaFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All areas' },
+      ...(areas.data || []).map((a) => ({ value: a.id, label: a.name })),
+    ],
+    [areas.data]
+  );
+  const townModalAreaOptions = useMemo(
+    () => [
+      { value: '', label: '— Select —' },
+      ...(areas.data || []).map((a) => ({ value: a.id, label: a.name })),
+    ],
+    [areas.data]
+  );
+
   if (!canRead) return <p className="text-slate-600">No permission.</p>;
 
   return (
@@ -179,18 +195,16 @@ export function TownsAndAreasPage() {
           <div className="flex flex-wrap items-end gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-600">Filter by area</label>
-              <select
-                className="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+              <Combobox
+                className="mt-1 w-full max-w-xs"
+                inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={townAreaFilter}
-                onChange={(e) => setTownAreaFilter(e.target.value)}
-              >
-                <option value="">All areas</option>
-                {(areas.data || []).map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setTownAreaFilter}
+                options={areaFilterOptions}
+                placeholder="All areas…"
+                disabled={areas.isLoading}
+                aria-label="Filter towns by area"
+              />
             </div>
             {canWrite && (
               <button
@@ -310,19 +324,16 @@ export function TownsAndAreasPage() {
         >
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Area</label>
-            <select
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            <Combobox
+              className="mt-1 w-full max-w-none"
+              inputClassName="rounded-md border border-slate-300 px-3 py-2 text-sm"
               value={townAreaId}
-              onChange={(e) => setTownAreaId(e.target.value)}
-              required
-            >
-              <option value="">— Select —</option>
-              {(areas.data || []).map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+              onChange={setTownAreaId}
+              options={townModalAreaOptions}
+              placeholder="Search area…"
+              disabled={areas.isLoading}
+              aria-label="Area"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Town name</label>

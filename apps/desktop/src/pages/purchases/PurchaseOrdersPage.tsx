@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -107,6 +108,35 @@ export function PurchaseOrdersPage() {
     enabled: canRead && panelOpen,
     queryFn: () => apiFetch<{ data: TaxOpt[] }>('/tax-profiles').then((r) => r.data),
   });
+
+  const supplierOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+    ],
+    [suppliers.data]
+  );
+  const warehouseOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
+    ],
+    [warehouses.data]
+  );
+  const productLineOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
+    ],
+    [products.data]
+  );
+  const taxLineOptions = useMemo(
+    () => [
+      { value: '', label: 'Default' },
+      ...(taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
+    ],
+    [taxProfiles.data]
+  );
 
   const stats = useMemo(() => {
     const rows = list.data ?? [];
@@ -331,33 +361,29 @@ export function PurchaseOrdersPage() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Supplier</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {(suppliers.data ?? []).map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSupplierId}
+                  options={supplierOptions}
+                  placeholder="Search supplier…"
+                  disabled={suppliers.isLoading}
+                  aria-label="Supplier"
+                />
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Warehouse</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={warehouseId}
-                  onChange={(e) => setWarehouseId(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {(warehouses.data ?? []).map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setWarehouseId}
+                  options={warehouseOptions}
+                  placeholder="Search warehouse…"
+                  disabled={warehouses.isLoading}
+                  aria-label="Warehouse"
+                />
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Order date</span>
@@ -411,11 +437,11 @@ export function PurchaseOrdersPage() {
                 <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:grid-cols-12 sm:items-end">
                   <label className="sm:col-span-4">
                     <span className="text-xs text-slate-500">Product</span>
-                    <select
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    <Combobox
+                      className="mt-0.5 w-full max-w-none"
+                      inputClassName="rounded border border-slate-300 px-2 py-1.5 text-sm"
                       value={line.productId}
-                      onChange={(e) => {
-                        const pid = e.target.value;
+                      onChange={(pid) => {
                         const p = products.data?.find((x) => x.id === pid);
                         setLines((prev) => {
                           const next = [...prev];
@@ -427,14 +453,11 @@ export function PurchaseOrdersPage() {
                           return next;
                         });
                       }}
-                    >
-                      <option value="">—</option>
-                      {(products.data ?? []).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.sku} — {p.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={productLineOptions}
+                      placeholder="Search product…"
+                      disabled={products.isLoading}
+                      aria-label="Product"
+                    />
                   </label>
                   <label className="sm:col-span-2">
                     <span className="text-xs text-slate-500">Qty</span>
@@ -480,24 +503,22 @@ export function PurchaseOrdersPage() {
                   </label>
                   <label className="sm:col-span-1">
                     <span className="text-xs text-slate-500">Tax</span>
-                    <select
-                      className="mt-0.5 w-full rounded border border-slate-300 px-1 py-1.5 text-xs"
+                    <Combobox
+                      className="mt-0.5 w-full max-w-none"
+                      inputClassName="rounded border border-slate-300 px-1 py-1.5 text-xs"
                       value={line.taxProfileId}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], taxProfileId: e.target.value };
+                          n[idx] = { ...n[idx], taxProfileId: v };
                           return n;
                         })
                       }
-                    >
-                      <option value="">Default</option>
-                      {(taxProfiles.data ?? []).map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={taxLineOptions}
+                      placeholder="Tax…"
+                      disabled={taxProfiles.isLoading}
+                      aria-label="Line tax profile"
+                    />
                   </label>
                   <div className="sm:col-span-1 flex justify-end">
                     <button

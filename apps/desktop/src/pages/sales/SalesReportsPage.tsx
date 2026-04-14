@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -66,6 +67,14 @@ export function SalesReportsPage() {
       }>(`/reports/aging?asOf=${encodeURIComponent(asOf)}`).then((r) => r),
   });
 
+  const customerOptions = useMemo(
+    () => [
+      { value: '', label: '— Select —' },
+      ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [customers.data]
+  );
+
   if (!canRead) return <p className="text-slate-600">No permission.</p>;
 
   return (
@@ -104,18 +113,16 @@ export function SalesReportsPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Customer</span>
-              <select
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              <Combobox
+                className="mt-1 w-full max-w-none"
+                inputClassName="rounded-md border border-slate-300 px-3 py-2"
                 value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-              >
-                <option value="">— Select —</option>
-                {(customers.data ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setCustomerId}
+                options={customerOptions}
+                placeholder="Search customer…"
+                disabled={customers.isLoading}
+                aria-label="Customer"
+              />
             </label>
             <label className="block text-sm">
               <span className="text-slate-600 dark:text-slate-400">From</span>

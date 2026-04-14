@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData } from '../../api/client';
+import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -117,6 +118,28 @@ export function QuotationsPage() {
     enabled: canRead && panelOpen,
     queryFn: () => apiFetchData<TaxOpt[]>('/tax-profiles'),
   });
+
+  const customerOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [customers.data]
+  );
+  const productLineOptions = useMemo(
+    () => [
+      { value: '', label: '—' },
+      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
+    ],
+    [products.data]
+  );
+  const taxLineOptions = useMemo(
+    () => [
+      { value: '', label: 'Default' },
+      ...(taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
+    ],
+    [taxProfiles.data]
+  );
 
   const save = useMutation({
     mutationFn: async () => {
@@ -282,18 +305,16 @@ export function QuotationsPage() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Customer</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {(customers.data ?? []).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setCustomerId}
+                  options={customerOptions}
+                  placeholder="Search customer…"
+                  disabled={customers.isLoading}
+                  aria-label="Customer"
+                />
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Quote date</span>
@@ -352,11 +373,11 @@ export function QuotationsPage() {
                   >
                     <label className="sm:col-span-4">
                       <span className="text-xs text-slate-500">Product</span>
-                      <select
-                        className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      <Combobox
+                        className="mt-0.5 w-full max-w-none"
+                        inputClassName="rounded border border-slate-300 px-2 py-1.5 text-sm"
                         value={line.productId}
-                        onChange={(e) => {
-                          const pid = e.target.value;
+                        onChange={(pid) => {
                           const p = products.data?.find((x) => x.id === pid);
                           setLines((prev) => {
                             const next = [...prev];
@@ -368,14 +389,11 @@ export function QuotationsPage() {
                             return next;
                           });
                         }}
-                      >
-                        <option value="">—</option>
-                        {(products.data ?? []).map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.sku} — {p.name}
-                          </option>
-                        ))}
-                      </select>
+                        options={productLineOptions}
+                        placeholder="Search product…"
+                        disabled={products.isLoading}
+                        aria-label="Product"
+                      />
                     </label>
                     <label className="sm:col-span-2">
                       <span className="text-xs text-slate-500">Qty</span>
@@ -421,24 +439,22 @@ export function QuotationsPage() {
                     </label>
                     <label className="sm:col-span-1">
                       <span className="text-xs text-slate-500">Tax</span>
-                      <select
-                        className="mt-0.5 w-full rounded border border-slate-300 px-1 py-1.5 text-xs"
+                      <Combobox
+                        className="mt-0.5 w-full max-w-none"
+                        inputClassName="rounded border border-slate-300 px-1 py-1.5 text-xs"
                         value={line.taxProfileId}
-                        onChange={(e) =>
+                        onChange={(v) =>
                           setLines((prev) => {
                             const n = [...prev];
-                            n[idx] = { ...n[idx], taxProfileId: e.target.value };
+                            n[idx] = { ...n[idx], taxProfileId: v };
                             return n;
                           })
                         }
-                      >
-                        <option value="">Default</option>
-                        {(taxProfiles.data ?? []).map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
+                        options={taxLineOptions}
+                        placeholder="Tax…"
+                        disabled={taxProfiles.isLoading}
+                        aria-label="Line tax profile"
+                      />
                     </label>
                     <div className="sm:col-span-1 flex justify-end">
                       <button
