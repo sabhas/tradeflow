@@ -4,6 +4,9 @@ This folder holds **manual smoke scenarios** for fast “does the app basically 
 
 ## Prerequisites
 
+- Database is migrated and seeded before running smoke scenarios:
+  - `pnpm db:migrate`
+  - `pnpm db:seed` (runs `packages/db/src/seed.ts`)
 - **API** running and reachable by the desktop client (per your local setup).
 - **Desktop app** running (typically Vite + Electron dev, or a packaged build).
 - A user account with at least **`accounting:read`** for read-only scenarios; add **`accounting:write`** where scenarios mention creating or saving data.
@@ -12,8 +15,9 @@ This folder holds **manual smoke scenarios** for fast “does the app basically 
 
 | Area | Document | Main routes |
 |------|----------|-------------|
+| New business first-time setup | [new-business-setup.md](./new-business-setup.md) | `/settings`, `/accounting/coa`, core masters routes |
 | Chart of accounts & defaults | [chart-of-accounts.md](./chart-of-accounts.md) | `/accounting/coa` |
-| Journals & financial reports | [core-accounting.md](./core-accounting.md) | `/accounting/journals`, `/accounting/reports` |
+| Journals, reports, and day-to-day operations | [core-accounting.md](./core-accounting.md) | `/accounting/journals`, `/accounting/reports` |
 
 ## Automation (later)
 
