@@ -5,6 +5,7 @@ import {
   BaseEntity,
   ManyToOne,
   JoinColumn,
+  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -27,6 +28,13 @@ export class Account extends BaseEntity {
 
   @Column({ name: 'parent_id', nullable: true })
   parentId?: string;
+
+  @ManyToOne(() => Account, (a) => a.children, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'parent_id' })
+  parent?: Account;
+
+  @OneToMany(() => Account, (a) => a.parent)
+  children?: Account[];
 
   @Column({ name: 'is_system', default: false })
   isSystem!: boolean;

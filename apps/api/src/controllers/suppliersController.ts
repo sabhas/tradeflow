@@ -1,8 +1,9 @@
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
-import { dataSource, Supplier } from '@tradeflow/db';
+import { Account, dataSource, Supplier } from '@tradeflow/db';
 import { createSupplierSchema, updateSupplierSchema } from '@tradeflow/shared';
+import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
 import { getPagination } from '../utils/pagination';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -177,20 +178,41 @@ export async function getSupplier(req: Request): Promise<ControllerResult> {
 
 export async function createSupplier(req: Request, body: CreateSupplierInput): Promise<ControllerResult> {
   const b = body;
-  const repo = Supplier.getRepository();
-  const row = repo.create({
-    name: b.name,
-    address: b.address ?? undefined,
-    city: b.city ?? undefined,
-    telephone: b.telephone ?? undefined,
-    mobileNo: b.mobileNo ?? undefined,
-    email: b.email ?? undefined,
-    website: b.website ?? undefined,
-    contact: b.contact ?? undefined,
-    ntn: b.ntn ?? undefined,
-    stn: b.stn ?? undefined,
+  const row = await dataSource.transaction(async (tx) => {
+    const accountRepo = tx.getRepository(Account);
+    const supplierRepo = tx.getRepository(Supplier);
+
+    const ap = await accountRepo.findOne({ where: { code: GL_ACCOUNT_CODES.AP_TRADE } });
+    if (!ap) {
+      throw new HttpError(500, { error: `Accounts Payable parent (${GL_ACCOUNT_CODES.AP_TRADE}) is missing` });
+    }
+
+    const suppAccount = await accountRepo.save(
+      accountRepo.create({
+        code: `${GL_ACCOUNT_CODES.AP_TRADE}-SUPP-${crypto.randomUUID()}`,
+        name: b.name.slice(0, 255),
+        type: 'liability',
+        parentId: ap.id,
+        isSystem: false,
+      })
+    );
+
+    const createdSupplier = supplierRepo.create({
+      name: b.name,
+      payableAccountId: suppAccount.id,
+      address: b.address ?? undefined,
+      city: b.city ?? undefined,
+      telephone: b.telephone ?? undefined,
+      mobileNo: b.mobileNo ?? undefined,
+      email: b.email ?? undefined,
+      website: b.website ?? undefined,
+      contact: b.contact ?? undefined,
+      ntn: b.ntn ?? undefined,
+      stn: b.stn ?? undefined,
+    });
+    await supplierRepo.save(createdSupplier);
+    return createdSupplier;
   });
-  await repo.save(row);
   return created({ data: serializeSupplier(row) });
 }
 

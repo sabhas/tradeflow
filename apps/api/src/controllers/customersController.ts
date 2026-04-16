@@ -1,8 +1,9 @@
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
-import { Area, Customer, CustomerType, dataSource, Town } from '@tradeflow/db';
+import { Account, Area, Customer, CustomerType, dataSource, Town } from '@tradeflow/db';
 import { createCustomerSchema, updateCustomerSchema } from '@tradeflow/shared';
+import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
 import { getPagination } from '../utils/pagination';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -224,44 +225,66 @@ export async function createCustomer(req: Request, body: CreateCustomerInput): P
     throw new HttpError(400, { error: 'Address is required' });
   }
   const [geo, type] = await Promise.all([resolveTownAndAreaIds(t0, a0), ensureCustomerTypeExists(b.type)]);
-  const repo = Customer.getRepository();
-  const row = repo.create({
-    name: b.name,
-    longName:
-      b.longName == null || (typeof b.longName === 'string' && b.longName.trim() === '')
-        ? undefined
-        : b.longName.trim(),
-    type,
-    address,
-    townId: geo.townId!,
-    areaId: geo.areaId!,
-    telephone:
-      b.telephone == null || (typeof b.telephone === 'string' && b.telephone.trim() === '')
-        ? undefined
-        : b.telephone.trim(),
-    mobile:
-      b.mobile == null || (typeof b.mobile === 'string' && b.mobile.trim() === '')
-        ? undefined
-        : b.mobile.trim(),
-    contactPerson:
-      b.contactPerson == null || (typeof b.contactPerson === 'string' && b.contactPerson.trim() === '')
-        ? undefined
-        : b.contactPerson.trim(),
-    ntn: b.ntn == null || (typeof b.ntn === 'string' && b.ntn.trim() === '') ? undefined : b.ntn.trim(),
-    stn: b.stn == null || (typeof b.stn === 'string' && b.stn.trim() === '') ? undefined : b.stn.trim(),
-    salesTaxStatus: b.salesTaxStatus ?? 'unregistered',
-    isFiler: b.isFiler ?? false,
-    licenseNo:
-      b.licenseNo == null || (typeof b.licenseNo === 'string' && b.licenseNo.trim() === '')
-        ? undefined
-        : b.licenseNo.trim(),
-    licenseExpiryDate: b.licenseExpiryDate === undefined ? undefined : b.licenseExpiryDate,
-    contact: b.contact ?? undefined,
-    creditLimit: b.creditLimit ?? '0',
-    paymentTermsId: b.paymentTermsId ?? undefined,
-    taxProfileId: b.taxProfileId ?? undefined,
+  const row = await dataSource.transaction(async (tx) => {
+    const accountRepo = tx.getRepository(Account);
+    const customerRepo = tx.getRepository(Customer);
+
+    const ar = await accountRepo.findOne({ where: { code: GL_ACCOUNT_CODES.AR_TRADE } });
+    if (!ar) {
+      throw new HttpError(500, { error: `Accounts Receivable parent (${GL_ACCOUNT_CODES.AR_TRADE}) is missing` });
+    }
+
+    const custAccount = await accountRepo.save(
+      accountRepo.create({
+        code: `${GL_ACCOUNT_CODES.AR_TRADE}-CUST-${crypto.randomUUID()}`,
+        name: b.name.slice(0, 255),
+        type: 'asset',
+        parentId: ar.id,
+        isSystem: false,
+      })
+    );
+
+    const createdCustomer = customerRepo.create({
+      name: b.name,
+      longName:
+        b.longName == null || (typeof b.longName === 'string' && b.longName.trim() === '')
+          ? undefined
+          : b.longName.trim(),
+      type,
+      address,
+      townId: geo.townId!,
+      areaId: geo.areaId!,
+      receivableAccountId: custAccount.id,
+      telephone:
+        b.telephone == null || (typeof b.telephone === 'string' && b.telephone.trim() === '')
+          ? undefined
+          : b.telephone.trim(),
+      mobile:
+        b.mobile == null || (typeof b.mobile === 'string' && b.mobile.trim() === '')
+          ? undefined
+          : b.mobile.trim(),
+      contactPerson:
+        b.contactPerson == null || (typeof b.contactPerson === 'string' && b.contactPerson.trim() === '')
+          ? undefined
+          : b.contactPerson.trim(),
+      ntn: b.ntn == null || (typeof b.ntn === 'string' && b.ntn.trim() === '') ? undefined : b.ntn.trim(),
+      stn: b.stn == null || (typeof b.stn === 'string' && b.stn.trim() === '') ? undefined : b.stn.trim(),
+      salesTaxStatus: b.salesTaxStatus ?? 'unregistered',
+      isFiler: b.isFiler ?? false,
+      licenseNo:
+        b.licenseNo == null || (typeof b.licenseNo === 'string' && b.licenseNo.trim() === '')
+          ? undefined
+          : b.licenseNo.trim(),
+      licenseExpiryDate: b.licenseExpiryDate === undefined ? undefined : b.licenseExpiryDate,
+      contact: b.contact ?? undefined,
+      creditLimit: b.creditLimit ?? '0',
+      paymentTermsId: b.paymentTermsId ?? undefined,
+      taxProfileId: b.taxProfileId ?? undefined,
+    });
+    await customerRepo.save(createdCustomer);
+    return createdCustomer;
   });
-  await repo.save(row);
+
   const withGeo = await Customer.findOne({
     where: { id: row.id },
     relations: ['town', 'area'],

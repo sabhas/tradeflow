@@ -36,6 +36,7 @@ import {
   runInTransaction,
 } from './inventoryService';
 import { parseDecimalStrict } from '../utils/decimal';
+import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
 
 export type ImportError = { row: number; field?: string; message: string };
 
@@ -338,9 +339,24 @@ export async function importCustomersFromSheets(
           throw new Error(`Unknown customer type: ${row.type}`);
         }
 
+        const ar = await em.getRepository(Account).findOne({ where: { code: GL_ACCOUNT_CODES.AR_TRADE } });
+        if (!ar) {
+          throw new Error(`Accounts Receivable parent (${GL_ACCOUNT_CODES.AR_TRADE}) is missing`);
+        }
+        const custAcc = await em.getRepository(Account).save(
+          em.getRepository(Account).create({
+            code: `${GL_ACCOUNT_CODES.AR_TRADE}-CUST-${crypto.randomUUID()}`,
+            name: row.name.trim().slice(0, 255),
+            type: 'asset',
+            parentId: ar.id,
+            isSystem: false,
+          })
+        );
+
         const c = em.getRepository(Customer).create({
           name: row.name.trim(),
           type: customerTypeName,
+          receivableAccountId: custAcc.id,
           contact:
             row.contactPhone || row.contactEmail || row.contactAddress
               ? {

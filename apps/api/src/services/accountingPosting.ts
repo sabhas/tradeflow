@@ -2,19 +2,20 @@ import { EntityManager } from 'typeorm';
 import { Account, JournalEntry, JournalLine } from '@tradeflow/db';
 import { resolveLiquidAccountId } from './companySettings';
 import { parseDecimalStrict } from '../utils/decimal';
+import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
 
 /**
  * GL posting uses control trade receivable / payable (1100 / 2000). Party detail is in
  * invoices, receipts, payments, and aging — not separate COA codes per customer/supplier.
  */
 const ACC = {
-  AR: '1100',
-  SALES: '4000',
-  TAX: '2100',
-  INVENTORY: '1210',
-  AP: '2000',
-  INPUT_VAT: '1400',
-  COGS: '5000',
+  AR: GL_ACCOUNT_CODES.AR_TRADE,
+  SALES: GL_ACCOUNT_CODES.SALES,
+  TAX: GL_ACCOUNT_CODES.TAX_PAYABLE,
+  INVENTORY: GL_ACCOUNT_CODES.INVENTORY,
+  AP: GL_ACCOUNT_CODES.AP_TRADE,
+  INPUT_VAT: GL_ACCOUNT_CODES.INPUT_VAT,
+  COGS: GL_ACCOUNT_CODES.COGS,
 } as const;
 
 async function accountIdByCode(manager: EntityManager, code: string): Promise<string> {

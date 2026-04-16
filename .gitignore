@@ -11,3 +11,4 @@ coverage
 .nyc_output
 *.tsbuildinfo
 notes.md
+notes

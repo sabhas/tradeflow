@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Account } from './Account';
 import { Area } from './Area';
 import { PaymentTerms } from './PaymentTerms';
 import { TaxProfile } from './TaxProfile';
@@ -43,6 +44,13 @@ export class Customer extends BaseEntity {
   @ManyToOne(() => Area, { nullable: false })
   @JoinColumn({ name: 'area_id' })
   area!: Area;
+
+  @Column({ name: 'receivable_account_id', type: 'uuid' })
+  receivableAccountId!: string;
+
+  @ManyToOne(() => Account, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'receivable_account_id' })
+  receivableAccount!: Account;
 
   @Column({ name: 'telephone', type: 'varchar', nullable: true })
   telephone?: string;

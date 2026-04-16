@@ -1,4 +1,5 @@
-import { BaseEntity, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { BaseEntity, Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Account } from './Account';
 
 @Entity('suppliers')
 export class Supplier extends BaseEntity {
@@ -7,6 +8,13 @@ export class Supplier extends BaseEntity {
 
   @Column()
   name!: string;
+
+  @Column({ name: 'payable_account_id', type: 'uuid' })
+  payableAccountId!: string;
+
+  @ManyToOne(() => Account, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'payable_account_id' })
+  payableAccount!: Account;
 
   @Column({ nullable: true })
   address?: string;

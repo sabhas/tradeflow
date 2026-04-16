@@ -598,6 +598,12 @@ async function seed() {
     const accountByCode = await seedChartOfAccounts(accountRepo);
     console.log(`Chart of accounts: ${accountByCode.size} codes ensured`);
 
+    const arParent = accountByCode.get('1100');
+    const apParent = accountByCode.get('2000');
+    if (!arParent || !apParent) {
+      throw new Error('Seed: AR (1100) and AP (2000) accounts must exist');
+    }
+
     const cashAccount = accountByCode.get('1000');
     const bankAccount = accountByCode.get('1010');
     if (!cashAccount || !bankAccount) {
@@ -659,9 +665,19 @@ async function seed() {
     for (const s of PHARMA_SUPPLIERS) {
       const found = await supplierRepo.findOne({ where: { name: s.name } });
       if (!found) {
+        const suppAcc = await accountRepo.save(
+          accountRepo.create({
+            code: `2000-SUPP-${crypto.randomUUID()}`,
+            name: `A/P — ${s.name}`.slice(0, 255),
+            type: 'liability',
+            parentId: apParent.id,
+            isSystem: false,
+          })
+        );
         await supplierRepo.save(
           supplierRepo.create({
             name: s.name,
+            payableAccountId: suppAcc.id,
             address: s.address,
             city: s.city,
             telephone: s.telephone,
@@ -743,6 +759,15 @@ async function seed() {
     for (const c of demoCustomers) {
       const found = await customerRepo.findOne({ where: { name: c.name } });
       if (!found) {
+        const custAcc = await accountRepo.save(
+          accountRepo.create({
+            code: `1100-CUST-${crypto.randomUUID()}`,
+            name: `A/R — ${c.name}`.slice(0, 255),
+            type: 'asset',
+            parentId: arParent.id,
+            isSystem: false,
+          })
+        );
         await customerRepo.save(
           customerRepo.create({
             name: c.name,
@@ -750,6 +775,7 @@ async function seed() {
             address: c.address,
             townId: c.town.id,
             areaId: c.area.id,
+            receivableAccountId: custAcc.id,
             telephone: c.telephone,
             creditLimit: c.creditLimit,
             paymentTermsId: c.paymentTermsId,
@@ -798,9 +824,19 @@ async function seed() {
     for (const raw of DEMO_PRODUCTS) {
       let supplier = await supplierRepo.findOne({ where: { name: raw.supplierName } });
       if (!supplier) {
+        const placeholderAcc = await accountRepo.save(
+          accountRepo.create({
+            code: `2000-SUPP-${crypto.randomUUID()}`,
+            name: `A/P — ${raw.supplierName}`.slice(0, 255),
+            type: 'liability',
+            parentId: apParent.id,
+            isSystem: false,
+          })
+        );
         supplier = await supplierRepo.save(
           supplierRepo.create({
             name: raw.supplierName,
+            payableAccountId: placeholderAcc.id,
             city: 'Karachi',
             contact: 'Seed placeholder',
           })
