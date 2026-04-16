@@ -110,18 +110,6 @@ function findNode(nodes: CoaTreeNode[], id: string): CoaTreeNode | null {
   return null;
 }
 
-function collectDefaultExpandedIds(nodes: CoaTreeNode[], into: Set<string>) {
-  for (const n of nodes) {
-    if (n.kind === 'folder') {
-      into.add(n.id);
-      collectDefaultExpandedIds(n.children, into);
-    } else if (n.kind === 'account') {
-      if (n.children.length > 0) into.add(n.account.id);
-      collectDefaultExpandedIds(n.children, into);
-    }
-  }
-}
-
 function collectAllExpandableIds(nodes: CoaTreeNode[], into: Set<string>) {
   for (const n of nodes) {
     if (n.kind === 'folder') {
@@ -183,7 +171,6 @@ function CoaTreeView({
       {nodes.map((node) => {
         const id = node.kind === 'folder' ? node.id : node.account.id;
         const label = node.kind === 'folder' ? node.label : node.account.name;
-        const code = node.kind === 'account' ? node.account.code : null;
         const hasKids = node.children.length > 0;
         const isOpen = expanded.has(id);
         const isSel = selectedId === id;
@@ -208,7 +195,7 @@ function CoaTreeView({
               )}
               <button
                 type="button"
-                className={`flex min-w-0 flex-1 items-baseline gap-2 rounded-md px-2 py-1.5 text-left ${
+                className={`flex min-w-0 flex-1 items-baseline rounded-md px-2 py-1.5 text-left ${
                   isSel
                     ? 'bg-indigo-100 text-indigo-950 ring-1 ring-indigo-300/60 dark:bg-indigo-950/80 dark:text-indigo-100 dark:ring-indigo-500/40'
                     : 'text-slate-800 hover:bg-slate-200/60 dark:text-slate-200 dark:hover:bg-slate-800/60'
@@ -216,9 +203,6 @@ function CoaTreeView({
                 onClick={() => onSelect(id)}
               >
                 <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
-                {code !== null && (
-                  <span className="shrink-0 font-mono text-xs text-slate-500 dark:text-slate-400">{code}</span>
-                )}
               </button>
             </div>
             {hasKids && isOpen && (
@@ -281,15 +265,20 @@ export function ChartOfAccountsPage() {
   }, [filteredTree]);
 
   useEffect(() => {
+    if (search.trim()) return;
+    setExpanded(new Set());
+  }, [search]);
+
+  useEffect(() => {
     if (filteredTree.length === 0) return;
     setExpanded((prev) => {
-      const next = new Set(prev);
       if (search.trim()) {
+        const next = new Set(prev);
         collectAllExpandableIds(filteredTree, next);
+        return next;
       } else {
-        collectDefaultExpandedIds(filteredTree, next);
+        return prev;
       }
-      return next;
     });
   }, [filteredTree, search]);
 
@@ -307,7 +296,7 @@ export function ChartOfAccountsPage() {
   const tableRows = useMemo(() => {
     if (!selectedId || !selectedNode) return [];
     const leaves = collectLeavesUnder(selectedNode);
-    return leaves.map((a) => ({ id: a.id, code: a.code, name: a.name }));
+    return leaves.map((a) => ({ id: a.id, name: a.name }));
   }, [selectedId, selectedNode]);
 
   const leafCountUnderSelection = tableRows.length;
@@ -371,12 +360,12 @@ export function ChartOfAccountsPage() {
   const parentAccountOptions = useMemo(
     () => [
       { value: '', label: 'None — top level under type' },
-      ...flatAccounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` })),
+      ...flatAccounts.map((a) => ({ value: a.id, label: a.name })),
     ],
     [flatAccounts]
   );
   const assetAccountOptions = useMemo(
-    () => assetAccounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` })),
+    () => assetAccounts.map((a) => ({ value: a.id, label: a.name })),
     [assetAccounts]
   );
 
@@ -415,7 +404,7 @@ export function ChartOfAccountsPage() {
           <input
             id="coa-search"
             type="search"
-            placeholder="Search by code or name…"
+            placeholder="Search accounts…"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -489,23 +478,19 @@ export function ChartOfAccountsPage() {
             <table className="min-w-full text-left text-sm">
               <thead className="sticky top-0 z-0 border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
                 <tr>
-                  <th className="px-4 py-2.5 font-medium text-slate-700">Code</th>
                   <th className="px-4 py-2.5 font-medium text-slate-700">Name</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {tableRows.length === 0 ? (
                   <tr>
-                    <td colSpan={2} className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan={1} className="px-4 py-10 text-center text-slate-500">
                       Select a group or account in the tree to list posting accounts below it.
                     </td>
                   </tr>
                 ) : (
                   tableRows.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60">
-                      <td className="whitespace-nowrap px-4 py-2 font-mono text-slate-800 dark:text-slate-100">
-                        {row.code}
-                      </td>
                       <td className="px-4 py-2 text-slate-800 dark:text-slate-100">{row.name}</td>
                     </tr>
                   ))
