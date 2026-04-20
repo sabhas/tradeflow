@@ -24,6 +24,8 @@ interface EligibleResponse {
     purchaseOrderLineId: string;
     productId: string;
     productName?: string;
+    batchTracked: boolean;
+    expiryTracked: boolean;
     remaining: string;
     unitPrice: string;
   }>;
@@ -72,8 +74,19 @@ export function GrnsPage() {
   const products = useQuery({
     queryKey: ['products', 'grn-dd'],
     enabled: canRead && panelOpen && !purchaseOrderId,
-    queryFn: () => apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500&activeOnly=true').then((r) => r.data),
+    queryFn: () =>
+      apiFetch<{
+        data: Array<{ id: string; sku: string; name: string; batchTracked: boolean; expiryTracked: boolean }>;
+      }>('/products?limit=500&activeOnly=true').then((r) => r.data),
   });
+
+  const productById = useMemo(() => {
+    const m = new Map<string, { batchTracked: boolean; expiryTracked: boolean; name: string }>();
+    for (const p of products.data ?? []) {
+      m.set(p.id, { batchTracked: p.batchTracked, expiryTracked: p.expiryTracked, name: p.name });
+    }
+    return m;
+  }, [products.data]);
 
   const warehouses = useQuery({
     queryKey: ['warehouses'],
@@ -89,24 +102,15 @@ export function GrnsPage() {
 
   const poLinked = !!purchaseOrderId && !!eligible.data;
   const supplierOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
-    ],
+    () => (suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
     [suppliers.data]
   );
   const warehouseOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
-    ],
+    () => (warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
     [warehouses.data]
   );
   const productLineOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
-    ],
+    () => (products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
     [products.data]
   );
 
@@ -128,11 +132,6 @@ export function GrnsPage() {
     }
   }, [eligible.data]);
 
-  useEffect(() => {
-    if (!panelOpen || warehouseId || !warehouses.data?.length) return;
-    setWarehouseId(warehouses.data[0].id);
-  }, [panelOpen, warehouseId, warehouses.data]);
-
   const createGrn = useMutation({
     mutationFn: async () => {
       setError(null);
@@ -140,6 +139,25 @@ export function GrnsPage() {
       if (!supplierId) throw new Error('Select a supplier');
       if (!warehouseId) throw new Error('Select a warehouse');
       if (cleaned.length === 0) throw new Error('Add at least one line with quantity');
+      for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        const l = lines[lineIdx];
+        if (!l.productId || parseFloat(l.quantity) <= 0) continue;
+        const fromPo = poLinked && eligible.data?.lines[lineIdx];
+        const meta = fromPo
+          ? {
+              batchTracked: fromPo.batchTracked,
+              expiryTracked: fromPo.expiryTracked,
+              name: fromPo.productName ?? 'Product',
+            }
+          : productById.get(l.productId);
+        if (!meta) continue;
+        if (meta.batchTracked && !l.batchCode.trim()) {
+          throw new Error(`Batch is required for "${meta.name}" (batch-tracked product)`);
+        }
+        if (meta.expiryTracked && !l.expiryDate.trim()) {
+          throw new Error(`Expiry date is required for "${meta.name}" (expiry-tracked product)`);
+        }
+      }
       await apiFetch('/grns', {
         method: 'POST',
         body: JSON.stringify({
@@ -350,7 +368,12 @@ export function GrnsPage() {
               )}
             </div>
             <div className="mt-2 space-y-2">
-              {lines.map((line, idx) => (
+              {lines.map((line, idx) => {
+                const poLine = purchaseOrderId ? eligible.data?.lines[idx] : undefined;
+                const manualProduct = line.productId ? productById.get(line.productId) : undefined;
+                const batchRequired = poLine?.batchTracked ?? manualProduct?.batchTracked ?? false;
+                const expiryRequired = poLine?.expiryTracked ?? manualProduct?.expiryTracked ?? false;
+                return (
                 <div
                   key={idx}
                   className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40"
@@ -412,10 +435,13 @@ export function GrnsPage() {
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                   <label>
-                    <span className="text-xs text-slate-500">Batch (optional)</span>
+                    <span className="text-xs text-slate-500">
+                      Batch{batchRequired ? <span className="text-amber-700 dark:text-amber-400"> *</span> : ' (optional)'}
+                    </span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
                       value={line.batchCode}
+                      required={batchRequired}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
@@ -426,11 +452,14 @@ export function GrnsPage() {
                     />
                   </label>
                   <label>
-                    <span className="text-xs text-slate-500">Expiry (optional)</span>
+                    <span className="text-xs text-slate-500">
+                      Expiry{expiryRequired ? <span className="text-amber-700 dark:text-amber-400"> *</span> : ' (optional)'}
+                    </span>
                     <input
                       type="date"
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
                       value={line.expiryDate}
+                      required={expiryRequired}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
@@ -442,7 +471,8 @@ export function GrnsPage() {
                   </label>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             <div className="mt-6 flex justify-end gap-2">

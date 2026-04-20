@@ -88,6 +88,8 @@ export async function getPurchaseOrderGrnEligible(req: Request): Promise<Control
         purchaseOrderLineId: l.id,
         productId: l.productId,
         productName: l.product?.name,
+        batchTracked: l.product?.batchTracked ?? false,
+        expiryTracked: l.product?.expiryTracked ?? false,
         ordered: l.quantity,
         received: l.receivedQuantity,
         remaining: (parseFloat(l.quantity) - parseFloat(l.receivedQuantity)).toFixed(4),
