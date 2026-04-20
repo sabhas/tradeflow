@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
+import { formatNumberString } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -15,6 +16,7 @@ interface ProductOpt {
   id: string;
   sku: string;
   name: string;
+  supplierId?: string;
   costPrice?: string;
 }
 interface TaxOpt {
@@ -110,31 +112,21 @@ export function PurchaseOrdersPage() {
   });
 
   const supplierOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
-    ],
+    () => (suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
     [suppliers.data]
   );
   const warehouseOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
-    ],
+    () => (warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
     [warehouses.data]
   );
-  const productLineOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
-    ],
-    [products.data]
-  );
+  const productLineOptions = useMemo(() => {
+    const all = products.data ?? [];
+    const filtered =
+      supplierId && all.length > 0 ? all.filter((p) => p.supplierId === supplierId) : all;
+    return filtered.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` }));
+  }, [products.data, supplierId]);
   const taxLineOptions = useMemo(
-    () => [
-      { value: '', label: 'Default' },
-      ...(taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
-    ],
+    () => (taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
     [taxProfiles.data]
   );
 
@@ -155,14 +147,14 @@ export function PurchaseOrdersPage() {
     setOrderDate(d.orderDate);
     setExpectedDate(d.expectedDate ?? '');
     setNotes(d.notes ?? '');
-    setHeaderDiscount(d.discountAmount);
+    setHeaderDiscount(formatNumberString(d.discountAmount, 2));
     setLines(
       (d.lines || []).length
         ? d.lines.map((l) => ({
             productId: l.productId,
-            quantity: l.quantity,
-            unitPrice: l.unitPrice,
-            discountAmount: l.discountAmount,
+            quantity: formatNumberString(l.quantity, 0),
+            unitPrice: formatNumberString(l.unitPrice, 2),
+            discountAmount: formatNumberString(l.discountAmount, 2),
             taxProfileId: l.taxProfileId ?? '',
           }))
         : [emptyLine()]
@@ -170,9 +162,13 @@ export function PurchaseOrdersPage() {
   }, [detail.data, editingId]);
 
   useEffect(() => {
-    if (!panelOpen || editingId || warehouseId || !warehouses.data?.length) return;
-    setWarehouseId(warehouses.data[0].id);
-  }, [panelOpen, editingId, warehouseId, warehouses.data]);
+    if (!panelOpen) return;
+    // When opening a fresh panel (no editingId), keep comboboxes empty by default.
+    if (!editingId) {
+      setSupplierId('');
+      setWarehouseId('');
+    }
+  }, [panelOpen, editingId]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -290,7 +286,7 @@ export function PurchaseOrdersPage() {
                 <td className="px-4 py-3 tabular-nums">{r.orderDate}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{r.total}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatNumberString(r.total, 2)}</td>
                 <td className="px-4 py-3 text-right">
                   {canWrite && r.status === 'draft' && (
                     <>
@@ -409,6 +405,7 @@ export function PurchaseOrdersPage() {
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={headerDiscount}
                   onChange={(e) => setHeaderDiscount(e.target.value)}
+                  onBlur={(e) => setHeaderDiscount(formatNumberString(e.target.value, 2))}
                 />
               </label>
             </div>
@@ -434,7 +431,7 @@ export function PurchaseOrdersPage() {
             </div>
             <div className="mt-2 space-y-2">
               {lines.map((line, idx) => (
-                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:grid-cols-12 sm:items-end">
+                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:grid-cols-12">
                   <label className="sm:col-span-4">
                     <span className="text-xs text-slate-500">Product</span>
                     <Combobox
@@ -448,7 +445,7 @@ export function PurchaseOrdersPage() {
                           next[idx] = {
                             ...next[idx],
                             productId: pid,
-                            unitPrice: p?.costPrice ?? next[idx].unitPrice,
+                            unitPrice: p?.costPrice ? formatNumberString(p.costPrice, 2) : next[idx].unitPrice,
                           };
                           return next;
                         });
@@ -471,6 +468,13 @@ export function PurchaseOrdersPage() {
                           return n;
                         })
                       }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], quantity: formatNumberString(e.target.value, 0) };
+                          return n;
+                        })
+                      }
                     />
                   </label>
                   <label className="sm:col-span-2">
@@ -485,6 +489,13 @@ export function PurchaseOrdersPage() {
                           return n;
                         })
                       }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], unitPrice: formatNumberString(e.target.value, 2) };
+                          return n;
+                        })
+                      }
                     />
                   </label>
                   <label className="sm:col-span-2">
@@ -496,6 +507,13 @@ export function PurchaseOrdersPage() {
                         setLines((prev) => {
                           const n = [...prev];
                           n[idx] = { ...n[idx], discountAmount: e.target.value };
+                          return n;
+                        })
+                      }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], discountAmount: formatNumberString(e.target.value, 2) };
                           return n;
                         })
                       }
@@ -520,7 +538,7 @@ export function PurchaseOrdersPage() {
                       aria-label="Line tax profile"
                     />
                   </label>
-                  <div className="sm:col-span-1 flex justify-end">
+                  <div className="sm:col-span-1 flex justify-center align-center mt-5">
                     <button
                       type="button"
                       className="text-sm text-red-600 hover:underline"

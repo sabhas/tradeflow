@@ -81,7 +81,7 @@ function getScrollableAncestors(node: HTMLElement | null): HTMLElement[] {
 }
 
 const inputBase =
-  'w-full min-w-[12rem] rounded-md border border-slate-300 bg-white px-2 py-1.5 pr-8 text-left text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500';
+  'w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 pr-8 text-left text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500';
 
 export function Combobox({
   value,
@@ -273,7 +273,7 @@ export function Combobox({
           width: portalPos.width,
           maxHeight: portalPos.maxHeight,
         }}
-        className="z-[100] box-border overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+        className="z-[100] min-w-[12rem] box-border overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
       >
         {filtered.length === 0 ? (
           <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No matches</li>

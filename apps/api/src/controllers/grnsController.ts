@@ -1,7 +1,8 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { Grn, GrnLine, PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
+import { Grn, GrnLine, Product, PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
 import { createGrnSchema } from '@tradeflow/shared';
+import { In, type EntityManager } from 'typeorm';
 import { getPagination } from '../utils/pagination';
 import {
   applyMovement,
@@ -15,6 +16,36 @@ import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
 
 type CreateGrnInput = z.infer<typeof createGrnSchema>;
+
+async function enforceProductBatchControls(
+  manager: EntityManager,
+  lines: Array<{ productId: string; batchCode?: string | null; expiryDate?: string | null }>
+) {
+  const productIds = [...new Set(lines.map((line) => line.productId))];
+  if (productIds.length === 0) return;
+
+  const products = await manager.find(Product, {
+    where: { id: In(productIds) },
+  });
+  const productsById = new Map(products.map((product) => [product.id, product]));
+
+  for (const line of lines) {
+    const product = productsById.get(line.productId);
+    if (!product) {
+      throw new Error(`Product not found: ${line.productId}`);
+    }
+
+    const batchCode = line.batchCode?.trim() ?? '';
+    if (product.batchTracked && !batchCode) {
+      throw new Error(`Batch code is required for batch-tracked product "${product.name}"`);
+    }
+
+    const expiryDate = line.expiryDate?.trim() ?? '';
+    if (product.expiryTracked && !expiryDate) {
+      throw new Error(`Expiry date is required for expiry-tracked product "${product.name}"`);
+    }
+  }
+}
 
 function serializeGrn(g: Grn, lines?: GrnLine[]) {
   return {
@@ -48,9 +79,9 @@ export async function listGrns(req: Request): Promise<ControllerResult> {
     .leftJoinAndSelect('g.supplier', 's')
     .leftJoinAndSelect('g.warehouse', 'w')
     .where('1=1');
-  if (req.query.supplierId) qb.andWhere('g.supplier_id = :sid', { sid: req.query.supplierId });
+  if (req.query.supplierId) qb.andWhere('g.supplierId = :sid', { sid: req.query.supplierId });
   if (req.query.status) qb.andWhere('g.status = :st', { st: req.query.status });
-  qb.orderBy('g.grn_date', 'DESC').addOrderBy('g.created_at', 'DESC').take(limit).skip(offset);
+  qb.orderBy('g.grnDate', 'DESC').addOrderBy('g.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serializeGrn(r)), meta: { total, limit, offset } });
 }
@@ -99,6 +130,7 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
           if (q > rem + 0.0001) throw new Error('Receive quantity exceeds open PO quantity');
         }
       }
+      await enforceProductBatchControls(manager, b.lines);
 
       const grn = manager.create(Grn, {
         purchaseOrderId: purchaseOrderId ?? undefined,
@@ -152,6 +184,7 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
       if (!grn) throw new Error('Not found');
       if (grn.status !== 'draft') throw new Error('Only draft GRNs can be posted');
       await assertDateNotPeriodLocked(manager, grn.grnDate);
+      await enforceProductBatchControls(manager, grn.lines ?? []);
 
       for (const line of grn.lines ?? []) {
         await assertProductInScope(line.productId, undefined);

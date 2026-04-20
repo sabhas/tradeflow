@@ -55,10 +55,10 @@ export async function listPurchaseOrders(req: Request): Promise<ControllerResult
     .leftJoinAndSelect('po.supplier', 's')
     .leftJoinAndSelect('po.warehouse', 'w')
     .where('1=1');
-  if (req.query.supplierId) qb.andWhere('po.supplier_id = :sid', { sid: req.query.supplierId });
+  if (req.query.supplierId) qb.andWhere('po.supplierId = :sid', { sid: req.query.supplierId });
   if (req.query.status) qb.andWhere('po.status = :st', { st: req.query.status });
 
-  qb.orderBy('po.order_date', 'DESC').addOrderBy('po.created_at', 'DESC').take(limit).skip(offset);
+  qb.orderBy('po.orderDate', 'DESC').addOrderBy('po.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
   return ok({
     data: rows.map((r) => serializePurchaseOrder(r)),

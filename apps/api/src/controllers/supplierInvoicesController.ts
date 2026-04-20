@@ -72,9 +72,9 @@ export async function listSupplierInvoices(req: Request): Promise<ControllerResu
     .createQueryBuilder('si')
     .leftJoinAndSelect('si.supplier', 's')
     .where('1=1');
-  if (req.query.supplierId) qb.andWhere('si.supplier_id = :sid', { sid: req.query.supplierId });
+  if (req.query.supplierId) qb.andWhere('si.supplierId = :sid', { sid: req.query.supplierId });
   if (req.query.status) qb.andWhere('si.status = :st', { st: req.query.status });
-  qb.orderBy('si.invoice_date', 'DESC').addOrderBy('si.created_at', 'DESC').take(limit).skip(offset);
+  qb.orderBy('si.invoiceDate', 'DESC').addOrderBy('si.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
 }
