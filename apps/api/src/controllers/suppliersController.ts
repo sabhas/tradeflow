@@ -48,12 +48,23 @@ export async function listSuppliers(req: Request): Promise<ControllerResult> {
 
 type StatementRow =
   | { kind: 'invoice'; date: string; id: string; debit: string; credit: string; ref: string }
-  | { kind: 'payment'; date: string; id: string; debit: string; credit: string; ref: string };
+  | { kind: 'payment'; date: string; id: string; debit: string; credit: string; ref: string }
+  | { kind: 'journal'; date: string; id: string; debit: string; credit: string; ref: string };
+
+function normalizeDateText(value: unknown): string {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === 'string') return value.slice(0, 10);
+  return String(value).slice(0, 10);
+}
 
 export async function getSupplierStatement(req: Request): Promise<ControllerResult> {
   const { id } = req.params;
   const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
   const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const supplier = await Supplier.findOne({ where: { id, deletedAt: IsNull() } });
+  if (!supplier) {
+    throw new HttpError(404, { error: 'Not found' });
+  }
 
   const op = await dataSource.query(
     `
@@ -73,6 +84,20 @@ export async function getSupplierStatement(req: Request): Promise<ControllerResu
     [id, dateFrom]
   );
   const opening = op[0]?.opening ?? '0.0000';
+  const opManual = await dataSource.query(
+    `
+    SELECT COALESCE(SUM(jl.debit::numeric - jl.credit::numeric), 0)::text AS opening
+    FROM journal_lines jl
+    INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+    WHERE jl.account_id = $1::uuid
+      AND je.deleted_at IS NULL
+      AND je.status = 'posted'
+      AND je.entry_date < $2::date
+      AND (je.source_type IS NULL OR je.source_type = 'journal_reversal')
+    `,
+    [supplier.payableAccountId, dateFrom]
+  );
+  const openingManual = opManual[0]?.opening ?? '0.0000';
 
   const invoices = await dataSource.query(
     `
@@ -95,13 +120,34 @@ export async function getSupplierStatement(req: Request): Promise<ControllerResu
     `,
     [id, dateFrom, dateTo]
   );
+  const journals = await dataSource.query(
+    `
+    SELECT
+      je.id,
+      je.entry_date AS date,
+      jl.debit::text AS debit,
+      jl.credit::text AS credit,
+      je.reference AS reference,
+      je.description AS description
+    FROM journal_lines jl
+    INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+    WHERE jl.account_id = $1::uuid
+      AND je.deleted_at IS NULL
+      AND je.status = 'posted'
+      AND je.entry_date >= $2::date
+      AND je.entry_date <= $3::date
+      AND (je.source_type IS NULL OR je.source_type = 'journal_reversal')
+    ORDER BY je.entry_date ASC, je.id ASC, jl.id ASC
+    `,
+    [supplier.payableAccountId, dateFrom, dateTo]
+  );
 
   const merged: StatementRow[] = [
     ...invoices.map(
-      (i: { id: string; date: string; amount: string }) =>
+      (i: { id: string; date: string | Date; amount: string }) =>
         ({
           kind: 'invoice',
-          date: i.date,
+          date: normalizeDateText(i.date),
           id: i.id,
           debit: i.amount,
           credit: '0.0000',
@@ -109,20 +155,39 @@ export async function getSupplierStatement(req: Request): Promise<ControllerResu
         }) satisfies StatementRow
     ),
     ...payments.map(
-      (p: { id: string; date: string; amount: string; reference: string | null }) =>
+      (p: { id: string; date: string | Date; amount: string; reference: string | null }) =>
         ({
           kind: 'payment',
-          date: p.date,
+          date: normalizeDateText(p.date),
           id: p.id,
           debit: '0.0000',
           credit: p.amount,
           ref: p.reference || `Payment ${p.id.slice(0, 8)}`,
         }) satisfies StatementRow
     ),
+    ...journals.map(
+      (j: {
+        id: string;
+        date: string | Date;
+        debit: string;
+        credit: string;
+        reference: string | null;
+        description: string | null;
+      }) =>
+        ({
+          kind: 'journal',
+          date: normalizeDateText(j.date),
+          id: j.id,
+          debit: j.debit,
+          credit: j.credit,
+          ref: j.reference || j.description || `Journal ${j.id.slice(0, 8)}`,
+        }) satisfies StatementRow
+    ),
   ];
   merged.sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
 
-  let balance = parseFloat(opening);
+  const openingBalance = (parseFloat(opening) + parseFloat(openingManual)).toFixed(4);
+  let balance = parseFloat(openingBalance);
   const lines = merged.map((row) => {
     balance += parseFloat(row.debit) - parseFloat(row.credit);
     return { ...row, balance: balance.toFixed(4) };
@@ -133,7 +198,7 @@ export async function getSupplierStatement(req: Request): Promise<ControllerResu
       supplierId: id,
       dateFrom,
       dateTo,
-      openingBalance: opening,
+      openingBalance,
       lines,
       closingBalance: balance.toFixed(4),
     },

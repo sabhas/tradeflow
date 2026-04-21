@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
+import { formatNumberString } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -264,7 +265,7 @@ export function SupplierInvoicesPage() {
                 <td className="px-4 py-3 font-mono text-xs">{r.invoiceNumber}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{r.total}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatNumberString(r.total, 2)}</td>
                 <td className="px-4 py-3 text-right">
                   {canWrite && r.status === 'draft' && (
                     <>

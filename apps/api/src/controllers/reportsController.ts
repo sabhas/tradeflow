@@ -187,8 +187,7 @@ export async function receivablesAging(req: Request): Promise<ControllerResult> 
     WHERE i.status = 'posted'
       AND i.deleted_at IS NULL
       AND i.payment_type = 'credit'
-    `,
-    [null]
+    `
   );
 
   const asOfMs = new Date(`${asOf}T12:00:00.000Z`).getTime();
@@ -261,8 +260,7 @@ export async function payablesAging(req: Request): Promise<ControllerResult> {
     FROM supplier_invoices si
     INNER JOIN suppliers s ON s.id = si.supplier_id AND s.deleted_at IS NULL
     WHERE si.status = 'posted'
-    `,
-    [null]
+    `
   );
 
   const asOfMs = new Date(`${asOf}T12:00:00.000Z`).getTime();

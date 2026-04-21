@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
+import { formatNumberString } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -127,7 +128,7 @@ export function SupplierPaymentsPage() {
               <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-800/50">
                 <td className="px-4 py-3">{r.paymentDate}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{r.amount}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatNumberString(r.amount, 2)}</td>
               </tr>
             ))}
           </tbody>
@@ -208,7 +209,9 @@ export function SupplierPaymentsPage() {
                   <div key={inv.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2 text-sm dark:border-slate-700">
                     <span className="font-mono text-xs text-slate-600 dark:text-slate-300">{inv.invoiceNumber}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">due {inv.dueDate}</span>
-                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">open {inv.openAmount}</span>
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                      open {formatNumberString(inv.openAmount, 2)}
+                    </span>
                     <input
                       className="ml-auto w-28 rounded border border-slate-300 bg-white px-2 py-1 text-right text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       placeholder="allocate"
