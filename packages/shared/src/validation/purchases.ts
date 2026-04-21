@@ -67,6 +67,7 @@ export const createSupplierPaymentSchema = z.object({
   supplierId: z.string().uuid(),
   paymentDate: z.string(),
   amount: z.union([z.number(), z.string()]).transform((v) => String(v)),
+  useDebitAmount: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
   paymentMethod: z.string().min(1),
   reference: z.string().optional().nullable(),
   allocations: z

@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
+import { formatNumberString } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -124,7 +125,7 @@ export function GrnsPage() {
         eligible.data.lines.map((l) => ({
           productId: l.productId,
           quantity: l.remaining,
-          unitPrice: l.unitPrice,
+          unitPrice: formatNumberString(l.unitPrice, 2),
           purchaseOrderLineId: l.purchaseOrderLineId,
           batchCode: '',
           expiryDate: '',
@@ -450,6 +451,13 @@ export function GrnsPage() {
                         setLines((prev) => {
                           const n = [...prev];
                           n[idx] = { ...n[idx], unitPrice: e.target.value };
+                          return n;
+                        })
+                      }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], unitPrice: formatNumberString(e.target.value, 2) };
                           return n;
                         })
                       }

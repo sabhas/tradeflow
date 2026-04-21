@@ -178,10 +178,10 @@ export function PurchaseReportsPage() {
             <div className="mt-6">
               <div className="flex flex-wrap gap-4 text-sm">
                 <span>
-                  Opening: <strong className="tabular-nums">{formatNumberString(statement.data.openingBalance, 2)}</strong>
+                  Opening balance: <strong className="tabular-nums">{formatNumberString(statement.data.openingBalance, 2)}</strong>
                 </span>
                 <span>
-                  Closing: <strong className="tabular-nums">{formatNumberString(statement.data.closingBalance, 2)}</strong>
+                  Closing balance: <strong className="tabular-nums">{formatNumberString(statement.data.closingBalance, 2)}</strong>
                 </span>
               </div>
               <table className="mt-4 min-w-full text-sm">

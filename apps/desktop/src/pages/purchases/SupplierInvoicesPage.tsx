@@ -143,14 +143,14 @@ export function SupplierInvoicesPage() {
     setDueDate(d.dueDate);
     setGrnId(d.grnId ?? '');
     setNotes(d.notes ?? '');
-    setHeaderDiscount(d.discountAmount);
+    setHeaderDiscount(formatNumberString(d.discountAmount, 2));
     setLines(
       (d.lines || []).length
         ? d.lines.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
-            unitPrice: l.unitPrice,
-            discountAmount: l.discountAmount,
+            unitPrice: formatNumberString(l.unitPrice, 2),
+            discountAmount: formatNumberString(l.discountAmount, 2),
             taxProfileId: l.taxProfileId ?? '',
             grnLineId: l.grnLineId ?? '',
           }))
@@ -327,11 +327,15 @@ export function SupplierInvoicesPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Supplier ref / invoice #</span>
+                <span className="text-slate-600 dark:text-slate-400">
+                  Supplier ref / invoice # <span className="text-red-600">*</span>
+                </span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
+                  required
+                  aria-required="true"
                 />
               </label>
               <label className="block text-sm">
@@ -389,8 +393,8 @@ export function SupplierInvoicesPage() {
                               gl.map((l) => ({
                                 productId: l.productId,
                                 quantity: l.quantity,
-                                unitPrice: l.unitPrice,
-                                discountAmount: '0',
+                                unitPrice: formatNumberString(l.unitPrice, 2),
+                                discountAmount: formatNumberString('0', 2),
                                 taxProfileId: '',
                                 grnLineId: l.id,
                               }))
@@ -411,6 +415,7 @@ export function SupplierInvoicesPage() {
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={headerDiscount}
                   onChange={(e) => setHeaderDiscount(e.target.value)}
+                  onBlur={(e) => setHeaderDiscount(formatNumberString(e.target.value, 2))}
                 />
               </label>
             </div>
@@ -483,6 +488,13 @@ export function SupplierInvoicesPage() {
                           return n;
                         })
                       }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], unitPrice: formatNumberString(e.target.value, 2) };
+                          return n;
+                        })
+                      }
                     />
                   </label>
                   <label className="sm:col-span-2">
@@ -494,6 +506,13 @@ export function SupplierInvoicesPage() {
                         setLines((prev) => {
                           const n = [...prev];
                           n[idx] = { ...n[idx], discountAmount: e.target.value };
+                          return n;
+                        })
+                      }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], discountAmount: formatNumberString(e.target.value, 2) };
                           return n;
                         })
                       }

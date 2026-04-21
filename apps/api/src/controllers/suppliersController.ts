@@ -149,8 +149,8 @@ export async function getSupplierStatement(req: Request): Promise<ControllerResu
           kind: 'invoice',
           date: normalizeDateText(i.date),
           id: i.id,
-          debit: i.amount,
-          credit: '0.0000',
+          debit: '0.0000',
+          credit: i.amount,
           ref: `Invoice ${i.id.slice(0, 8)}`,
         }) satisfies StatementRow
     ),
@@ -160,8 +160,8 @@ export async function getSupplierStatement(req: Request): Promise<ControllerResu
           kind: 'payment',
           date: normalizeDateText(p.date),
           id: p.id,
-          debit: '0.0000',
-          credit: p.amount,
+          debit: p.amount,
+          credit: '0.0000',
           ref: p.reference || `Payment ${p.id.slice(0, 8)}`,
         }) satisfies StatementRow
     ),
@@ -186,10 +186,10 @@ export async function getSupplierStatement(req: Request): Promise<ControllerResu
   ];
   merged.sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
 
-  const openingBalance = (parseFloat(opening) + parseFloat(openingManual)).toFixed(4);
+  const openingBalance = (parseFloat(opening) - parseFloat(openingManual)).toFixed(4);
   let balance = parseFloat(openingBalance);
   const lines = merged.map((row) => {
-    balance += parseFloat(row.debit) - parseFloat(row.credit);
+    balance += parseFloat(row.credit) - parseFloat(row.debit);
     return { ...row, balance: balance.toFixed(4) };
   });
 

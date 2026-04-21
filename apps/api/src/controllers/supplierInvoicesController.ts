@@ -81,8 +81,13 @@ export async function listSupplierInvoices(req: Request): Promise<ControllerResu
 
 export async function listOpenSupplierInvoices(req: Request): Promise<ControllerResult> {
   const supplierId = req.query.supplierId as string | undefined;
+  const paymentDate = ((req.query.paymentDate as string | undefined) ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
   if (!supplierId) {
     throw new HttpError(400, { error: 'supplierId required' });
+  }
+  const supplier = await Supplier.findOne({ where: { id: supplierId, deletedAt: IsNull() } });
+  if (!supplier) {
+    throw new HttpError(404, { error: 'Supplier not found' });
   }
   const rows = await dataSource.query(
     `
@@ -96,7 +101,47 @@ export async function listOpenSupplierInvoices(req: Request): Promise<Controller
     `,
     [supplierId]
   );
-  return ok({ data: rows });
+  const advRows = await dataSource.query(
+    `
+    WITH manual_adv AS (
+      SELECT COALESCE(SUM(jl.debit::numeric - jl.credit::numeric), 0) AS amount
+      FROM journal_lines jl
+      INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+      WHERE jl.account_id = $2::uuid
+        AND je.deleted_at IS NULL
+        AND je.status = 'posted'
+        AND je.entry_date <= $3::date
+        AND (je.source_type IS NULL OR je.source_type = 'journal_reversal')
+    ),
+    consumed_adv AS (
+      SELECT COALESCE(
+        SUM(
+          GREATEST(
+            COALESCE(a.alloc_total, 0) - COALESCE(sp.amount::numeric, 0),
+            0
+          )
+        ),
+        0
+      ) AS amount
+      FROM supplier_payments sp
+      LEFT JOIN (
+        SELECT supplier_payment_id, SUM(amount::numeric) AS alloc_total
+        FROM supplier_payment_allocations
+        GROUP BY supplier_payment_id
+      ) a ON a.supplier_payment_id = sp.id
+      WHERE sp.supplier_id = $1
+        AND sp.payment_date <= $3::date
+    )
+    SELECT GREATEST(
+      (SELECT amount FROM manual_adv) - (SELECT amount FROM consumed_adv),
+      0
+    )::text AS available
+    `,
+    [supplierId, supplier.payableAccountId, paymentDate]
+  );
+  const availableDebitAmount = parseFloat(advRows[0]?.available ?? '0').toFixed(4);
+
+  return ok({ data: rows, meta: { availableDebitAmount, asOfDate: paymentDate } });
 }
 
 export async function getSupplierInvoice(req: Request): Promise<ControllerResult> {

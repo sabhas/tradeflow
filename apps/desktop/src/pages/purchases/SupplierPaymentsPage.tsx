@@ -14,6 +14,16 @@ interface OpenInv {
   dueDate: string;
 }
 
+function parseMoney(value: string | number | null | undefined): number {
+  const raw = String(value ?? '0').replace(/,/g, '').trim();
+  const n = Number(raw || '0');
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function toCents(value: number): number {
+  return Math.round(value * 100);
+}
+
 export function SupplierPaymentsPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
   const canRead = hasPermission(permissions, 'purchases.payments:read');
@@ -24,6 +34,7 @@ export function SupplierPaymentsPage() {
   const [supplierId, setSupplierId] = useState('');
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState('0');
+  const [useDebitAmount, setUseDebitAmount] = useState('0');
   const [paymentMethod, setPaymentMethod] = useState('bank');
   const [reference, setReference] = useState('');
   const [allocations, setAllocations] = useState<Array<{ supplierInvoiceId: string; amount: string }>>([]);
@@ -45,31 +56,61 @@ export function SupplierPaymentsPage() {
   });
 
   const openInvoices = useQuery({
-    queryKey: ['supplier-invoices-open', supplierId],
+    queryKey: ['supplier-invoices-open', supplierId, paymentDate],
     enabled: !!supplierId && panelOpen,
     queryFn: () =>
-      apiFetch<{ data: OpenInv[] }>(`/supplier-invoices/open?supplierId=${encodeURIComponent(supplierId)}`).then((r) => r.data),
+      apiFetch<{
+        data: OpenInv[];
+        meta?: { availableDebitAmount?: string; asOfDate?: string };
+      }>(
+        `/supplier-invoices/open?supplierId=${encodeURIComponent(supplierId)}&paymentDate=${encodeURIComponent(paymentDate)}`
+      ).then((r) => ({ invoices: r.data, meta: r.meta })),
   });
 
   const supplierOptions = useMemo(
     () => (suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
     [suppliers.data]
   );
+  const allocatedTotal = useMemo(
+    () => allocations.reduce((sum, row) => sum + (Number.isFinite(parseMoney(row.amount)) ? parseMoney(row.amount) : 0), 0),
+    [allocations]
+  );
+  const payAmt = parseMoney(amount);
+  const debitAmt = parseMoney(useDebitAmount);
+  const availableDebit = parseMoney(openInvoices.data?.meta?.availableDebitAmount ?? '0');
+  const expectedAllocation = (Number.isFinite(payAmt) ? payAmt : 0) + (Number.isFinite(debitAmt) ? debitAmt : 0);
+  const allocationDelta = expectedAllocation - allocatedTotal;
+  const allocationMatched =
+    toCents(Number.isFinite(expectedAllocation) ? expectedAllocation : 0) ===
+    toCents(Number.isFinite(allocatedTotal) ? allocatedTotal : 0);
 
   const pay = useMutation({
     mutationFn: async () => {
       setError(null);
       if (!supplierId) throw new Error('Select a supplier');
       if (allocations.length === 0) throw new Error('Allocate to at least one invoice');
+      const allocSum = allocations.reduce((sum, a) => sum + parseMoney(a.amount), 0);
+      const payAmt = parseMoney(amount);
+      const debitAmt = parseMoney(useDebitAmount);
+      if (!Number.isFinite(allocSum) || !Number.isFinite(payAmt) || !Number.isFinite(debitAmt)) {
+        throw new Error('Enter valid numeric amounts');
+      }
+      if (debitAmt - (Number.isFinite(availableDebit) ? availableDebit : 0) > 0.01) {
+        throw new Error(`Debit used cannot exceed available balance (${formatNumberString(availableDebit, 2)})`);
+      }
+      if (toCents(payAmt + debitAmt) !== toCents(allocSum)) {
+        throw new Error('Allocations must equal total amount + debit used');
+      }
       await apiFetch('/supplier-payments', {
         method: 'POST',
         body: JSON.stringify({
           supplierId,
           paymentDate,
-          amount,
+          amount: String(payAmt),
+          useDebitAmount: String(debitAmt),
           paymentMethod,
           reference: reference || null,
-          allocations,
+          allocations: allocations.map((a) => ({ ...a, amount: String(parseMoney(a.amount)) })),
         }),
       });
     },
@@ -98,6 +139,7 @@ export function SupplierPaymentsPage() {
               setSupplierId('');
               setPaymentDate(new Date().toISOString().slice(0, 10));
               setAmount('0');
+              setUseDebitAmount('0');
               setReference('');
               setAllocations([]);
               setError(null);
@@ -138,7 +180,7 @@ export function SupplierPaymentsPage() {
 
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-800">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-800">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Record supplier payment</h2>
               <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
@@ -146,74 +188,113 @@ export function SupplierPaymentsPage() {
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
-              Allocations must exactly equal the payment amount. Open balances load when you pick a supplier.
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm sm:col-span-2">
+                <span className="text-slate-600 dark:text-slate-400">Supplier</span>
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  value={supplierId}
+                  onChange={(next) => {
+                    setSupplierId(next);
+                    setAllocations([]);
+                    setUseDebitAmount('0');
+                    setAmount('0');
+                  }}
+                  options={supplierOptions}
+                  placeholder="Search supplier…"
+                  disabled={suppliers.isLoading}
+                  aria-label="Supplier"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Payment date</span>
+                <input
+                  type="date"
+                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Method</span>
+                <select
+                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
+                  <option value="bank">Bank transfer</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Cash/Bank payment amount</span>
+                <input
+                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  onBlur={(e) => setAmount(formatNumberString(e.target.value, 2))}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Use supplier debit balance</span>
+                <div className="mt-1 flex gap-2">
+                  <input
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    value={useDebitAmount}
+                    onChange={(e) => setUseDebitAmount(e.target.value)}
+                    onBlur={(e) => setUseDebitAmount(formatNumberString(e.target.value, 2))}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Available debit: {formatNumberString(availableDebit, 2)}
+                </p>
+              </label>
+              <label className="block text-sm sm:col-span-2">
+                <span className="text-slate-600 dark:text-slate-400">Reference</span>
+                <input
+                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                />
+              </label>
             </div>
 
-            <label className="mt-4 block text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Supplier</span>
-              <Combobox
-                className="mt-1 w-full max-w-none"
-                inputClassName="rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                value={supplierId}
-                onChange={setSupplierId}
-                options={supplierOptions}
-                placeholder="Search supplier…"
-                disabled={suppliers.isLoading}
-                aria-label="Supplier"
-              />
-            </label>
-            <label className="mt-3 block text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Payment date</span>
-              <input
-                type="date"
-                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-              />
-            </label>
-            <label className="mt-3 block text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Total amount</span>
-              <input
-                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </label>
-            <label className="mt-3 block text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Method</span>
-              <select
-                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-              >
-                <option value="bank">Bank transfer</option>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-              </select>
-            </label>
-            <label className="mt-3 block text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Reference</span>
-              <input
-                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-              />
-            </label>
+            <div className="mt-4 grid gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800/40 sm:grid-cols-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Allocated</p>
+                <p className="tabular-nums font-semibold text-slate-800 dark:text-slate-100">{formatNumberString(allocatedTotal, 2)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Cash + Bank</p>
+                <p className="tabular-nums font-semibold text-slate-800 dark:text-slate-100">{formatNumberString(payAmt || 0, 2)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Debit Used</p>
+                <p className="tabular-nums font-semibold text-slate-800 dark:text-slate-100">{formatNumberString(debitAmt || 0, 2)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Difference</p>
+                <p className={`tabular-nums font-semibold ${Math.abs(allocationDelta) <= 0.01 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
+                  {formatNumberString(allocationDelta, 2)}
+                </p>
+              </div>
+            </div>
 
             <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-200">Allocate to invoices</p>
             <div className="mt-2 space-y-2">
-              {(openInvoices.data ?? []).map((inv) => {
+              {(openInvoices.data?.invoices ?? []).map((inv) => {
                 const row = allocations.find((a) => a.supplierInvoiceId === inv.id);
                 return (
-                  <div key={inv.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2 text-sm dark:border-slate-700">
+                  <div key={inv.id} className="grid gap-2 rounded-lg border border-slate-200 p-2 text-sm dark:border-slate-700 sm:grid-cols-[1.3fr_auto_auto_auto] sm:items-center">
                     <span className="font-mono text-xs text-slate-600 dark:text-slate-300">{inv.invoiceNumber}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">due {inv.dueDate}</span>
                     <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
                       open {formatNumberString(inv.openAmount, 2)}
                     </span>
                     <input
-                      className="ml-auto w-28 rounded border border-slate-300 bg-white px-2 py-1 text-right text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                      className="w-32 rounded border border-slate-300 bg-white px-2 py-1 text-right text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       placeholder="allocate"
                       value={row?.amount ?? ''}
                       onChange={(e) => {
@@ -224,24 +305,19 @@ export function SupplierPaymentsPage() {
                           return [...rest, { supplierInvoiceId: inv.id, amount: v }];
                         });
                       }}
-                    />
-                    <button
-                      type="button"
-                      className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                      onClick={() => {
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
                         setAllocations((prev) => {
                           const rest = prev.filter((a) => a.supplierInvoiceId !== inv.id);
-                          return [...rest, { supplierInvoiceId: inv.id, amount: inv.openAmount }];
+                          if (!v) return rest;
+                          return [...rest, { supplierInvoiceId: inv.id, amount: formatNumberString(v, 2) }];
                         });
-                        setAmount(inv.openAmount);
                       }}
-                    >
-                      Use full open
-                    </button>
+                    />
                   </div>
                 );
               })}
-              {supplierId && !openInvoices.isLoading && (openInvoices.data?.length ?? 0) === 0 && (
+              {supplierId && !openInvoices.isLoading && (openInvoices.data?.invoices?.length ?? 0) === 0 && (
                 <p className="text-sm text-slate-500 dark:text-slate-400">No open invoices for this supplier.</p>
               )}
             </div>
@@ -253,7 +329,7 @@ export function SupplierPaymentsPage() {
               {canWrite && (
                 <button
                   type="button"
-                  disabled={pay.isPending}
+                  disabled={pay.isPending || !allocationMatched || debitAmt - availableDebit > 0.01}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   onClick={() => pay.mutate()}
                 >
