@@ -51,10 +51,7 @@ export function SupplierPaymentsPage() {
   });
 
   const supplierOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
-    ],
+    () => (suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
     [suppliers.data]
   );
 
@@ -140,7 +137,7 @@ export function SupplierPaymentsPage() {
 
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-800">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Record supplier payment</h2>
               <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
@@ -156,7 +153,7 @@ export function SupplierPaymentsPage() {
               <span className="text-slate-600 dark:text-slate-400">Supplier</span>
               <Combobox
                 className="mt-1 w-full max-w-none"
-                inputClassName="rounded-md border border-slate-300 px-3 py-2"
+                inputClassName="rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 value={supplierId}
                 onChange={setSupplierId}
                 options={supplierOptions}
@@ -169,7 +166,7 @@ export function SupplierPaymentsPage() {
               <span className="text-slate-600 dark:text-slate-400">Payment date</span>
               <input
                 type="date"
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
               />
@@ -177,7 +174,7 @@ export function SupplierPaymentsPage() {
             <label className="mt-3 block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Total amount</span>
               <input
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
@@ -185,7 +182,7 @@ export function SupplierPaymentsPage() {
             <label className="mt-3 block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Method</span>
               <select
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
               >
@@ -197,23 +194,23 @@ export function SupplierPaymentsPage() {
             <label className="mt-3 block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Reference</span>
               <input
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
               />
             </label>
 
-            <p className="mt-4 text-sm font-medium text-slate-700">Allocate to invoices</p>
+            <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-200">Allocate to invoices</p>
             <div className="mt-2 space-y-2">
               {(openInvoices.data ?? []).map((inv) => {
                 const row = allocations.find((a) => a.supplierInvoiceId === inv.id);
                 return (
-                  <div key={inv.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2 text-sm">
-                    <span className="font-mono text-xs text-slate-600">{inv.invoiceNumber}</span>
-                    <span className="text-xs text-slate-500">due {inv.dueDate}</span>
-                    <span className="text-xs font-medium text-slate-700">open {inv.openAmount}</span>
+                  <div key={inv.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2 text-sm dark:border-slate-700">
+                    <span className="font-mono text-xs text-slate-600 dark:text-slate-300">{inv.invoiceNumber}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">due {inv.dueDate}</span>
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">open {inv.openAmount}</span>
                     <input
-                      className="ml-auto w-28 rounded border border-slate-300 px-2 py-1 text-right text-sm"
+                      className="ml-auto w-28 rounded border border-slate-300 bg-white px-2 py-1 text-right text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       placeholder="allocate"
                       value={row?.amount ?? ''}
                       onChange={(e) => {
@@ -227,7 +224,7 @@ export function SupplierPaymentsPage() {
                     />
                     <button
                       type="button"
-                      className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-200"
+                      className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       onClick={() => {
                         setAllocations((prev) => {
                           const rest = prev.filter((a) => a.supplierInvoiceId !== inv.id);
@@ -242,7 +239,7 @@ export function SupplierPaymentsPage() {
                 );
               })}
               {supplierId && !openInvoices.isLoading && (openInvoices.data?.length ?? 0) === 0 && (
-                <p className="text-sm text-slate-500">No open invoices for this supplier.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">No open invoices for this supplier.</p>
               )}
             </div>
 
