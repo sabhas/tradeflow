@@ -58,6 +58,7 @@ export function GrnsPage() {
     { productId: '', quantity: '1', unitPrice: '0', purchaseOrderLineId: '', batchCode: '', expiryDate: '' },
   ]);
   const [error, setError] = useState<string | null>(null);
+  const [copiedGrnId, setCopiedGrnId] = useState<string | null>(null);
 
   const list = useQuery({
     queryKey: ['grns'],
@@ -203,7 +204,10 @@ export function GrnsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Goods receipt (GRN)</h1>
-          <p className="mt-1 text-slate-600 dark:text-slate-400">Record stock in from suppliers; posting updates inventory and PO receipts</p>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">
+            Record stock in from suppliers; posting updates inventory and PO receipts. Copy <span className="font-medium">GRN id</span> to link on the
+            supplier invoice screen.
+          </p>
         </div>
         {canWrite && (
           <button
@@ -250,6 +254,7 @@ export function GrnsPage() {
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Supplier</th>
               <th className="px-4 py-3 text-left font-medium">Status</th>
+              <th className="px-4 py-3 text-right font-medium">GRN id</th>
               <th className="px-4 py-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
@@ -259,6 +264,24 @@ export function GrnsPage() {
                 <td className="px-4 py-3">{r.grnDate}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    title={r.id}
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(r.id);
+                        setCopiedGrnId(r.id);
+                        window.setTimeout(() => setCopiedGrnId((cur) => (cur === r.id ? null : cur)), 2000);
+                      } catch {
+                        setError('Could not copy GRN id to clipboard');
+                      }
+                    }}
+                  >
+                    {copiedGrnId === r.id ? 'Copied' : 'Copy id'}
+                  </button>
+                </td>
                 <td className="px-4 py-3 text-right">
                   {canPost && r.status === 'draft' && (
                     <button

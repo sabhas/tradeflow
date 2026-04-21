@@ -52,7 +52,6 @@ export function SupplierInvoicesPage() {
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState('');
   const [grnId, setGrnId] = useState('');
-  const [purchaseOrderId, setPurchaseOrderId] = useState('');
   const [notes, setNotes] = useState('');
   const [headerDiscount, setHeaderDiscount] = useState('0');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
@@ -72,7 +71,6 @@ export function SupplierInvoicesPage() {
         data: InvRow & {
           dueDate: string;
           grnId: string | null;
-          purchaseOrderId: string | null;
           notes?: string | null;
           discountAmount: string;
           lines: Array<{
@@ -109,24 +107,15 @@ export function SupplierInvoicesPage() {
   });
 
   const supplierOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
-    ],
+    () => (suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
     [suppliers.data]
   );
   const productLineOptions = useMemo(
-    () => [
-      { value: '', label: '—' },
-      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
-    ],
+    () => (products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
     [products.data]
   );
   const taxLineOptions = useMemo(
-    () => [
-      { value: '', label: 'Def' },
-      ...(taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
-    ],
+    () => (taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
     [taxProfiles.data]
   );
 
@@ -152,7 +141,6 @@ export function SupplierInvoicesPage() {
     setInvoiceDate(d.invoiceDate);
     setDueDate(d.dueDate);
     setGrnId(d.grnId ?? '');
-    setPurchaseOrderId(d.purchaseOrderId ?? '');
     setNotes(d.notes ?? '');
     setHeaderDiscount(d.discountAmount);
     setLines(
@@ -181,8 +169,8 @@ export function SupplierInvoicesPage() {
         invoiceNumber: invoiceNumber.trim(),
         invoiceDate,
         dueDate: dueDate || null,
-        grnId: grnId || null,
-        purchaseOrderId: purchaseOrderId || null,
+        grnId: grnId.trim() || null,
+        purchaseOrderId: null,
         notes: notes || null,
         discountAmount: headerDiscount,
         lines: cleaned.map((l) => ({
@@ -240,7 +228,6 @@ export function SupplierInvoicesPage() {
               setInvoiceDate(new Date().toISOString().slice(0, 10));
               setDueDate('');
               setGrnId('');
-              setPurchaseOrderId('');
               setNotes('');
               setHeaderDiscount('0');
               setLines([emptyLine()]);
@@ -364,21 +351,14 @@ export function SupplierInvoicesPage() {
                   onChange={(e) => setDueDate(e.target.value)}
                 />
               </label>
-              <label className="block text-sm">
+              <label className="block text-sm sm:col-span-2">
                 <span className="text-slate-600 dark:text-slate-400">GRN id (optional link)</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
                   value={grnId}
-                  placeholder="UUID for cost match"
+                  placeholder="Paste GRN UUID for cost match"
                   onChange={(e) => setGrnId(e.target.value)}
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-slate-600 dark:text-slate-400">PO id (optional)</span>
-                <input
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
-                  value={purchaseOrderId}
-                  onChange={(e) => setPurchaseOrderId(e.target.value)}
+                  aria-label="GRN id"
                 />
               </label>
               {isUuid(grnIdTrimmed) && (

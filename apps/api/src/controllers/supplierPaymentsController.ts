@@ -39,8 +39,8 @@ export async function listSupplierPayments(req: Request): Promise<ControllerResu
     .createQueryBuilder('p')
     .leftJoinAndSelect('p.supplier', 's')
     .where('1=1');
-  if (req.query.supplierId) qb.andWhere('p.supplier_id = :sid', { sid: req.query.supplierId });
-  qb.orderBy('p.payment_date', 'DESC').addOrderBy('p.created_at', 'DESC').take(limit).skip(offset);
+  if (req.query.supplierId) qb.andWhere('p.supplierId = :sid', { sid: req.query.supplierId });
+  qb.orderBy('p.paymentDate', 'DESC').addOrderBy('p.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
 }
