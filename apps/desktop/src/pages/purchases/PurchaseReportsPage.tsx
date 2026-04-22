@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
-import { formatNumberString } from '../../lib/numberFormat';
+import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -178,10 +178,10 @@ export function PurchaseReportsPage() {
             <div className="mt-6">
               <div className="flex flex-wrap gap-4 text-sm">
                 <span>
-                  Opening balance: <strong className="tabular-nums">{formatNumberString(statement.data.openingBalance, 2)}</strong>
+                  Opening balance: <strong className="tabular-nums">{formatAmount(statement.data.openingBalance)}</strong>
                 </span>
                 <span>
-                  Closing balance: <strong className="tabular-nums">{formatNumberString(statement.data.closingBalance, 2)}</strong>
+                  Closing balance: <strong className="tabular-nums">{formatAmount(statement.data.closingBalance)}</strong>
                 </span>
               </div>
               <table className="mt-4 min-w-full text-sm">
@@ -202,9 +202,9 @@ export function PurchaseReportsPage() {
                     >
                       <td className="py-2 pr-4 tabular-nums">{row.date}</td>
                       <td className="py-2 pr-4">{row.ref}</td>
-                      <td className="py-2 pr-4 text-right tabular-nums">{formatNumberString(row.debit, 2)}</td>
-                      <td className="py-2 pr-4 text-right tabular-nums">{formatNumberString(row.credit, 2)}</td>
-                      <td className="py-2 text-right tabular-nums font-medium">{formatNumberString(row.balance, 2)}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(row.debit)}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(row.credit)}</td>
+                      <td className="py-2 text-right tabular-nums font-medium">{formatAmount(row.balance)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -244,12 +244,12 @@ export function PurchaseReportsPage() {
                   className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-800/50"
                 >
                   <td className="py-2 pr-4">{r.supplierName}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatNumberString(r.totalOpen, 2)}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatNumberString(r.buckets.current, 2)}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatNumberString(r.buckets.d1_30, 2)}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatNumberString(r.buckets.d31_60, 2)}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatNumberString(r.buckets.d61_90, 2)}</td>
-                  <td className="py-2 text-right tabular-nums">{formatNumberString(r.buckets.d90p, 2)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.totalOpen)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.buckets.current)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.buckets.d1_30)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.buckets.d31_60)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.buckets.d61_90)}</td>
+                  <td className="py-2 text-right tabular-nums">{formatAmount(r.buckets.d90p)}</td>
                 </tr>
               ))}
             </tbody>
@@ -293,7 +293,7 @@ export function PurchaseReportsPage() {
                   <td className="py-2 pr-4 tabular-nums">{r.date}</td>
                   <td className="py-2 pr-4 capitalize">{r.source.replace('_', ' ')}</td>
                   <td className="py-2 pr-4">{productName(r.productId)}</td>
-                  <td className="py-2 text-right tabular-nums">{formatNumberString(r.unitPrice, 2)}</td>
+                  <td className="py-2 text-right tabular-nums">{formatAmount(r.unitPrice)}</td>
                 </tr>
               ))}
             </tbody>

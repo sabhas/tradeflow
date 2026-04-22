@@ -6,6 +6,7 @@ import { Combobox } from '../../components/Combobox';
 import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { formatAmount, formatAmountInput, normalizeAmountInput, parseAmount } from '../../lib/numberFormat';
 
 type AccountOpt = { id: string; code: string; name: string; type: string };
 type JournalLine = { id?: string; accountId: string; debit: string; credit: string };
@@ -24,36 +25,6 @@ type JournalRow = {
     account?: { code: string; name: string };
   }>;
 };
-
-function formatJournalAmount(s: string) {
-  const n = parseJournalAmount(s);
-  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-}
-
-function parseJournalAmount(s: string) {
-  const n = parseFloat((s || '0').replace(/,/g, ''));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function normalizeAmountInput(raw: string) {
-  const cleaned = raw.replace(/,/g, '').replace(/[^\d.]/g, '');
-  const firstDot = cleaned.indexOf('.');
-  if (firstDot === -1) return cleaned;
-  return `${cleaned.slice(0, firstDot + 1)}${cleaned.slice(firstDot + 1).replace(/\./g, '')}`;
-}
-
-function formatAmountInput(raw: string) {
-  if (!raw) return '';
-  const cleaned = normalizeAmountInput(raw);
-  if (!cleaned) return '';
-
-  const hasTrailingDot = cleaned.endsWith('.');
-  const [whole, frac = ''] = cleaned.split('.');
-  const wholeFormatted = whole ? Number(whole).toLocaleString() : '0';
-
-  if (hasTrailingDot) return `${wholeFormatted}.`;
-  return frac ? `${wholeFormatted}.${frac}` : wholeFormatted;
-}
 
 function accountLabel(line: NonNullable<JournalRow['lines']>[number]) {
   if (line.account) return `${line.account.code} ${line.account.name}`;
@@ -218,8 +189,8 @@ export function JournalEntriesPage() {
   let debitTot = 0;
   let creditTot = 0;
   for (const l of lines) {
-    debitTot += parseJournalAmount(l.debit);
-    creditTot += parseJournalAmount(l.credit);
+    debitTot += parseAmount(l.debit);
+    creditTot += parseAmount(l.credit);
   }
   const balanced = Math.abs(debitTot - creditTot) < 0.0001;
 
@@ -344,14 +315,14 @@ export function JournalEntriesPage() {
                                 {accountLabel(line)}
                               </span>
                               <span className="font-mono tabular-nums text-slate-600 dark:text-slate-400">
-                                {parseJournalAmount(line.debit) > 0 && (
+                                {parseAmount(line.debit) > 0 && (
                                   <span className="text-emerald-700 dark:text-emerald-400">
-                                    Dr {formatJournalAmount(line.debit)}
+                                    Dr {formatAmount(line.debit, 4)}
                                   </span>
                                 )}
-                                {parseJournalAmount(line.credit) > 0 && (
+                                {parseAmount(line.credit) > 0 && (
                                   <span className="text-sky-800 dark:text-sky-300">
-                                    Cr {formatJournalAmount(line.credit)}
+                                    Cr {formatAmount(line.credit, 4)}
                                   </span>
                                 )}
                               </span>
@@ -535,8 +506,7 @@ export function JournalEntriesPage() {
           <p
             className={`mt-2 text-sm ${balanced ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300'}`}
           >
-            Debits: {debitTot.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} · Credits:{' '}
-            {creditTot.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+            Debits: {formatAmount(debitTot, 4)} · Credits: {formatAmount(creditTot, 4)}
             {!balanced && ' · Must balance before save/post'}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">

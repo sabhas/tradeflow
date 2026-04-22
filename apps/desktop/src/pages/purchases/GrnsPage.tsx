@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
-import { formatNumberString } from '../../lib/numberFormat';
+import { formatAmount, formatAmountInput, normalizeAmountInput } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -125,7 +125,7 @@ export function GrnsPage() {
         eligible.data.lines.map((l) => ({
           productId: l.productId,
           quantity: l.remaining,
-          unitPrice: formatNumberString(l.unitPrice, 2),
+          unitPrice: formatAmount(l.unitPrice),
           purchaseOrderLineId: l.purchaseOrderLineId,
           batchCode: '',
           expiryDate: '',
@@ -446,18 +446,18 @@ export function GrnsPage() {
                     <span className="text-xs text-slate-500">Unit cost</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                      value={line.unitPrice}
+                      value={formatAmountInput(line.unitPrice)}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: e.target.value };
+                          n[idx] = { ...n[idx], unitPrice: normalizeAmountInput(e.target.value) };
                           return n;
                         })
                       }
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: formatNumberString(e.target.value, 2) };
+                          n[idx] = { ...n[idx], unitPrice: formatAmount(normalizeAmountInput(e.target.value)) };
                           return n;
                         })
                       }

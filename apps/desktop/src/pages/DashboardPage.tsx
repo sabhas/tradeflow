@@ -6,12 +6,7 @@ import { useAppDispatch } from '../hooks/useAppDispatch';
 import { logout, setSession } from '../store/slices/authSlice';
 import { apiFetch } from '../api/client';
 import { hasPermission } from '../lib/permissions';
-
-function fmtMoney(s: string) {
-  const n = parseFloat(s);
-  if (Number.isNaN(n)) return s;
-  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatAmount } from '../lib/numberFormat';
 
 export function DashboardPage() {
   const user = useAppSelector((s) => s.auth.user);
@@ -114,13 +109,13 @@ export function DashboardPage() {
                 <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales (today)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {fmtMoney(d?.salesToday ?? '0')}
+                    {formatAmount(d?.salesToday)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales (MTD)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {fmtMoney(d?.salesMtd ?? '0')}
+                    {formatAmount(d?.salesMtd)}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">From {d?.monthStart}</p>
                 </div>
@@ -137,13 +132,13 @@ export function DashboardPage() {
                 <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Purchases (today)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {fmtMoney(d?.purchasesToday ?? '0')}
+                    {formatAmount(d?.purchasesToday)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Purchases (MTD)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {fmtMoney(d?.purchasesMtd ?? '0')}
+                    {formatAmount(d?.purchasesMtd)}
                   </p>
                 </div>
               </>
@@ -157,30 +152,30 @@ export function DashboardPage() {
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Open AR (credit invoices):{' '}
                   <span className="font-semibold text-slate-900 dark:text-slate-100">
-                    {fmtMoney(d?.arOpen ?? '0')}
+                    {formatAmount(d?.arOpen)}
                   </span>
                 </p>
                 <p className="mt-4 text-xs font-medium uppercase text-slate-500">Aging (as of {d?.asOfDate})</p>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
                   <div>
                     <span className="text-slate-500">Current</span>
-                    <div className="font-medium">{fmtMoney(d?.agingReceivables.arCurrent ?? '0')}</div>
+                    <div className="font-medium">{formatAmount(d?.agingReceivables.arCurrent)}</div>
                   </div>
                   <div>
                     <span className="text-slate-500">1–30</span>
-                    <div className="font-medium">{fmtMoney(d?.agingReceivables.ar1_30 ?? '0')}</div>
+                    <div className="font-medium">{formatAmount(d?.agingReceivables.ar1_30)}</div>
                   </div>
                   <div>
                     <span className="text-slate-500">31–60</span>
-                    <div className="font-medium">{fmtMoney(d?.agingReceivables.ar31_60 ?? '0')}</div>
+                    <div className="font-medium">{formatAmount(d?.agingReceivables.ar31_60)}</div>
                   </div>
                   <div>
                     <span className="text-slate-500">61–90</span>
-                    <div className="font-medium">{fmtMoney(d?.agingReceivables.ar61_90 ?? '0')}</div>
+                    <div className="font-medium">{formatAmount(d?.agingReceivables.ar61_90)}</div>
                   </div>
                   <div>
                     <span className="text-slate-500">90+</span>
-                    <div className="font-medium">{fmtMoney(d?.agingReceivables.ar90p ?? '0')}</div>
+                    <div className="font-medium">{formatAmount(d?.agingReceivables.ar90p)}</div>
                   </div>
                 </div>
               </div>
@@ -190,7 +185,7 @@ export function DashboardPage() {
                 <h2 className="font-medium text-slate-800 dark:text-slate-100">Payables</h2>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Open AP:{' '}
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{fmtMoney(d?.apOpen ?? '0')}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{formatAmount(d?.apOpen)}</span>
                 </p>
               </div>
             ) : null}

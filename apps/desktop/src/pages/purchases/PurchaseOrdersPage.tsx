@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
-import { formatNumberString } from '../../lib/numberFormat';
+import { formatAmount, formatAmountInput, normalizeAmountInput } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -147,14 +147,14 @@ export function PurchaseOrdersPage() {
     setOrderDate(d.orderDate);
     setExpectedDate(d.expectedDate ?? '');
     setNotes(d.notes ?? '');
-    setHeaderDiscount(formatNumberString(d.discountAmount, 2));
+    setHeaderDiscount(formatAmount(d.discountAmount));
     setLines(
       (d.lines || []).length
         ? d.lines.map((l) => ({
             productId: l.productId,
-            quantity: formatNumberString(l.quantity, 0),
-            unitPrice: formatNumberString(l.unitPrice, 2),
-            discountAmount: formatNumberString(l.discountAmount, 2),
+            quantity: l.quantity,
+            unitPrice: formatAmount(l.unitPrice),
+            discountAmount: formatAmount(l.discountAmount),
             taxProfileId: l.taxProfileId ?? '',
           }))
         : [emptyLine()]
@@ -286,7 +286,7 @@ export function PurchaseOrdersPage() {
                 <td className="px-4 py-3 tabular-nums">{r.orderDate}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatNumberString(r.total, 2)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
                 <td className="px-4 py-3 text-right">
                   {canWrite && r.status === 'draft' && (
                     <>
@@ -403,9 +403,9 @@ export function PurchaseOrdersPage() {
                 <span className="text-slate-600 dark:text-slate-400">Header discount</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                  value={headerDiscount}
-                  onChange={(e) => setHeaderDiscount(e.target.value)}
-                  onBlur={(e) => setHeaderDiscount(formatNumberString(e.target.value, 2))}
+                  value={formatAmountInput(headerDiscount)}
+                  onChange={(e) => setHeaderDiscount(normalizeAmountInput(e.target.value))}
+                  onBlur={(e) => setHeaderDiscount(formatAmount(normalizeAmountInput(e.target.value)))}
                 />
               </label>
             </div>
@@ -445,7 +445,7 @@ export function PurchaseOrdersPage() {
                           next[idx] = {
                             ...next[idx],
                             productId: pid,
-                            unitPrice: p?.costPrice ? formatNumberString(p.costPrice, 2) : next[idx].unitPrice,
+                            unitPrice: p?.costPrice ? formatAmount(p.costPrice) : next[idx].unitPrice,
                           };
                           return next;
                         });
@@ -471,7 +471,7 @@ export function PurchaseOrdersPage() {
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], quantity: formatNumberString(e.target.value, 0) };
+                          n[idx] = { ...n[idx], quantity: e.target.value };
                           return n;
                         })
                       }
@@ -481,18 +481,18 @@ export function PurchaseOrdersPage() {
                     <span className="text-xs text-slate-500">Cost</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                      value={line.unitPrice}
+                      value={formatAmountInput(line.unitPrice)}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: e.target.value };
+                          n[idx] = { ...n[idx], unitPrice: normalizeAmountInput(e.target.value) };
                           return n;
                         })
                       }
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: formatNumberString(e.target.value, 2) };
+                          n[idx] = { ...n[idx], unitPrice: formatAmount(normalizeAmountInput(e.target.value)) };
                           return n;
                         })
                       }
@@ -502,18 +502,18 @@ export function PurchaseOrdersPage() {
                     <span className="text-xs text-slate-500">Disc.</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                      value={line.discountAmount}
+                      value={formatAmountInput(line.discountAmount)}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], discountAmount: e.target.value };
+                          n[idx] = { ...n[idx], discountAmount: normalizeAmountInput(e.target.value) };
                           return n;
                         })
                       }
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], discountAmount: formatNumberString(e.target.value, 2) };
+                          n[idx] = { ...n[idx], discountAmount: formatAmount(normalizeAmountInput(e.target.value)) };
                           return n;
                         })
                       }
