@@ -26,6 +26,20 @@ import { Warehouse } from './entities/Warehouse';
 import { Salesperson } from './entities/Salesperson';
 import { Product } from './entities/Product';
 import { ProductPrice } from './entities/ProductPrice';
+import { JournalEntry } from './entities/JournalEntry';
+import { JournalLine } from './entities/JournalLine';
+import { PurchaseOrder } from './entities/PurchaseOrder';
+import { PurchaseOrderLine } from './entities/PurchaseOrderLine';
+import { Grn } from './entities/Grn';
+import { GrnLine } from './entities/GrnLine';
+import { SupplierInvoice } from './entities/SupplierInvoice';
+import { SupplierInvoiceLine } from './entities/SupplierInvoiceLine';
+import { Invoice } from './entities/Invoice';
+import { InvoiceLine } from './entities/InvoiceLine';
+import { Receipt } from './entities/Receipt';
+import { ReceiptAllocation } from './entities/ReceiptAllocation';
+import { SupplierPayment } from './entities/SupplierPayment';
+import { SupplierPaymentAllocation } from './entities/SupplierPaymentAllocation';
 
 const PERMISSIONS: Array<{ resource: string; action: string; code: string }> = [
   { resource: 'audit', action: 'read', code: 'audit:read' },
@@ -903,6 +917,911 @@ async function seed() {
           );
         }
       }
+    }
+
+    const journalRepo = dataSource.getRepository(JournalEntry);
+    const journalLineRepo = dataSource.getRepository(JournalLine);
+    const poRepo = dataSource.getRepository(PurchaseOrder);
+    const poLineRepo = dataSource.getRepository(PurchaseOrderLine);
+    const grnRepo = dataSource.getRepository(Grn);
+    const grnLineRepo = dataSource.getRepository(GrnLine);
+    const supplierInvoiceRepo = dataSource.getRepository(SupplierInvoice);
+    const supplierInvoiceLineRepo = dataSource.getRepository(SupplierInvoiceLine);
+    const salesInvoiceRepo = dataSource.getRepository(Invoice);
+    const salesInvoiceLineRepo = dataSource.getRepository(InvoiceLine);
+    const receiptRepo = dataSource.getRepository(Receipt);
+    const receiptAllocationRepo = dataSource.getRepository(ReceiptAllocation);
+    const supplierPaymentRepo = dataSource.getRepository(SupplierPayment);
+    const supplierPaymentAllocationRepo = dataSource.getRepository(SupplierPaymentAllocation);
+
+    const inventoryAccount = accountByCode.get('1210') ?? accountByCode.get('1200');
+    const ownerCapitalAccount = accountByCode.get('3000');
+    const salesRevenueAccount = accountByCode.get('4000');
+    const cogsAccount = accountByCode.get('5000');
+    if (!inventoryAccount || !ownerCapitalAccount || !salesRevenueAccount || !cogsAccount) {
+      throw new Error(
+        'Seed: inventory (1210/1200), owner capital (3000), sales (4000), and COGS (5000) accounts must exist'
+      );
+    }
+
+    const openingCapitalReference = 'SEED-OPENING-CAPITAL-001';
+    const existingOpeningCapital = await journalRepo.findOne({
+      where: { reference: openingCapitalReference },
+    });
+    if (!existingOpeningCapital) {
+      const openingCapital = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-01-02',
+          reference: openingCapitalReference,
+          description: 'Initial owner equity introduced into bank for startup funding',
+          status: 'posted',
+          sourceType: 'seed',
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: openingCapital.id,
+          accountId: bankAccount.id,
+          debit: '5000000.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: openingCapital.id,
+          accountId: ownerCapitalAccount.id,
+          debit: '0.0000',
+          credit: '5000000.0000',
+        }),
+      ]);
+      console.log('Seeded opening owner equity journal entry');
+    }
+
+    const mainWarehouse = await whRepo.findOne({ where: { code: 'MAIN' } });
+    const coldWarehouse = await whRepo.findOne({ where: { code: 'COLD' } });
+    const cityPharmacy = await customerRepo.findOne({ where: { name: 'City Pharmacy — Saddar' } });
+    const medilink = await customerRepo.findOne({ where: { name: 'Medilink Wholesale Distributors' } });
+    const gskSupplier = await supplierRepo.findOne({ where: { name: 'GlaxoSmithKline Pakistan Limited' } });
+    const pfizerSupplier = await supplierRepo.findOne({ where: { name: 'Pfizer Pakistan' } });
+
+    if (!mainWarehouse || !coldWarehouse || !cityPharmacy || !medilink || !gskSupplier || !pfizerSupplier) {
+      throw new Error('Seed: required master data for sample purchases/sales is missing');
+    }
+
+    const paracetamol = await productRepo.findOne({ where: { sku: 'PHR-PAR-500-20S' } });
+    const amoxicillin = await productRepo.findOne({ where: { sku: 'PHR-AMX-250-15S' } });
+    const syrup = await productRepo.findOne({ where: { sku: 'SYR-AMOX-250-60ML' } });
+    const insulin = await productRepo.findOne({ where: { sku: 'PHR-INS-ASP-5ML' } });
+    const gloves = await productRepo.findOne({ where: { sku: 'SUR-GLOV-NXS-M' } });
+    if (!paracetamol || !amoxicillin || !syrup || !insulin || !gloves) {
+      throw new Error('Seed: required demo products are missing for purchase/sales transactions');
+    }
+
+    const purchaseOneNote = 'SEED-PURCHASE-001';
+    const purchaseTwoNote = 'SEED-PURCHASE-002';
+
+    const existingPurchaseOne = await poRepo.findOne({ where: { notes: purchaseOneNote } });
+    if (!existingPurchaseOne) {
+      const po1 = await poRepo.save(
+        poRepo.create({
+          supplierId: gskSupplier.id,
+          orderDate: '2026-01-05',
+          expectedDate: '2026-01-07',
+          status: 'sent',
+          warehouseId: mainWarehouse.id,
+          subtotal: '17000.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          total: '17000.0000',
+          notes: purchaseOneNote,
+        })
+      );
+      const po1Lines = await poLineRepo.save([
+        poLineRepo.create({
+          purchaseOrderId: po1.id,
+          productId: paracetamol.id,
+          quantity: '100.0000',
+          unitPrice: '85.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          receivedQuantity: '100.0000',
+        }),
+        poLineRepo.create({
+          purchaseOrderId: po1.id,
+          productId: amoxicillin.id,
+          quantity: '20.0000',
+          unitPrice: '320.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          receivedQuantity: '20.0000',
+        }),
+        poLineRepo.create({
+          purchaseOrderId: po1.id,
+          productId: syrup.id,
+          quantity: '10.0000',
+          unitPrice: '210.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          receivedQuantity: '10.0000',
+        }),
+      ]);
+      const grn1 = await grnRepo.save(
+        grnRepo.create({
+          purchaseOrderId: po1.id,
+          supplierId: gskSupplier.id,
+          grnDate: '2026-01-07',
+          warehouseId: mainWarehouse.id,
+          status: 'posted',
+        })
+      );
+      await grnLineRepo.save([
+        grnLineRepo.create({
+          grnId: grn1.id,
+          productId: paracetamol.id,
+          quantity: '100.0000',
+          unitPrice: '85.0000',
+          purchaseOrderLineId: po1Lines[0].id,
+        }),
+        grnLineRepo.create({
+          grnId: grn1.id,
+          productId: amoxicillin.id,
+          quantity: '20.0000',
+          unitPrice: '320.0000',
+          purchaseOrderLineId: po1Lines[1].id,
+        }),
+        grnLineRepo.create({
+          grnId: grn1.id,
+          productId: syrup.id,
+          quantity: '10.0000',
+          unitPrice: '210.0000',
+          purchaseOrderLineId: po1Lines[2].id,
+        }),
+      ]);
+      const supplierInvoice1 = await supplierInvoiceRepo.save(
+        supplierInvoiceRepo.create({
+          supplierId: gskSupplier.id,
+          invoiceNumber: 'SI-SEED-0001',
+          invoiceDate: '2026-01-08',
+          dueDate: '2026-02-07',
+          purchaseOrderId: po1.id,
+          grnId: grn1.id,
+          status: 'posted',
+          subtotal: '17000.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          total: '17000.0000',
+          notes: purchaseOneNote,
+        })
+      );
+      await supplierInvoiceLineRepo.save([
+        supplierInvoiceLineRepo.create({
+          supplierInvoiceId: supplierInvoice1.id,
+          productId: paracetamol.id,
+          quantity: '100.0000',
+          unitPrice: '85.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+        supplierInvoiceLineRepo.create({
+          supplierInvoiceId: supplierInvoice1.id,
+          productId: amoxicillin.id,
+          quantity: '20.0000',
+          unitPrice: '320.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+        supplierInvoiceLineRepo.create({
+          supplierInvoiceId: supplierInvoice1.id,
+          productId: syrup.id,
+          quantity: '10.0000',
+          unitPrice: '210.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+      ]);
+
+      const purchaseJournal1 = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-01-08',
+          reference: 'SEED-JE-PURCHASE-001',
+          description: 'Inventory added from first seeded supplier purchase',
+          status: 'posted',
+          sourceType: 'supplier_invoice',
+          sourceId: supplierInvoice1.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: purchaseJournal1.id,
+          accountId: inventoryAccount.id,
+          debit: '17000.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: purchaseJournal1.id,
+          accountId: gskSupplier.payableAccountId,
+          debit: '0.0000',
+          credit: '17000.0000',
+        }),
+      ]);
+      console.log('Seeded first purchase flow');
+    }
+
+    const existingPurchaseTwo = await poRepo.findOne({ where: { notes: purchaseTwoNote } });
+    if (!existingPurchaseTwo) {
+      const po2 = await poRepo.save(
+        poRepo.create({
+          supplierId: pfizerSupplier.id,
+          orderDate: '2026-01-10',
+          expectedDate: '2026-01-12',
+          status: 'sent',
+          warehouseId: coldWarehouse.id,
+          subtotal: '37850.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          total: '37850.0000',
+          notes: purchaseTwoNote,
+        })
+      );
+      const po2Lines = await poLineRepo.save([
+        poLineRepo.create({
+          purchaseOrderId: po2.id,
+          productId: insulin.id,
+          quantity: '2.0000',
+          unitPrice: '18500.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          receivedQuantity: '2.0000',
+        }),
+        poLineRepo.create({
+          purchaseOrderId: po2.id,
+          productId: gloves.id,
+          quantity: '1.0000',
+          unitPrice: '850.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          receivedQuantity: '1.0000',
+        }),
+      ]);
+      const grn2 = await grnRepo.save(
+        grnRepo.create({
+          purchaseOrderId: po2.id,
+          supplierId: pfizerSupplier.id,
+          grnDate: '2026-01-12',
+          warehouseId: coldWarehouse.id,
+          status: 'posted',
+        })
+      );
+      await grnLineRepo.save([
+        grnLineRepo.create({
+          grnId: grn2.id,
+          productId: insulin.id,
+          quantity: '2.0000',
+          unitPrice: '18500.0000',
+          purchaseOrderLineId: po2Lines[0].id,
+        }),
+        grnLineRepo.create({
+          grnId: grn2.id,
+          productId: gloves.id,
+          quantity: '1.0000',
+          unitPrice: '850.0000',
+          purchaseOrderLineId: po2Lines[1].id,
+        }),
+      ]);
+      const supplierInvoice2 = await supplierInvoiceRepo.save(
+        supplierInvoiceRepo.create({
+          supplierId: pfizerSupplier.id,
+          invoiceNumber: 'SI-SEED-0002',
+          invoiceDate: '2026-01-13',
+          dueDate: '2026-02-12',
+          purchaseOrderId: po2.id,
+          grnId: grn2.id,
+          status: 'posted',
+          subtotal: '37850.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          total: '37850.0000',
+          notes: purchaseTwoNote,
+        })
+      );
+      await supplierInvoiceLineRepo.save([
+        supplierInvoiceLineRepo.create({
+          supplierInvoiceId: supplierInvoice2.id,
+          productId: insulin.id,
+          quantity: '2.0000',
+          unitPrice: '18500.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+        supplierInvoiceLineRepo.create({
+          supplierInvoiceId: supplierInvoice2.id,
+          productId: gloves.id,
+          quantity: '1.0000',
+          unitPrice: '850.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+      ]);
+
+      const purchaseJournal2 = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-01-13',
+          reference: 'SEED-JE-PURCHASE-002',
+          description: 'Inventory added from second seeded supplier purchase',
+          status: 'posted',
+          sourceType: 'supplier_invoice',
+          sourceId: supplierInvoice2.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: purchaseJournal2.id,
+          accountId: inventoryAccount.id,
+          debit: '37850.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: purchaseJournal2.id,
+          accountId: pfizerSupplier.payableAccountId,
+          debit: '0.0000',
+          credit: '37850.0000',
+        }),
+      ]);
+      console.log('Seeded second purchase flow');
+    }
+
+    const saleOneNote = 'SEED-SALE-001';
+    const saleTwoNote = 'SEED-SALE-002';
+
+    const existingSaleOne = await salesInvoiceRepo.findOne({ where: { notes: saleOneNote } });
+    if (!existingSaleOne) {
+      const invoice1 = await salesInvoiceRepo.save(
+        salesInvoiceRepo.create({
+          customerId: cityPharmacy.id,
+          invoiceDate: '2026-01-15',
+          dueDate: '2026-01-15',
+          status: 'posted',
+          paymentType: 'cash',
+          warehouseId: mainWarehouse.id,
+          subtotal: '4075.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          total: '4075.0000',
+          notes: saleOneNote,
+        })
+      );
+      await salesInvoiceLineRepo.save([
+        salesInvoiceLineRepo.create({
+          invoiceId: invoice1.id,
+          productId: paracetamol.id,
+          quantity: '30.0000',
+          unitPrice: '95.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+        salesInvoiceLineRepo.create({
+          invoiceId: invoice1.id,
+          productId: syrup.id,
+          quantity: '5.0000',
+          unitPrice: '245.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+      ]);
+      const saleJournal1 = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-01-15',
+          reference: 'SEED-JE-SALE-001',
+          description: 'Cash sale from seeded invoice batch',
+          status: 'posted',
+          sourceType: 'invoice',
+          sourceId: invoice1.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: saleJournal1.id,
+          accountId: cashAccount.id,
+          debit: '4075.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: saleJournal1.id,
+          accountId: salesRevenueAccount.id,
+          debit: '0.0000',
+          credit: '4075.0000',
+        }),
+      ]);
+      console.log('Seeded first sales invoice');
+    }
+
+    const existingSaleTwo = await salesInvoiceRepo.findOne({ where: { notes: saleTwoNote } });
+    if (!existingSaleTwo) {
+      const invoice2 = await salesInvoiceRepo.save(
+        salesInvoiceRepo.create({
+          customerId: medilink.id,
+          invoiceDate: '2026-01-16',
+          dueDate: '2026-02-15',
+          status: 'posted',
+          paymentType: 'credit',
+          warehouseId: mainWarehouse.id,
+          subtotal: '25660.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          total: '25660.0000',
+          notes: saleTwoNote,
+        })
+      );
+      await salesInvoiceLineRepo.save([
+        salesInvoiceLineRepo.create({
+          invoiceId: invoice2.id,
+          productId: amoxicillin.id,
+          quantity: '10.0000',
+          unitPrice: '380.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+        salesInvoiceLineRepo.create({
+          invoiceId: invoice2.id,
+          productId: gloves.id,
+          quantity: '2.0000',
+          unitPrice: '980.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+        salesInvoiceLineRepo.create({
+          invoiceId: invoice2.id,
+          productId: insulin.id,
+          quantity: '1.0000',
+          unitPrice: '19900.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+      ]);
+      const saleJournal2 = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-01-16',
+          reference: 'SEED-JE-SALE-002',
+          description: 'Credit sale from seeded invoice batch',
+          status: 'posted',
+          sourceType: 'invoice',
+          sourceId: invoice2.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: saleJournal2.id,
+          accountId: medilink.receivableAccountId,
+          debit: '25660.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: saleJournal2.id,
+          accountId: salesRevenueAccount.id,
+          debit: '0.0000',
+          credit: '25660.0000',
+        }),
+      ]);
+      console.log('Seeded second sales invoice');
+    }
+
+    const saleOne = await salesInvoiceRepo.findOne({ where: { notes: saleOneNote } });
+    const saleTwo = await salesInvoiceRepo.findOne({ where: { notes: saleTwoNote } });
+    if (!saleOne || !saleTwo) {
+      throw new Error('Seed: baseline seeded sales invoices are missing');
+    }
+
+    const existingCogsOne = await journalRepo.findOne({ where: { reference: 'SEED-JE-COGS-001' } });
+    if (!existingCogsOne) {
+      const cogsJournal1 = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-01-15',
+          reference: 'SEED-JE-COGS-001',
+          description: 'COGS recognition for cash seeded sale',
+          status: 'posted',
+          sourceType: 'invoice',
+          sourceId: saleOne.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: cogsJournal1.id,
+          accountId: cogsAccount.id,
+          debit: '3600.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: cogsJournal1.id,
+          accountId: inventoryAccount.id,
+          debit: '0.0000',
+          credit: '3600.0000',
+        }),
+      ]);
+    }
+
+    const existingCogsTwo = await journalRepo.findOne({ where: { reference: 'SEED-JE-COGS-002' } });
+    if (!existingCogsTwo) {
+      const cogsJournal2 = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-01-16',
+          reference: 'SEED-JE-COGS-002',
+          description: 'COGS recognition for credit seeded sale',
+          status: 'posted',
+          sourceType: 'invoice',
+          sourceId: saleTwo.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: cogsJournal2.id,
+          accountId: cogsAccount.id,
+          debit: '23300.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: cogsJournal2.id,
+          accountId: inventoryAccount.id,
+          debit: '0.0000',
+          credit: '23300.0000',
+        }),
+      ]);
+    }
+
+    const saleAgingOverdueNote = 'SEED-SALE-AGING-OVERDUE';
+    const saleAgingCurrentNote = 'SEED-SALE-AGING-CURRENT';
+
+    let agingOverdueInvoice = await salesInvoiceRepo.findOne({ where: { notes: saleAgingOverdueNote } });
+    if (!agingOverdueInvoice) {
+      agingOverdueInvoice = await salesInvoiceRepo.save(
+        salesInvoiceRepo.create({
+          customerId: cityPharmacy.id,
+          invoiceDate: '2026-02-05',
+          dueDate: '2026-03-05',
+          status: 'posted',
+          paymentType: 'credit',
+          warehouseId: mainWarehouse.id,
+          subtotal: '1500.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          total: '1500.0000',
+          notes: saleAgingOverdueNote,
+        })
+      );
+      await salesInvoiceLineRepo.save([
+        salesInvoiceLineRepo.create({
+          invoiceId: agingOverdueInvoice.id,
+          productId: paracetamol.id,
+          quantity: '10.0000',
+          unitPrice: '95.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+        salesInvoiceLineRepo.create({
+          invoiceId: agingOverdueInvoice.id,
+          productId: syrup.id,
+          quantity: '2.0000',
+          unitPrice: '275.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+      ]);
+      const agingSaleJournal = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-02-05',
+          reference: 'SEED-JE-SALE-003',
+          description: 'Overdue AR bucket seeded sale',
+          status: 'posted',
+          sourceType: 'invoice',
+          sourceId: agingOverdueInvoice.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: agingSaleJournal.id,
+          accountId: cityPharmacy.receivableAccountId,
+          debit: '1500.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: agingSaleJournal.id,
+          accountId: salesRevenueAccount.id,
+          debit: '0.0000',
+          credit: '1500.0000',
+        }),
+      ]);
+      const agingCogsJournal = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-02-05',
+          reference: 'SEED-JE-COGS-003',
+          description: 'COGS for overdue AR bucket seeded sale',
+          status: 'posted',
+          sourceType: 'invoice',
+          sourceId: agingOverdueInvoice.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: agingCogsJournal.id,
+          accountId: cogsAccount.id,
+          debit: '1270.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: agingCogsJournal.id,
+          accountId: inventoryAccount.id,
+          debit: '0.0000',
+          credit: '1270.0000',
+        }),
+      ]);
+    }
+
+    let agingCurrentInvoice = await salesInvoiceRepo.findOne({ where: { notes: saleAgingCurrentNote } });
+    if (!agingCurrentInvoice) {
+      agingCurrentInvoice = await salesInvoiceRepo.save(
+        salesInvoiceRepo.create({
+          customerId: medilink.id,
+          invoiceDate: '2026-04-20',
+          dueDate: '2026-05-20',
+          status: 'posted',
+          paymentType: 'credit',
+          warehouseId: mainWarehouse.id,
+          subtotal: '4100.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+          total: '4100.0000',
+          notes: saleAgingCurrentNote,
+        })
+      );
+      await salesInvoiceLineRepo.save([
+        salesInvoiceLineRepo.create({
+          invoiceId: agingCurrentInvoice.id,
+          productId: amoxicillin.id,
+          quantity: '6.0000',
+          unitPrice: '380.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+        salesInvoiceLineRepo.create({
+          invoiceId: agingCurrentInvoice.id,
+          productId: gloves.id,
+          quantity: '2.0000',
+          unitPrice: '910.0000',
+          taxAmount: '0.0000',
+          discountAmount: '0.0000',
+        }),
+      ]);
+      const currentSaleJournal = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-04-20',
+          reference: 'SEED-JE-SALE-004',
+          description: 'Current AR bucket seeded sale',
+          status: 'posted',
+          sourceType: 'invoice',
+          sourceId: agingCurrentInvoice.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: currentSaleJournal.id,
+          accountId: medilink.receivableAccountId,
+          debit: '4100.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: currentSaleJournal.id,
+          accountId: salesRevenueAccount.id,
+          debit: '0.0000',
+          credit: '4100.0000',
+        }),
+      ]);
+      const currentCogsJournal = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-04-20',
+          reference: 'SEED-JE-COGS-004',
+          description: 'COGS for current AR bucket seeded sale',
+          status: 'posted',
+          sourceType: 'invoice',
+          sourceId: agingCurrentInvoice.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: currentCogsJournal.id,
+          accountId: cogsAccount.id,
+          debit: '3620.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: currentCogsJournal.id,
+          accountId: inventoryAccount.id,
+          debit: '0.0000',
+          credit: '3620.0000',
+        }),
+      ]);
+    }
+
+    const purchaseOneInvoice = await supplierInvoiceRepo.findOne({ where: { notes: purchaseOneNote } });
+    const purchaseTwoInvoice = await supplierInvoiceRepo.findOne({ where: { notes: purchaseTwoNote } });
+    if (!purchaseOneInvoice || !purchaseTwoInvoice || !agingOverdueInvoice || !agingCurrentInvoice) {
+      throw new Error('Seed: expected purchase/sales documents for allocations are missing');
+    }
+
+    const existingReceiptOne = await receiptRepo.findOne({ where: { reference: 'SEED-RECEIPT-001' } });
+    if (!existingReceiptOne) {
+      const receiptOne = await receiptRepo.save(
+        receiptRepo.create({
+          customerId: cityPharmacy.id,
+          receiptDate: '2026-01-15',
+          amount: '4075.0000',
+          paymentMethod: 'cash',
+          reference: 'SEED-RECEIPT-001',
+        })
+      );
+      await receiptAllocationRepo.save(
+        receiptAllocationRepo.create({
+          receiptId: receiptOne.id,
+          invoiceId: saleOne.id,
+          amount: '4075.0000',
+        })
+      );
+      const receiptJournalOne = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-01-15',
+          reference: 'SEED-JE-RECEIPT-001',
+          description: 'Settlement of seeded cash sale receipt',
+          status: 'posted',
+          sourceType: 'receipt',
+          sourceId: receiptOne.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: receiptJournalOne.id,
+          accountId: cashAccount.id,
+          debit: '4075.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: receiptJournalOne.id,
+          accountId: cityPharmacy.receivableAccountId,
+          debit: '0.0000',
+          credit: '4075.0000',
+        }),
+      ]);
+    }
+
+    const existingReceiptTwo = await receiptRepo.findOne({ where: { reference: 'SEED-RECEIPT-002' } });
+    if (!existingReceiptTwo) {
+      const receiptTwo = await receiptRepo.save(
+        receiptRepo.create({
+          customerId: medilink.id,
+          receiptDate: '2026-02-20',
+          amount: '18000.0000',
+          paymentMethod: 'bank_transfer',
+          reference: 'SEED-RECEIPT-002',
+        })
+      );
+      await receiptAllocationRepo.save(
+        receiptAllocationRepo.create({
+          receiptId: receiptTwo.id,
+          invoiceId: saleTwo.id,
+          amount: '18000.0000',
+        })
+      );
+      const receiptJournalTwo = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-02-20',
+          reference: 'SEED-JE-RECEIPT-002',
+          description: 'Partial settlement on seeded credit sale',
+          status: 'posted',
+          sourceType: 'receipt',
+          sourceId: receiptTwo.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: receiptJournalTwo.id,
+          accountId: bankAccount.id,
+          debit: '18000.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: receiptJournalTwo.id,
+          accountId: medilink.receivableAccountId,
+          debit: '0.0000',
+          credit: '18000.0000',
+        }),
+      ]);
+    }
+
+    const existingSupplierPaymentOne = await supplierPaymentRepo.findOne({
+      where: { reference: 'SEED-SUPP-PAY-001' },
+    });
+    if (!existingSupplierPaymentOne) {
+      const supplierPaymentOne = await supplierPaymentRepo.save(
+        supplierPaymentRepo.create({
+          supplierId: gskSupplier.id,
+          paymentDate: '2026-01-25',
+          amount: '10000.0000',
+          paymentMethod: 'bank_transfer',
+          reference: 'SEED-SUPP-PAY-001',
+        })
+      );
+      await supplierPaymentAllocationRepo.save(
+        supplierPaymentAllocationRepo.create({
+          supplierPaymentId: supplierPaymentOne.id,
+          supplierInvoiceId: purchaseOneInvoice.id,
+          amount: '10000.0000',
+        })
+      );
+      const supplierPaymentJournalOne = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-01-25',
+          reference: 'SEED-JE-SUPP-PAY-001',
+          description: 'Partial settlement of first seeded supplier invoice',
+          status: 'posted',
+          sourceType: 'supplier_payment',
+          sourceId: supplierPaymentOne.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: supplierPaymentJournalOne.id,
+          accountId: gskSupplier.payableAccountId,
+          debit: '10000.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: supplierPaymentJournalOne.id,
+          accountId: bankAccount.id,
+          debit: '0.0000',
+          credit: '10000.0000',
+        }),
+      ]);
+    }
+
+    const existingSupplierPaymentTwo = await supplierPaymentRepo.findOne({
+      where: { reference: 'SEED-SUPP-PAY-002' },
+    });
+    if (!existingSupplierPaymentTwo) {
+      const supplierPaymentTwo = await supplierPaymentRepo.save(
+        supplierPaymentRepo.create({
+          supplierId: pfizerSupplier.id,
+          paymentDate: '2026-02-10',
+          amount: '37850.0000',
+          paymentMethod: 'bank_transfer',
+          reference: 'SEED-SUPP-PAY-002',
+        })
+      );
+      await supplierPaymentAllocationRepo.save(
+        supplierPaymentAllocationRepo.create({
+          supplierPaymentId: supplierPaymentTwo.id,
+          supplierInvoiceId: purchaseTwoInvoice.id,
+          amount: '37850.0000',
+        })
+      );
+      const supplierPaymentJournalTwo = await journalRepo.save(
+        journalRepo.create({
+          entryDate: '2026-02-10',
+          reference: 'SEED-JE-SUPP-PAY-002',
+          description: 'Full settlement of second seeded supplier invoice',
+          status: 'posted',
+          sourceType: 'supplier_payment',
+          sourceId: supplierPaymentTwo.id,
+        })
+      );
+      await journalLineRepo.save([
+        journalLineRepo.create({
+          journalEntryId: supplierPaymentJournalTwo.id,
+          accountId: pfizerSupplier.payableAccountId,
+          debit: '37850.0000',
+          credit: '0.0000',
+        }),
+        journalLineRepo.create({
+          journalEntryId: supplierPaymentJournalTwo.id,
+          accountId: bankAccount.id,
+          debit: '0.0000',
+          credit: '37850.0000',
+        }),
+      ]);
     }
 
     const SEED_USERS: Array<{ email: string; name: string; roleName: string; password: string }> = [
