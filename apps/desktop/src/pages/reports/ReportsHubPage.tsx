@@ -53,17 +53,29 @@ export function ReportsHubPage() {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {visible.map((c) => (
-        <Link
-          key={c.to}
-          to={c.to}
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:shadow-none dark:hover:border-indigo-500/40"
-        >
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{c.title}</h2>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{c.description}</p>
-        </Link>
-      ))}
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Reports hub</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Choose a report category to view insights and trends.</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {visible.map((c, idx) => (
+          <Link
+            key={c.to}
+            to={c.to}
+            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:shadow-none dark:hover:border-indigo-500/40"
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9'][idx % 5] }}
+              />
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{c.title}</h2>
+            </div>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{c.description}</p>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

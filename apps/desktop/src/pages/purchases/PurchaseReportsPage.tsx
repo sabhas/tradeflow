@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiFetch } from '../../api/client';
+import { ChartCard } from '../../components/charts/ChartCard';
+import { getChartTheme } from '../../components/charts/chartTheme';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { formatAmount } from '../../lib/numberFormat';
@@ -24,6 +27,7 @@ export function PurchaseReportsPage() {
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
+  const chartTheme = getChartTheme();
 
   const suppliers = useQuery({
     queryKey: ['suppliers', 'rep-dd'],
@@ -89,6 +93,18 @@ export function PurchaseReportsPage() {
   );
 
   if (!canRead) return <p className="text-slate-600">No permission.</p>;
+  const payablesSummary = [
+    { label: 'Current', value: (aging.data?.data ?? []).reduce((s, r) => s + Number(r.buckets.current), 0) },
+    { label: '1-30', value: (aging.data?.data ?? []).reduce((s, r) => s + Number(r.buckets.d1_30), 0) },
+    { label: '31-60', value: (aging.data?.data ?? []).reduce((s, r) => s + Number(r.buckets.d31_60), 0) },
+    { label: '61-90', value: (aging.data?.data ?? []).reduce((s, r) => s + Number(r.buckets.d61_90), 0) },
+    { label: '90+', value: (aging.data?.data ?? []).reduce((s, r) => s + Number(r.buckets.d90p), 0) },
+  ];
+  const pricingChartData = (pricing.data ?? []).map((r) => ({
+    date: r.date,
+    product: productName(r.productId),
+    unitPrice: Number(r.unitPrice || 0),
+  }));
 
   const productName = (id: string) => {
     const p = products.data?.find((x) => x.id === id);
@@ -216,6 +232,17 @@ export function PurchaseReportsPage() {
 
       {tab === 'aging' && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <ChartCard title="Payables aging summary" subtitle={`As of ${asOf}`}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={payablesSummary}>
+                <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                <XAxis dataKey="label" stroke={chartTheme.axis} />
+                <YAxis stroke={chartTheme.axis} />
+                <Tooltip />
+                <Bar dataKey="value" fill={chartTheme.palette[1]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
           <label className="block max-w-xs text-sm">
             <span className="text-slate-600 dark:text-slate-400">As of</span>
             <input
@@ -275,6 +302,17 @@ export function PurchaseReportsPage() {
               aria-label="Supplier"
             />
           </label>
+          <ChartCard title="Supplier pricing trend" subtitle="Unit price over time">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={pricingChartData}>
+                <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                <XAxis dataKey="date" stroke={chartTheme.axis} />
+                <YAxis stroke={chartTheme.axis} />
+                <Tooltip />
+                <Line type="monotone" dataKey="unitPrice" stroke={chartTheme.palette[2]} strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartCard>
           <table className="mt-6 min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-slate-600 dark:border-slate-800 dark:text-slate-400">

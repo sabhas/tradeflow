@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiFetch } from '../../api/client';
+import { ChartCard } from '../../components/charts/ChartCard';
+import { getChartTheme } from '../../components/charts/chartTheme';
 import { downloadXlsx } from '../../lib/downloadXlsx';
 import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
@@ -45,6 +48,37 @@ export function AgingReportsPage() {
   }
 
   const subtitle = `As of ${asOf}`;
+  const chartTheme = getChartTheme();
+  const summarizeBuckets = (rows: Array<{ buckets: Bucket }>) =>
+    [
+      {
+        label: 'Current',
+        value: rows.reduce((sum, r) => sum + Number(r.buckets.current), 0),
+        fill: chartTheme.buckets.current,
+      },
+      {
+        label: '1-30',
+        value: rows.reduce((sum, r) => sum + Number(r.buckets.d1_30), 0),
+        fill: chartTheme.buckets.d1_30,
+      },
+      {
+        label: '31-60',
+        value: rows.reduce((sum, r) => sum + Number(r.buckets.d31_60), 0),
+        fill: chartTheme.buckets.d31_60,
+      },
+      {
+        label: '61-90',
+        value: rows.reduce((sum, r) => sum + Number(r.buckets.d61_90), 0),
+        fill: chartTheme.buckets.d61_90,
+      },
+      {
+        label: '90+',
+        value: rows.reduce((sum, r) => sum + Number(r.buckets.d90p), 0),
+        fill: chartTheme.buckets.d90p,
+      },
+    ];
+  const recvBucketSummary = summarizeBuckets(recv.data?.data ?? []);
+  const payBucketSummary = summarizeBuckets(pay.data?.data ?? []);
 
   const bucketCols = ['Current', '1–30', '31–60', '61–90', '90+', 'Total open'];
 
@@ -171,6 +205,17 @@ export function AgingReportsPage() {
         )}
         {tab === 'recv' && recv.data && (
           <div className="mt-6">
+            <ChartCard title="Receivables by aging bucket" subtitle={subtitle}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={recvBucketSummary}>
+                  <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                  <XAxis dataKey="label" stroke={chartTheme.axis} />
+                  <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v, 0)} />
+                  <Tooltip />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -229,6 +274,17 @@ export function AgingReportsPage() {
         )}
         {tab === 'pay' && pay.data && (
           <div className="mt-6">
+            <ChartCard title="Payables by aging bucket" subtitle={subtitle}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={payBucketSummary}>
+                  <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                  <XAxis dataKey="label" stroke={chartTheme.axis} />
+                  <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v, 0)} />
+                  <Tooltip />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} fill={chartTheme.palette[0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"

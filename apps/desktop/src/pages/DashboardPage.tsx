@@ -1,12 +1,24 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  Bar,
+  BarChart,
+  Pie,
+  PieChart,
+  Rectangle,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useAppSelector } from '../hooks/useAppSelector';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { logout, setSession } from '../store/slices/authSlice';
 import { apiFetch } from '../api/client';
 import { hasPermission } from '../lib/permissions';
 import { formatAmount } from '../lib/numberFormat';
+import { getChartTheme } from '../components/charts/chartTheme';
 
 export function DashboardPage() {
   const user = useAppSelector((s) => s.auth.user);
@@ -85,6 +97,47 @@ export function DashboardPage() {
 
   const d = kpis.data?.data;
   const partial = kpis.data?.meta?.partial;
+  const chartTheme = getChartTheme();
+  const agingData = d
+    ? [
+        {
+          name: 'Current',
+          value: Number(d.agingReceivables.arCurrent || 0),
+          key: 'arCurrent',
+          fill: chartTheme.palette[0],
+        },
+        {
+          name: '1-30',
+          value: Number(d.agingReceivables.ar1_30 || 0),
+          key: 'ar1_30',
+          fill: chartTheme.palette[1],
+        },
+        {
+          name: '31-60',
+          value: Number(d.agingReceivables.ar31_60 || 0),
+          key: 'ar31_60',
+          fill: chartTheme.palette[2],
+        },
+        {
+          name: '61-90',
+          value: Number(d.agingReceivables.ar61_90 || 0),
+          key: 'ar61_90',
+          fill: chartTheme.palette[3],
+        },
+        {
+          name: '90+',
+          value: Number(d.agingReceivables.ar90p || 0),
+          key: 'ar90p',
+          fill: chartTheme.palette[4],
+        },
+      ]
+    : [];
+  const apArCompare = d
+    ? [
+        { label: 'AR', value: Number(d.arOpen || 0), fill: '#6366f1' },
+        { label: 'AP', value: Number(d.apOpen || 0), fill: '#10b981' },
+      ]
+    : [];
 
   return (
     <div className="space-y-6">
@@ -106,20 +159,20 @@ export function DashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {!partial?.sales ? (
               <>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <div className="rounded-lg border border-slate-200 border-l-4 border-l-indigo-500 bg-white p-4 shadow-sm dark:border-slate-800 dark:border-l-indigo-400 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales (today)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
                     {formatAmount(d?.salesToday)}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <div className="rounded-lg border border-slate-200 border-l-4 border-l-indigo-500 bg-white p-4 shadow-sm dark:border-slate-800 dark:border-l-indigo-400 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales (MTD)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
                     {formatAmount(d?.salesMtd)}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">From {d?.monthStart}</p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <div className="rounded-lg border border-slate-200 border-l-4 border-l-sky-500 bg-white p-4 shadow-sm dark:border-slate-800 dark:border-l-sky-400 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Invoices posted today</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
                     {d?.invoicesPostedToday ?? 0}
@@ -129,13 +182,13 @@ export function DashboardPage() {
             ) : null}
             {!partial?.purchases ? (
               <>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <div className="rounded-lg border border-slate-200 border-l-4 border-l-emerald-500 bg-white p-4 shadow-sm dark:border-slate-800 dark:border-l-emerald-400 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Purchases (today)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
                     {formatAmount(d?.purchasesToday)}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <div className="rounded-lg border border-slate-200 border-l-4 border-l-emerald-500 bg-white p-4 shadow-sm dark:border-slate-800 dark:border-l-emerald-400 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Purchases (MTD)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
                     {formatAmount(d?.purchasesMtd)}
@@ -156,26 +209,34 @@ export function DashboardPage() {
                   </span>
                 </p>
                 <p className="mt-4 text-xs font-medium uppercase text-slate-500">Aging (as of {d?.asOfDate})</p>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
-                  <div>
-                    <span className="text-slate-500">Current</span>
-                    <div className="font-medium">{formatAmount(d?.agingReceivables.arCurrent)}</div>
+                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                  <div className="h-52">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={agingData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={75} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: chartTheme.tooltipBg,
+                            borderColor: chartTheme.tooltipBorder,
+                            borderRadius: 8,
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div>
-                    <span className="text-slate-500">1–30</span>
-                    <div className="font-medium">{formatAmount(d?.agingReceivables.ar1_30)}</div>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">31–60</span>
-                    <div className="font-medium">{formatAmount(d?.agingReceivables.ar31_60)}</div>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">61–90</span>
-                    <div className="font-medium">{formatAmount(d?.agingReceivables.ar61_90)}</div>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">90+</span>
-                    <div className="font-medium">{formatAmount(d?.agingReceivables.ar90p)}</div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {agingData.map((entry, index) => (
+                      <div key={entry.key} className="rounded-md bg-slate-50 p-2 dark:bg-slate-800/60">
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <span
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: chartTheme.palette[index % chartTheme.palette.length] }}
+                          />
+                          {entry.name}
+                        </div>
+                        <div className="font-medium text-slate-800 dark:text-slate-100">{formatAmount(entry.value)}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -187,6 +248,31 @@ export function DashboardPage() {
                   Open AP:{' '}
                   <span className="font-semibold text-slate-900 dark:text-slate-100">{formatAmount(d?.apOpen)}</span>
                 </p>
+                <div className="mt-4 h-44">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={apArCompare}>
+                      <XAxis dataKey="label" stroke={chartTheme.axis} />
+                      <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v)} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: chartTheme.tooltipBg,
+                          borderColor: chartTheme.tooltipBorder,
+                          borderRadius: 8,
+                        }}
+                      />
+                      <Bar
+                        dataKey="value"
+                        shape={(props) => (
+                          <Rectangle
+                            {...props}
+                            fill={props.payload?.fill ?? chartTheme.palette[0]}
+                            radius={[6, 6, 0, 0]}
+                          />
+                        )}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             ) : null}
           </div>

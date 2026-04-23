@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiFetch } from '../../api/client';
+import { ChartCard } from '../../components/charts/ChartCard';
+import { getChartTheme } from '../../components/charts/chartTheme';
 import { ReportsSubNav } from '../../components/ReportsSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -23,6 +26,7 @@ export function InventoryHealthReportsPage() {
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
   const [daysWithoutSale, setDaysWithoutSale] = useState(90);
   const [slowLimit, setSlowLimit] = useState(50);
+  const chartTheme = getChartTheme();
 
   const lowStock = useQuery({
     queryKey: ['inventory', 'low-stock'],
@@ -63,6 +67,16 @@ export function InventoryHealthReportsPage() {
     return <p className="text-slate-600">No permission.</p>;
   }
 
+  const lowStockChartData = ((lowStock.data?.data ?? []) as Record<string, string>[]).slice(0, 15).map((r) => ({
+    name: `${r.productSku} ${r.productName}`,
+    onHand: Number(r.quantityOnHand || 0),
+    reorder: Number(r.reorderLevel || 0),
+  }));
+  const slowChartData = (slow.data?.data ?? []).slice(0, 15).map((r) => ({
+    name: `${r.productSku} ${r.productName}`,
+    qty: Number(r.quantitySold || 0),
+  }));
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Inventory health</h1>
@@ -76,6 +90,18 @@ export function InventoryHealthReportsPage() {
             Where on-hand quantity is below min or reorder level.
           </p>
           <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <ChartCard title="Low stock vs reorder level" subtitle="Top 15 products by shortage">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={lowStockChartData} layout="vertical" margin={{ left: 24 }}>
+                  <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                  <XAxis type="number" stroke={chartTheme.axis} />
+                  <YAxis dataKey="name" type="category" width={180} stroke={chartTheme.axis} />
+                  <Tooltip />
+                  <Bar dataKey="onHand" fill={chartTheme.palette[0]} />
+                  <Bar dataKey="reorder" fill={chartTheme.palette[3]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-950 dark:text-slate-400">
                 <tr>
@@ -135,6 +161,11 @@ export function InventoryHealthReportsPage() {
             </label>
           </div>
           <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="p-4">
+              <div className="rounded-lg bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                Dead-stock SKUs: <span className="text-xl font-semibold">{(dead.data?.data ?? []).length}</span>
+              </div>
+            </div>
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-950 dark:text-slate-400">
                 <tr>
@@ -200,6 +231,17 @@ export function InventoryHealthReportsPage() {
             </label>
           </div>
           <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <ChartCard title="Slow moving products" subtitle={`Bottom ${slowLimit} products by quantity sold`}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={slowChartData} layout="vertical" margin={{ left: 24 }}>
+                  <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                  <XAxis type="number" stroke={chartTheme.axis} />
+                  <YAxis dataKey="name" type="category" width={180} stroke={chartTheme.axis} />
+                  <Tooltip />
+                  <Bar dataKey="qty" fill={chartTheme.palette[2]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-left text-slate-600 dark:bg-slate-950 dark:text-slate-400">
                 <tr>

@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiFetch } from '../../api/client';
+import { ChartCard } from '../../components/charts/ChartCard';
+import { getChartTheme } from '../../components/charts/chartTheme';
 import { Combobox } from '../../components/Combobox';
 import { downloadXlsx } from '../../lib/downloadXlsx';
 import { formatAmount } from '../../lib/numberFormat';
@@ -54,6 +57,7 @@ export function OperationalReportsPage() {
   const [productId, setProductId] = useState('');
   const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState<'quantity' | 'value'>('quantity');
+  const chartTheme = getChartTheme();
 
   const customers = useQuery({
     queryKey: ['customers', 'report-dd'],
@@ -168,6 +172,23 @@ export function OperationalReportsPage() {
   }
 
   const rangeSubtitle = `${dateFrom} → ${dateTo}`;
+  const dailyChartData =
+    daily.data?.data.map((r) => ({ date: r.date, totalAmount: Number(r.totalAmount), count: Number(r.count) })) ?? [];
+  const movementTypeData = Object.values(
+    (movement.data?.data ?? []).reduce<Record<string, { type: string; qty: number }>>((acc, row) => {
+      const key = row.type || 'unknown';
+      const qty = Number(row.qty || 0);
+      if (!acc[key]) acc[key] = { type: key, qty: 0 };
+      acc[key].qty += qty;
+      return acc;
+    }, {})
+  );
+  const fastChartData =
+    fast.data?.data.map((r) => ({
+      product: `${r.productSku} ${r.productName}`.trim(),
+      quantitySold: Number(r.quantitySold),
+      lineValue: Number(r.lineValue),
+    })) ?? [];
 
   const exportDailyExcel = async () => {
     const d = daily.data?.data;
@@ -407,6 +428,19 @@ export function OperationalReportsPage() {
         )}
         {tab === 'daily' && daily.data && (
           <div className="mt-6">
+            <ChartCard title="Daily sales trend" subtitle="Amount and invoice count by day">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={dailyChartData}>
+                  <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                  <XAxis dataKey="date" stroke={chartTheme.axis} />
+                  <YAxis yAxisId="amount" stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v)} />
+                  <YAxis yAxisId="count" orientation="right" stroke={chartTheme.axis} />
+                  <Tooltip />
+                  <Bar yAxisId="amount" dataKey="totalAmount" fill={chartTheme.palette[0]} radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="count" type="monotone" dataKey="count" stroke={chartTheme.palette[2]} strokeWidth={2} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </ChartCard>
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Invoices:{' '}
@@ -464,6 +498,17 @@ export function OperationalReportsPage() {
         )}
         {tab === 'movement' && movement.data && (
           <div className="mt-6">
+            <ChartCard title="Stock movement by type" subtitle="Aggregated quantity in selected period">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={movementTypeData}>
+                  <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                  <XAxis dataKey="type" stroke={chartTheme.axis} />
+                  <YAxis stroke={chartTheme.axis} />
+                  <Tooltip />
+                  <Bar dataKey="qty" fill={chartTheme.palette[4]} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Rows: <span className="font-medium">{movement.data.meta.rowCount as number}</span>
@@ -525,6 +570,25 @@ export function OperationalReportsPage() {
         )}
         {tab === 'fast' && fast.data && (
           <div className="mt-6">
+            <ChartCard title="Fast moving products" subtitle={`Top ${limit} by ${sortBy}`}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={fastChartData} layout="vertical" margin={{ left: 24 }}>
+                  <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                  <XAxis
+                    type="number"
+                    stroke={chartTheme.axis}
+                    tickFormatter={(v) => (sortBy === 'value' ? formatAmount(v, 0) : formatAmount(v, 0))}
+                  />
+                  <YAxis dataKey="product" type="category" width={180} stroke={chartTheme.axis} />
+                  <Tooltip />
+                  <Bar
+                    dataKey={sortBy === 'value' ? 'lineValue' : 'quantitySold'}
+                    fill={chartTheme.palette[1]}
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"

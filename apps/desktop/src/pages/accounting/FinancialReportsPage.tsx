@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiFetch } from '../../api/client';
 import { AccountingSubNav } from '../../components/AccountingSubNav';
+import { ChartCard } from '../../components/charts/ChartCard';
+import { getChartTheme } from '../../components/charts/chartTheme';
 import { downloadXlsx } from '../../lib/downloadXlsx';
 import { printTableAsPdf } from '../../lib/printTable';
 import { hasPermission } from '../../lib/permissions';
@@ -28,6 +31,7 @@ export function FinancialReportsPage() {
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
+  const chartTheme = getChartTheme();
 
   const tbParams = useMemo(
     () =>
@@ -168,7 +172,9 @@ export function FinancialReportsPage() {
             key={k}
             type="button"
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === k ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-800'
+              tab === k
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
             }`}
             onClick={() => setTab(k)}
           >
@@ -274,14 +280,14 @@ export function FinancialReportsPage() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
               onClick={() => exportBsExcel().catch(() => {})}
             >
               Excel
             </button>
             <button
               type="button"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
               onClick={exportBsPdf}
             >
               PDF
@@ -301,6 +307,22 @@ export function FinancialReportsPage() {
 
       {tab === 'pl' && pl.data && (
         <div className="mt-4">
+          <ChartCard title="Income vs expense" subtitle={periodSubtitle}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={[
+                  { label: 'Income', value: Number(pl.data.meta.incomeNet || 0) },
+                  { label: 'Expense', value: Number(pl.data.meta.expenseNet || 0) },
+                ]}
+              >
+                <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                <XAxis dataKey="label" stroke={chartTheme.axis} />
+                <YAxis stroke={chartTheme.axis} />
+                <Tooltip />
+                <Bar dataKey="value" fill={chartTheme.palette[0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             Income (net): {pl.data.meta.incomeNet} · Expenses (net): {pl.data.meta.expenseNet} · Net:{' '}
             {pl.data.meta.netProfit}
@@ -311,6 +333,22 @@ export function FinancialReportsPage() {
 
       {tab === 'bs' && bs.data && (
         <div className="mt-4">
+          <ChartCard title="Balance sheet overview" subtitle={asOfSubtitle}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={[
+                  { label: 'Assets', value: Number(bs.data.meta.totalAssets || 0) },
+                  { label: 'Liabilities+Equity', value: Number(bs.data.meta.liabilitiesPlusEquity || 0) },
+                ]}
+              >
+                <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                <XAxis dataKey="label" stroke={chartTheme.axis} />
+                <YAxis stroke={chartTheme.axis} />
+                <Tooltip />
+                <Bar dataKey="value" fill={chartTheme.palette[4]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             Assets: {bs.data.meta.totalAssets} · Liabilities: {bs.data.meta.totalLiabilities} · Equity:{' '}
             {bs.data.meta.totalEquity} · L+E: {bs.data.meta.liabilitiesPlusEquity}
@@ -321,6 +359,19 @@ export function FinancialReportsPage() {
 
       {tab === 'exp' && exp.data && (
         <div className="mt-4">
+          <ChartCard title="Expense account mix" subtitle={periodSubtitle}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={exp.data.data.map((r) => ({ name: r.name, value: Number(r.netExpense || 0) }))}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={90}
+                />
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             Total net expense:{' '}
             <span className="font-medium tabular-nums">{exp.data.meta.totalNetExpense}</span>

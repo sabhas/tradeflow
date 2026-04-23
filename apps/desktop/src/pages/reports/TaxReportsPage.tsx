@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiFetch } from '../../api/client';
+import { ChartCard } from '../../components/charts/ChartCard';
+import { getChartTheme } from '../../components/charts/chartTheme';
 import { Combobox } from '../../components/Combobox';
 import { downloadXlsx } from '../../lib/downloadXlsx';
 import { formatAmount } from '../../lib/numberFormat';
@@ -150,6 +153,13 @@ export function TaxReportsPage() {
   }
 
   const subtitle = `${dateFrom} → ${dateTo}${taxProfileId && tab !== 'summary' ? ` · Tax profile filter` : ''}`;
+  const chartTheme = getChartTheme();
+  const summaryChartData =
+    summary.data?.data.byProfile.map((row) => {
+      const collectedValue = Number(row.collected);
+      const paidValue = Number(row.paid);
+      return { name: row.taxProfileName, collected: collectedValue, paid: paidValue, net: collectedValue - paidValue };
+    }) ?? [];
 
   const exportCollectedExcel = async () => {
     const d = collected.data?.data;
@@ -371,7 +381,7 @@ export function TaxReportsPage() {
         {tab === 'collected' && collected.data && (
           <div className="mt-6">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="rounded-md bg-indigo-50 px-3 py-1 text-sm text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-200">
                 Total tax:{' '}
                 <span className="font-medium tabular-nums">{formatAmount(collected.data?.meta.totalTax, 2)}</span>
               </p>
@@ -435,7 +445,7 @@ export function TaxReportsPage() {
         {tab === 'paid' && paid.data && (
           <div className="mt-6">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="rounded-md bg-emerald-50 px-3 py-1 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
                 Total tax:{' '}
                 <span className="font-medium tabular-nums">{formatAmount(paid.data?.meta.totalTax, 2)}</span>
               </p>
@@ -500,6 +510,19 @@ export function TaxReportsPage() {
         )}
         {tab === 'summary' && summary.data && (
           <div className="mt-6">
+            <ChartCard title="Tax summary by profile" subtitle={subtitle}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={summaryChartData}>
+                  <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                  <XAxis dataKey="name" stroke={chartTheme.axis} />
+                  <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v, 0)} />
+                  <Tooltip />
+                  <Bar dataKey="collected" fill={chartTheme.palette[0]} />
+                  <Bar dataKey="paid" fill={chartTheme.palette[1]} />
+                  <Line type="monotone" dataKey="net" stroke={chartTheme.palette[3]} strokeWidth={2} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
             {(summary.data.meta.partial.collected || summary.data.meta.partial.paid) && (
               <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
                 {summary.data.meta.partial.collected
