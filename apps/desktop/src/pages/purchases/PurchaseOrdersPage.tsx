@@ -170,6 +170,18 @@ export function PurchaseOrdersPage() {
     }
   }, [panelOpen, editingId]);
 
+  useEffect(() => {
+    if (!supplierId) return;
+    const supplierProducts = new Set(
+      (products.data ?? []).filter((p) => p.supplierId === supplierId).map((p) => p.id)
+    );
+    setLines((prev) =>
+      prev.map((line) =>
+        line.productId && !supplierProducts.has(line.productId) ? { ...line, productId: '' } : line
+      )
+    );
+  }, [supplierId, products.data]);
+
   const save = useMutation({
     mutationFn: async () => {
       setError(null);
@@ -455,6 +467,9 @@ export function PurchaseOrdersPage() {
                       disabled={products.isLoading}
                       aria-label="Product"
                     />
+                    {!supplierId && (
+                      <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">Select supplier first</p>
+                    )}
                   </label>
                   <label className="sm:col-span-2">
                     <span className="text-xs text-slate-500">Qty</span>

@@ -96,7 +96,7 @@ export function SupplierInvoicesPage() {
     queryKey: ['products', 'si-dd'],
     enabled: canRead && panelOpen,
     queryFn: () =>
-      apiFetch<{ data: Array<{ id: string; sku: string; name: string; costPrice?: string }> }>('/products?limit=500&activeOnly=true').then(
+      apiFetch<{ data: Array<{ id: string; sku: string; name: string; supplierId?: string; costPrice?: string }> }>('/products?limit=500&activeOnly=true').then(
         (r) => r.data
       ),
   });
@@ -111,10 +111,12 @@ export function SupplierInvoicesPage() {
     () => (suppliers.data ?? []).map((s) => ({ value: s.id, label: s.name })),
     [suppliers.data]
   );
-  const productLineOptions = useMemo(
-    () => (products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
-    [products.data]
-  );
+  const productLineOptions = useMemo(() => {
+    const all = products.data ?? [];
+    const filtered =
+      supplierId && all.length > 0 ? all.filter((p) => p.supplierId === supplierId) : all;
+    return filtered.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` }));
+  }, [products.data, supplierId]);
   const taxLineOptions = useMemo(
     () => (taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
     [taxProfiles.data]
@@ -157,6 +159,18 @@ export function SupplierInvoicesPage() {
         : [emptyLine()]
     );
   }, [detail.data, editingId]);
+
+  useEffect(() => {
+    if (!supplierId) return;
+    const supplierProducts = new Set(
+      (products.data ?? []).filter((p) => p.supplierId === supplierId).map((p) => p.id)
+    );
+    setLines((prev) =>
+      prev.map((line) =>
+        line.productId && !supplierProducts.has(line.productId) ? { ...line, productId: '' } : line
+      )
+    );
+  }, [supplierId, products.data]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -461,6 +475,9 @@ export function SupplierInvoicesPage() {
                       disabled={products.isLoading}
                       aria-label="Product"
                     />
+                    {!supplierId && (
+                      <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">Select supplier first</p>
+                    )}
                   </label>
                   <label className="sm:col-span-2">
                     <span className="text-xs text-slate-500">Qty</span>

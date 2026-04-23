@@ -78,7 +78,7 @@ export function GrnsPage() {
     enabled: canRead && panelOpen && !purchaseOrderId,
     queryFn: () =>
       apiFetch<{
-        data: Array<{ id: string; sku: string; name: string; batchTracked: boolean; expiryTracked: boolean }>;
+        data: Array<{ id: string; sku: string; name: string; supplierId?: string; batchTracked: boolean; expiryTracked: boolean }>;
       }>('/products?limit=500&activeOnly=true').then((r) => r.data),
   });
 
@@ -111,10 +111,12 @@ export function GrnsPage() {
     () => (warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
     [warehouses.data]
   );
-  const productLineOptions = useMemo(
-    () => (products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
-    [products.data]
-  );
+  const productLineOptions = useMemo(() => {
+    const all = products.data ?? [];
+    const filtered =
+      supplierId && all.length > 0 ? all.filter((p) => p.supplierId === supplierId) : all;
+    return filtered.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` }));
+  }, [products.data, supplierId]);
 
   useEffect(() => {
     if (!eligible.data) return;
@@ -133,6 +135,18 @@ export function GrnsPage() {
       );
     }
   }, [eligible.data]);
+
+  useEffect(() => {
+    if (!supplierId || purchaseOrderId) return;
+    const supplierProducts = new Set(
+      (products.data ?? []).filter((p) => p.supplierId === supplierId).map((p) => p.id)
+    );
+    setLines((prev) =>
+      prev.map((line) =>
+        line.productId && !supplierProducts.has(line.productId) ? { ...line, productId: '' } : line
+      )
+    );
+  }, [supplierId, purchaseOrderId, products.data]);
 
   const createGrn = useMutation({
     mutationFn: async () => {
@@ -410,22 +424,27 @@ export function GrnsPage() {
                         {eligible.data.lines[idx].productName}
                       </div>
                     ) : (
-                      <Combobox
-                        className="mt-0.5 w-full max-w-none"
-                        inputClassName="rounded border border-slate-300 px-2 py-1.5 text-sm"
-                        value={line.productId}
-                        onChange={(v) =>
-                          setLines((prev) => {
-                            const n = [...prev];
-                            n[idx] = { ...n[idx], productId: v };
-                            return n;
-                          })
-                        }
-                        options={productLineOptions}
-                        placeholder="Search product…"
-                        disabled={products.isLoading}
-                        aria-label="Product"
-                      />
+                      <>
+                        <Combobox
+                          className="mt-0.5 w-full max-w-none"
+                          inputClassName="rounded border border-slate-300 px-2 py-1.5 text-sm"
+                          value={line.productId}
+                          onChange={(v) =>
+                            setLines((prev) => {
+                              const n = [...prev];
+                              n[idx] = { ...n[idx], productId: v };
+                              return n;
+                            })
+                          }
+                          options={productLineOptions}
+                          placeholder="Search product…"
+                          disabled={products.isLoading}
+                          aria-label="Product"
+                        />
+                        {!supplierId && (
+                          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">Select supplier first</p>
+                        )}
+                      </>
                     )}
                   </label>
                   <label className="sm:col-span-3">
