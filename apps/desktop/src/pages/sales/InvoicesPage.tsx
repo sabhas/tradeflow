@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData, downloadAuthenticatedFile, openAuthenticatedRoute } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
+import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -53,7 +54,7 @@ export function InvoicesPage() {
   const [customerId, setCustomerId] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState('');
-  const [paymentType, setPaymentType] = useState<'credit' | 'cash'>('credit');
+  const [paymentType, setPaymentType] = useState<'credit' | 'cash' | ''>('');
   const [warehouseId, setWarehouseId] = useState('');
   const [salespersonId, setSalespersonId] = useState('');
   const [notes, setNotes] = useState('');
@@ -195,11 +196,6 @@ export function InvoicesPage() {
     [taxProfiles.data]
   );
 
-  useEffect(() => {
-    if (warehouseId || !warehouses.data?.length) return;
-    setWarehouseId(warehouses.data[0].id);
-  }, [warehouseId, warehouses.data]);
-
   const barcodeLookup = useMutation({
     mutationFn: async (code: string) => {
       const data = await apiFetch<{ data: ProductOpt }>(`/products/lookup/barcode/${encodeURIComponent(code)}`).then(
@@ -243,6 +239,7 @@ export function InvoicesPage() {
       const cleaned = lines.filter((l) => l.productId);
       if (!customerId) throw new Error('Select a customer');
       if (!warehouseId) throw new Error('Select a warehouse');
+      if (!paymentType) throw new Error('Select a payment type');
       if (cleaned.length === 0) throw new Error('Add at least one line');
       const payload: Record<string, unknown> = {
         customerId,
@@ -321,7 +318,7 @@ export function InvoicesPage() {
                 setCustomerId('');
                 setInvoiceDate(new Date().toISOString().slice(0, 10));
                 setDueDate('');
-                setPaymentType('credit');
+                setPaymentType('');
                 setNotes('');
                 setHeaderDiscount('0');
                 setSalespersonId('');
@@ -359,7 +356,7 @@ export function InvoicesPage() {
                 <td className="px-4 py-3">{r.invoiceDate}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
                 <td className="px-4 py-3">{r.paymentType}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{r.total}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
                 <td className="px-4 py-3 text-right">
                   {canWrite && r.status === 'draft' && (
                     <>
@@ -521,8 +518,9 @@ export function InvoicesPage() {
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={paymentType}
-                  onChange={(e) => setPaymentType(e.target.value as 'credit' | 'cash')}
+                  onChange={(e) => setPaymentType(e.target.value as 'credit' | 'cash' | '')}
                 >
+                  <option value="">— Select —</option>
                   <option value="credit">Credit</option>
                   <option value="cash">Cash</option>
                 </select>

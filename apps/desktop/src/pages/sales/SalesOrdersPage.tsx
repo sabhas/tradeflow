@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
+import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -58,7 +59,7 @@ export function SalesOrdersPage() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertOrderId, setConvertOrderId] = useState<string | null>(null);
   const [invWarehouse, setInvWarehouse] = useState('');
-  const [invPayment, setInvPayment] = useState<'credit' | 'cash'>('credit');
+  const [invPayment, setInvPayment] = useState<'credit' | 'cash' | ''>('');
   const [invLines, setInvLines] = useState<Array<{ salesOrderLineId: string; quantity: string }>>([]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -140,11 +141,6 @@ export function SalesOrdersPage() {
       })
     );
   }, [convertDetail.data, convertOpen]);
-
-  useEffect(() => {
-    if (invWarehouse || !warehouses.data?.length) return;
-    setInvWarehouse(warehouses.data[0].id);
-  }, [invWarehouse, warehouses.data]);
 
   const customers = useQuery({
     queryKey: ['customers', 'sales-dd'],
@@ -256,6 +252,7 @@ export function SalesOrdersPage() {
     mutationFn: async () => {
       if (!convertOrderId) throw new Error('No order');
       if (!invWarehouse) throw new Error('Select warehouse');
+      if (!invPayment) throw new Error('Select payment type');
       const linesPayload = invLines.filter((l) => parseFloat(l.quantity) > 0);
       if (linesPayload.length === 0) throw new Error('Enter quantity on at least one line');
       await apiFetch(`/sales-orders/${convertOrderId}/convert-to-invoice`, {
@@ -329,7 +326,7 @@ export function SalesOrdersPage() {
               <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.orderDate}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{r.total}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
                 {canWrite && (
                   <td className="px-4 py-3 text-right">
                     <button
@@ -612,8 +609,9 @@ export function SalesOrdersPage() {
                 <select
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={invPayment}
-                  onChange={(e) => setInvPayment(e.target.value as 'credit' | 'cash')}
+                  onChange={(e) => setInvPayment(e.target.value as 'credit' | 'cash' | '')}
                 >
+                  <option value="">— Select —</option>
                   <option value="credit">Credit</option>
                   <option value="cash">Cash</option>
                 </select>

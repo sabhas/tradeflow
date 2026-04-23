@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
+import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -239,7 +240,7 @@ export function QuotationsPage() {
               <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.quotationDate}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{r.total}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
                 {canWrite && (
                   <td className="px-4 py-3 text-right">
                     <button

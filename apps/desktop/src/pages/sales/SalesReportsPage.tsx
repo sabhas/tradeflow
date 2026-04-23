@@ -6,6 +6,7 @@ import { ChartCard } from '../../components/charts/ChartCard';
 import { getChartTheme } from '../../components/charts/chartTheme';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
+import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -158,8 +159,8 @@ export function SalesReportsPage() {
           {statement.data && (
             <div className="mt-6">
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Opening: <span className="font-medium tabular-nums">{statement.data.openingBalance}</span> · Closing:{' '}
-                <span className="font-medium tabular-nums">{statement.data.closingBalance}</span>
+                Opening: <span className="font-medium tabular-nums">{formatAmount(statement.data.openingBalance)}</span> · Closing:{' '}
+                <span className="font-medium tabular-nums">{formatAmount(statement.data.closingBalance)}</span>
               </p>
               <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
                 <table className="min-w-full text-sm">
@@ -179,9 +180,9 @@ export function SalesReportsPage() {
                         <td className="px-3 py-2">{row.date}</td>
                         <td className="px-3 py-2 capitalize">{row.kind}</td>
                         <td className="px-3 py-2">{row.ref}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{row.debit}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{row.credit}</td>
-                        <td className="px-3 py-2 text-right font-medium tabular-nums">{row.balance}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(row.debit)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(row.credit)}</td>
+                        <td className="px-3 py-2 text-right font-medium tabular-nums">{formatAmount(row.balance)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -231,12 +232,12 @@ export function SalesReportsPage() {
                 {(aging.data?.data ?? []).map((r) => (
                   <tr key={r.customerId} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="px-3 py-2">{r.customerName}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.totalOpen}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.buckets.current}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d1_30}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d31_60}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d61_90}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d90p}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.totalOpen)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.current)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d1_30)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d31_60)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d61_90)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d90p)}</td>
                   </tr>
                 ))}
               </tbody>

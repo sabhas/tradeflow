@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
+import { formatAmount, parseAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -92,12 +93,12 @@ export function ReceiptsPage() {
 
   const suggestOldest = () => {
     const invs = openInvoices.data ?? [];
-    let left = parseFloat(amount || '0');
+    let left = parseAmount(amount);
     const nextAmt: Record<string, string> = {};
     const ids: string[] = [];
     for (const i of [...invs].sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate))) {
       if (left <= 0) break;
-      const due = parseFloat(i.total);
+      const due = parseAmount(i.total);
       const apply = Math.min(due, left);
       if (apply > 0) {
         ids.push(i.id);
@@ -113,14 +114,14 @@ export function ReceiptsPage() {
     mutationFn: async () => {
       setError(null);
       if (!customerId) throw new Error('Customer required');
-      const totalAmt = parseFloat(amount || '0');
+      const totalAmt = parseAmount(amount);
       if (totalAmt <= 0) throw new Error('Amount required');
       const allocations = allocInvoiceId.map((invoiceId) => ({
         invoiceId,
         amount: allocAmount[invoiceId] || '0',
       }));
       let sum = 0;
-      for (const a of allocations) sum += parseFloat(a.amount);
+      for (const a of allocations) sum += parseAmount(a.amount);
       if (allocations.length === 0) throw new Error('Select invoices to allocate');
       if (Math.abs(sum - totalAmt) > 0.0001) throw new Error('Allocation sum must equal receipt amount');
 
@@ -245,7 +246,7 @@ export function ReceiptsPage() {
                           />
                         </td>
                         <td className="px-3 py-2">{i.invoiceDate}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{i.total}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(i.total)}</td>
                         <td className="px-3 py-2 text-right">
                           <input
                             className="w-28 rounded border border-slate-300 px-2 py-1 text-right text-sm"
@@ -296,7 +297,7 @@ export function ReceiptsPage() {
             {(list.data ?? []).map((r) => (
               <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.receiptDate}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{r.amount}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.amount)}</td>
                 <td className="px-4 py-3">{r.paymentMethod}</td>
               </tr>
             ))}
