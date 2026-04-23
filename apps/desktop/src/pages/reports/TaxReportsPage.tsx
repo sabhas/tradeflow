@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { downloadXlsx } from '../../lib/downloadXlsx';
+import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { printTableAsPdf } from '../../lib/printTable';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -171,13 +172,13 @@ export function TaxReportsPage() {
       r.customerName,
       `${r.productSku} ${r.productName}`,
       r.quantity,
-      r.unitPrice,
-      r.discountAmount,
-      r.lineNetBeforeTax,
+      formatAmount(r.unitPrice, 2),
+      formatAmount(r.discountAmount, 2),
+      formatAmount(r.lineNetBeforeTax, 2),
       r.taxProfileName ?? '',
       r.taxProfileRate ?? '',
       r.taxProfileIsInclusive ? 'Yes' : 'No',
-      r.taxAmount,
+      formatAmount(r.taxAmount, 2),
     ]);
     await downloadXlsx(`tax-collected-${dateFrom}-${dateTo}.xlsx`, 'Tax collected', cols, rows);
   };
@@ -190,8 +191,8 @@ export function TaxReportsPage() {
       r.invoiceDate,
       r.customerName,
       r.productName,
-      r.lineNetBeforeTax,
-      r.taxAmount,
+      formatAmount(r.lineNetBeforeTax, 2),
+      formatAmount(r.taxAmount, 2),
     ]);
     printTableAsPdf('Tax collected', subtitle, cols, rows);
   };
@@ -219,13 +220,13 @@ export function TaxReportsPage() {
       r.supplierName,
       `${r.productSku} ${r.productName}`,
       r.quantity,
-      r.unitPrice,
-      r.discountAmount,
-      r.lineNetBeforeTax,
+      formatAmount(r.unitPrice, 2),
+      formatAmount(r.discountAmount,  2),
+      formatAmount(r.lineNetBeforeTax, 2),
       r.taxProfileName ?? '',
       r.taxProfileRate ?? '',
       r.taxProfileIsInclusive ? 'Yes' : 'No',
-      r.taxAmount,
+      formatAmount(r.taxAmount, 2),
     ]);
     await downloadXlsx(`tax-paid-${dateFrom}-${dateTo}.xlsx`, 'Tax paid', cols, rows);
   };
@@ -238,8 +239,8 @@ export function TaxReportsPage() {
       r.invoiceDate,
       r.supplierName,
       r.supplierInvoiceNumber,
-      r.lineNetBeforeTax,
-      r.taxAmount,
+      formatAmount(r.lineNetBeforeTax, 2),
+      formatAmount(r.taxAmount, 2),
     ]);
     printTableAsPdf('Tax paid', subtitle, cols, rows);
   };
@@ -254,9 +255,9 @@ export function TaxReportsPage() {
         r.taxProfileName,
         r.taxProfileRate ?? '',
         r.taxProfileIsInclusive ? 'Yes' : 'No',
-        r.collected,
-        r.paid,
-        net,
+        formatAmount(r.collected, 2),
+        formatAmount(r.paid, 2),
+        formatAmount(net, 2),
       ];
     });
     await downloadXlsx(`tax-summary-${dateFrom}-${dateTo}.xlsx`, 'Tax summary', cols, rows);
@@ -268,9 +269,9 @@ export function TaxReportsPage() {
     const cols = ['Tax profile', 'Collected', 'Paid', 'Net'];
     const rows = bp.map((r) => [
       r.taxProfileName,
-      r.collected,
-      r.paid,
-      (parseFloat(r.collected) - parseFloat(r.paid)).toFixed(4),
+      formatAmount(r.collected, 2),
+      formatAmount(r.paid, 2),
+      formatAmount((parseFloat(r.collected) - parseFloat(r.paid)).toFixed(2), 2),
     ]);
     printTableAsPdf('Tax summary', subtitle, cols, rows);
   };
@@ -372,7 +373,7 @@ export function TaxReportsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Total tax:{' '}
-                <span className="font-medium tabular-nums">{collected.data?.meta.totalTax ?? '—'}</span>
+                <span className="font-medium tabular-nums">{formatAmount(collected.data?.meta.totalTax, 2)}</span>
               </p>
               <button
                 type="button"
@@ -411,9 +412,9 @@ export function TaxReportsPage() {
                       <td className="px-3 py-2">
                         <span className="text-slate-500">{r.productSku}</span> {r.productName}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.lineNetBeforeTax}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.lineNetBeforeTax, 2)}</td>
                       <td className="px-3 py-2">{r.taxProfileName ?? '—'}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.taxAmount}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.taxAmount, 2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -436,7 +437,7 @@ export function TaxReportsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Total tax:{' '}
-                <span className="font-medium tabular-nums">{paid.data?.meta.totalTax ?? '—'}</span>
+                <span className="font-medium tabular-nums">{formatAmount(paid.data?.meta.totalTax, 2)}</span>
               </p>
               <button
                 type="button"
@@ -477,9 +478,9 @@ export function TaxReportsPage() {
                       <td className="px-3 py-2">
                         <span className="text-slate-500">{r.productSku}</span> {r.productName}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.lineNetBeforeTax}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.lineNetBeforeTax, 2)}</td>
                       <td className="px-3 py-2">{r.taxProfileName ?? '—'}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.taxAmount}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.taxAmount, 2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -522,11 +523,11 @@ export function TaxReportsPage() {
             </p>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Total collected{' '}
-              <span className="font-medium tabular-nums">{summary.data.meta.totalCollected}</span>
+              <span className="font-medium tabular-nums">{formatAmount(summary.data.meta.totalCollected, 2)}</span>
               {' · '}
-              Total paid <span className="font-medium tabular-nums">{summary.data.meta.totalPaid}</span>
+              Total paid <span className="font-medium tabular-nums">{formatAmount(summary.data.meta.totalPaid, 2)}</span>
               {' · '}
-              Net <span className="font-medium tabular-nums">{summary.data.meta.netTax}</span>
+              Net <span className="font-medium tabular-nums">{formatAmount(summary.data.meta.netTax, 2)}</span>
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -566,9 +567,9 @@ export function TaxReportsPage() {
                         <td className="px-3 py-2">{r.taxProfileName}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.taxProfileRate ?? '—'}</td>
                         <td className="px-3 py-2">{r.taxProfileIsInclusive ? 'Yes' : 'No'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{r.collected}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{r.paid}</td>
-                        <td className="px-3 py-2 text-right font-medium tabular-nums">{net}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.collected, 2)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.paid, 2)}</td>
+                        <td className="px-3 py-2 text-right font-medium tabular-nums">{formatAmount(net, 2)}</td>
                       </tr>
                     );
                   })}

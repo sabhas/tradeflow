@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { downloadXlsx } from '../../lib/downloadXlsx';
+import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { printTableAsPdf } from '../../lib/printTable';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -175,7 +176,7 @@ export function OperationalReportsPage() {
       `daily-sales-${dateFrom}-${dateTo}.xlsx`,
       'Daily sales',
       ['Date', 'Invoice count', 'Total amount'],
-      d.map((r) => [r.date, r.count, r.totalAmount])
+      d.map((r) => [r.date, r.count, formatAmount(r.totalAmount)])
     );
   };
 
@@ -186,7 +187,7 @@ export function OperationalReportsPage() {
       'Daily sales',
       rangeSubtitle,
       ['Date', 'Count', 'Total'],
-      d.map((r) => [r.date, String(r.count), r.totalAmount])
+      d.map((r) => [r.date, String(r.count), formatAmount(r.totalAmount)])
     );
   };
 
@@ -228,7 +229,7 @@ export function OperationalReportsPage() {
       `fast-moving-${dateFrom}-${dateTo}.xlsx`,
       'Fast-moving',
       ['SKU', 'Product', 'Qty sold', 'Line value'],
-      d.map((r) => [r.productSku, r.productName, r.quantitySold, r.lineValue])
+      d.map((r) => [r.productSku, r.productName, r.quantitySold, formatAmount(r.lineValue)])
     );
   };
 
@@ -239,7 +240,7 @@ export function OperationalReportsPage() {
       'Fast-moving products',
       `${rangeSubtitle} · Top ${limit} by ${sortBy}`,
       ['Product', 'Qty sold', 'Line value'],
-      d.map((r) => [`${r.productSku} ${r.productName}`, r.quantitySold, r.lineValue])
+      d.map((r) => [`${r.productSku} ${r.productName}`, r.quantitySold, formatAmount(r.lineValue)])
     );
   };
 
@@ -412,7 +413,7 @@ export function OperationalReportsPage() {
                 <span className="font-medium tabular-nums">{daily.data.meta.invoiceCount as number}</span>
                 {' · '}
                 Total:{' '}
-                <span className="font-medium tabular-nums">{String(daily.data.meta.grandTotal)}</span>
+                <span className="font-medium tabular-nums">{formatAmount(daily.data.meta.grandTotal as string | number)}</span>
               </p>
               <button
                 type="button"
@@ -445,7 +446,7 @@ export function OperationalReportsPage() {
                     <tr key={r.date} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{r.date}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.count}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.totalAmount}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.totalAmount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -558,7 +559,7 @@ export function OperationalReportsPage() {
                         <span className="text-slate-500">{r.productSku}</span> {r.productName}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.quantitySold}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.lineValue}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.lineValue)}</td>
                     </tr>
                   ))}
                 </tbody>

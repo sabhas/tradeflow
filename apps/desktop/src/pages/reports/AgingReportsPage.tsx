@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { downloadXlsx } from '../../lib/downloadXlsx';
+import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { printTableAsPdf } from '../../lib/printTable';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -53,12 +54,12 @@ export function AgingReportsPage() {
     const cols = ['Customer', ...bucketCols];
     const rows = d.map((r) => [
       r.customerName,
-      r.buckets.current,
-      r.buckets.d1_30,
-      r.buckets.d31_60,
-      r.buckets.d61_90,
-      r.buckets.d90p,
-      r.totalOpen,
+      formatAmount(r.buckets.current),
+      formatAmount(r.buckets.d1_30),
+      formatAmount(r.buckets.d31_60),
+      formatAmount(r.buckets.d61_90),
+      formatAmount(r.buckets.d90p),
+      formatAmount(r.totalOpen),
     ]);
     await downloadXlsx(`receivables-aging-${asOf}.xlsx`, 'Receivables', cols, rows);
   };
@@ -72,12 +73,12 @@ export function AgingReportsPage() {
       ['Customer', 'Current', '1–30', '31–60', '61–90', '90+', 'Total'],
       d.map((r) => [
         r.customerName,
-        r.buckets.current,
-        r.buckets.d1_30,
-        r.buckets.d31_60,
-        r.buckets.d61_90,
-        r.buckets.d90p,
-        r.totalOpen,
+        formatAmount(r.buckets.current),
+        formatAmount(r.buckets.d1_30),
+        formatAmount(r.buckets.d31_60),
+        formatAmount(r.buckets.d61_90),
+        formatAmount(r.buckets.d90p),
+        formatAmount(r.totalOpen),
       ])
     );
   };
@@ -88,12 +89,12 @@ export function AgingReportsPage() {
     const cols = ['Supplier', ...bucketCols];
     const rows = d.map((r) => [
       r.supplierName,
-      r.buckets.current,
-      r.buckets.d1_30,
-      r.buckets.d31_60,
-      r.buckets.d61_90,
-      r.buckets.d90p,
-      r.totalOpen,
+      formatAmount(r.buckets.current),
+      formatAmount(r.buckets.d1_30),
+      formatAmount(r.buckets.d31_60),
+      formatAmount(r.buckets.d61_90),
+      formatAmount(r.buckets.d90p),
+      formatAmount(r.totalOpen),
     ]);
     await downloadXlsx(`payables-aging-${asOf}.xlsx`, 'Payables', cols, rows);
   };
@@ -107,12 +108,12 @@ export function AgingReportsPage() {
       ['Supplier', 'Current', '1–30', '31–60', '61–90', '90+', 'Total'],
       d.map((r) => [
         r.supplierName,
-        r.buckets.current,
-        r.buckets.d1_30,
-        r.buckets.d31_60,
-        r.buckets.d61_90,
-        r.buckets.d90p,
-        r.totalOpen,
+        formatAmount(r.buckets.current),
+        formatAmount(r.buckets.d1_30),
+        formatAmount(r.buckets.d31_60),
+        formatAmount(r.buckets.d61_90),
+        formatAmount(r.buckets.d90p),
+        formatAmount(r.totalOpen),
       ])
     );
   };
@@ -205,12 +206,12 @@ export function AgingReportsPage() {
                   {recv.data.data.map((r) => (
                     <tr key={r.customerId} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{r.customerName}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.current}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d1_30}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d31_60}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d61_90}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d90p}</td>
-                      <td className="px-3 py-2 text-right font-medium tabular-nums">{r.totalOpen}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.current)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d1_30)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d31_60)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d61_90)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d90p)}</td>
+                      <td className="px-3 py-2 text-right font-medium tabular-nums">{formatAmount(r.totalOpen)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -263,12 +264,12 @@ export function AgingReportsPage() {
                   {pay.data.data.map((r) => (
                     <tr key={r.supplierId} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{r.supplierName}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.current}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d1_30}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d31_60}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d61_90}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.buckets.d90p}</td>
-                      <td className="px-3 py-2 text-right font-medium tabular-nums">{r.totalOpen}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.current)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d1_30)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d31_60)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d61_90)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d90p)}</td>
+                      <td className="px-3 py-2 text-right font-medium tabular-nums">{formatAmount(r.totalOpen)}</td>
                     </tr>
                   ))}
                 </tbody>
