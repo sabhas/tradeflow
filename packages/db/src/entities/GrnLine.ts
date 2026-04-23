@@ -28,6 +28,12 @@ export class GrnLine extends BaseEntity {
   @Column({ name: 'unit_price', type: 'decimal', precision: 14, scale: 4, default: 0 })
   unitPrice!: string;
 
+  @Column({ name: 'trade_price', type: 'decimal', precision: 14, scale: 4, nullable: true })
+  tradePrice?: string;
+
+  @Column({ name: 'retail_price', type: 'decimal', precision: 14, scale: 4, nullable: true })
+  retailPrice?: string;
+
   @Column({ name: 'batch_code', type: 'varchar', length: 128, nullable: true })
   batchCode?: string;
 

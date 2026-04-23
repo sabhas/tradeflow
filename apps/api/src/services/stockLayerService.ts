@@ -23,6 +23,8 @@ export interface LayerConsumption {
   stockLayerId: string;
   quantity: string;
   unitCost: string;
+  tradePrice?: string;
+  retailPrice?: string;
   batchCode?: string;
   expiryDate?: string;
 }
@@ -50,6 +52,7 @@ export async function consumeFromLayers(
   const layers = await manager.query(
     `
     SELECT l.id, l.quantity_remaining, l.unit_cost, l.batch_code, l.expiry_date
+      , l.trade_price, l.retail_price
     FROM stock_layers l
     WHERE l.product_id = $1 AND l.warehouse_id = $2
       AND l.quantity_remaining::numeric > 0.00001
@@ -78,6 +81,8 @@ export async function consumeFromLayers(
       stockLayerId: layerId,
       quantity: take,
       unitCost: uc,
+      tradePrice: row.trade_price ? parseDecimalStrict(String(row.trade_price)) : undefined,
+      retailPrice: row.retail_price ? parseDecimalStrict(String(row.retail_price)) : undefined,
       batchCode: row.batch_code ?? undefined,
       expiryDate: row.expiry_date ? String(row.expiry_date).slice(0, 10) : undefined,
     });
@@ -123,6 +128,8 @@ export interface AddLayerParams {
   sourceRefId?: string;
   grnLineId?: string;
   branchId?: string;
+  tradePrice?: string;
+  retailPrice?: string;
   batchCode?: string;
   expiryDate?: string;
   receivedAt?: Date;
@@ -134,6 +141,9 @@ export async function addInboundLayer(
 ): Promise<StockLayer> {
   const qty = parseDecimalStrict(params.quantity);
   const uc = parseDecimalStrict(params.unitCost);
+  const trade = params.tradePrice != null && params.tradePrice !== '' ? parseDecimalStrict(params.tradePrice) : undefined;
+  const retail =
+    params.retailPrice != null && params.retailPrice !== '' ? parseDecimalStrict(params.retailPrice) : undefined;
   if (parseFloat(qty) <= 0) throw new Error('Inbound layer quantity must be positive');
 
   const layer = manager.create(StockLayer, {
@@ -141,6 +151,8 @@ export async function addInboundLayer(
     warehouseId: params.warehouseId,
     quantityRemaining: qty,
     unitCost: uc,
+    tradePrice: trade,
+    retailPrice: retail,
     batchCode: params.batchCode,
     expiryDate: params.expiryDate,
     receivedAt: params.receivedAt ?? new Date(),
@@ -149,6 +161,54 @@ export async function addInboundLayer(
     grnLineId: params.grnLineId,
   });
   return manager.save(layer);
+}
+
+/** Preview layer allocations without mutating quantities (used for invoice pricing). */
+export async function planLayerConsumptions(
+  manager: EntityManager,
+  product: Product,
+  company: CompanySettings,
+  warehouseId: string,
+  quantityToTake: string
+): Promise<LayerConsumption[]> {
+  const qtyNeed = parseDecimalStrict(quantityToTake);
+  if (parseFloat(qtyNeed) <= 0) throw new Error('Quantity to consume must be positive');
+  const mode = resolveCostingMode(product, company);
+  const order = layerOrderClause(mode);
+  const layers = await manager.query(
+    `
+    SELECT l.id, l.quantity_remaining, l.unit_cost, l.batch_code, l.expiry_date
+      , l.trade_price, l.retail_price
+    FROM stock_layers l
+    WHERE l.product_id = $1 AND l.warehouse_id = $2
+      AND l.quantity_remaining::numeric > 0.00001
+    ORDER BY ${order}
+    `,
+    [product.id, warehouseId]
+  );
+
+  let remaining = qtyNeed;
+  const consumptions: LayerConsumption[] = [];
+  for (const row of layers) {
+    if (decimalCmp(remaining, '0.0000') <= 0) break;
+    const layerRem = parseDecimalStrict(String(row.quantity_remaining));
+    const take = decimalCmp(layerRem, remaining) <= 0 ? layerRem : parseDecimalStrict(remaining);
+    consumptions.push({
+      stockLayerId: String(row.id),
+      quantity: take,
+      unitCost: parseDecimalStrict(String(row.unit_cost)),
+      tradePrice: row.trade_price ? parseDecimalStrict(String(row.trade_price)) : undefined,
+      retailPrice: row.retail_price ? parseDecimalStrict(String(row.retail_price)) : undefined,
+      batchCode: row.batch_code ?? undefined,
+      expiryDate: row.expiry_date ? String(row.expiry_date).slice(0, 10) : undefined,
+    });
+    remaining = decimalSub(remaining, take);
+  }
+
+  if (decimalCmp(remaining, '0.0000') > 0) {
+    throw new Error('Insufficient stock: not enough layers to fulfill quantity');
+  }
+  return consumptions;
 }
 
 export async function loadCompanyForInventory(manager: EntityManager): Promise<CompanySettings> {

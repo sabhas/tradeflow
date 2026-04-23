@@ -253,7 +253,7 @@ export function InvoicesPage() {
         lines: cleaned.map((l) => ({
           productId: l.productId,
           quantity: l.quantity,
-          unitPrice: l.unitPrice,
+          unitPrice: l.unitPrice.trim() ? l.unitPrice : undefined,
           discountAmount: l.discountAmount || '0',
           taxProfileId: l.taxProfileId || null,
         })),

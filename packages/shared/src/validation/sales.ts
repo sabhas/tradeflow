@@ -51,7 +51,13 @@ export const createInvoiceSchema = z.object({
   invoiceTemplateId: optionalUuid,
   notes: z.string().optional().nullable(),
   discountAmount: decimal.optional(),
-  lines: z.array(documentLineInputSchema).min(1),
+  lines: z
+    .array(
+      documentLineInputSchema.extend({
+        unitPrice: decimal.optional(),
+      })
+    )
+    .min(1),
 });
 
 export const updateInvoiceSchema = createInvoiceSchema.partial().extend({

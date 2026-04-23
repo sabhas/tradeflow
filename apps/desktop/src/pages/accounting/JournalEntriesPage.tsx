@@ -317,12 +317,12 @@ export function JournalEntriesPage() {
                               <span className="font-mono tabular-nums text-slate-600 dark:text-slate-400">
                                 {parseAmount(line.debit) > 0 && (
                                   <span className="text-emerald-700 dark:text-emerald-400">
-                                    Dr {formatAmount(line.debit, 4)}
+                                    Dr {formatAmount(line.debit)}
                                   </span>
                                 )}
                                 {parseAmount(line.credit) > 0 && (
                                   <span className="text-sky-800 dark:text-sky-300">
-                                    Cr {formatAmount(line.credit, 4)}
+                                    Cr {formatAmount(line.credit)}
                                   </span>
                                 )}
                               </span>
@@ -506,7 +506,7 @@ export function JournalEntriesPage() {
           <p
             className={`mt-2 text-sm ${balanced ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300'}`}
           >
-            Debits: {formatAmount(debitTot, 4)} · Credits: {formatAmount(creditTot, 4)}
+            Debits: {formatAmount(debitTot)} · Credits: {formatAmount(creditTot)}
             {!balanced && ' · Must balance before save/post'}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">

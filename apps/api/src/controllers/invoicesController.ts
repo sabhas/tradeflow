@@ -15,6 +15,7 @@ import { computeSalesDocumentTotals } from '../services/salesTotals';
 import { runInTransaction } from '../services/inventoryService';
 import { postInvoice, resolveInvoiceDueDate } from '../services/invoicePosting';
 import { getCompanySettingsRow } from '../services/companySettings';
+import { resolveInvoiceLineUnitPrices } from '../services/invoicePricingService';
 import { buildInvoicePrintHtml } from '../services/invoiceHtml';
 import { created, htmlOk, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -131,10 +132,11 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
         b.paymentType ?? 'credit',
         b.dueDate ?? null
       );
+      const pricedLines = await resolveInvoiceLineUnitPrices(manager, b.warehouseId, b.lines);
       const totals = await computeSalesDocumentTotals(
         manager,
         b.customerId,
-        b.lines.map((l) => ({
+        pricedLines.map((l) => ({
           productId: l.productId,
           quantity: l.quantity,
           unitPrice: l.unitPrice,
@@ -257,10 +259,15 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
 
       if (b.lines) {
         await manager.delete(InvoiceLine, { invoiceId: inv.id });
+        const pricedLines = await resolveInvoiceLineUnitPrices(
+          manager,
+          b.warehouseId ?? inv.warehouseId,
+          b.lines
+        );
         const totals = await computeSalesDocumentTotals(
           manager,
           inv.customerId,
-          b.lines.map((l) => ({
+          pricedLines.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
             unitPrice: l.unitPrice,

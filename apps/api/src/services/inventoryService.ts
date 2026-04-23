@@ -79,6 +79,8 @@ export interface ApplyMovementParams {
   grnLineId?: string;
   invoiceLineId?: string;
   stockTransferLineId?: string;
+  tradePrice?: string;
+  retailPrice?: string;
   batchCode?: string;
   expiryDate?: string;
   receivedAt?: Date;
@@ -157,6 +159,8 @@ export async function applyMovement(
     sourceRefId: params.refId,
     grnLineId: params.grnLineId,
     branchId: params.branchId,
+    tradePrice: params.tradePrice,
+    retailPrice: params.retailPrice,
     batchCode: params.batchCode,
     expiryDate: params.expiryDate,
     receivedAt: params.receivedAt,

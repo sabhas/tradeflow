@@ -61,6 +61,8 @@ export async function postStockTransferTx(
         unitCost: c.unitCost,
         sourceRefType: 'transfer_in',
         sourceRefId: transfer.id,
+        tradePrice: c.tradePrice,
+        retailPrice: c.retailPrice,
         batchCode: c.batchCode,
         expiryDate: c.expiryDate,
       });

@@ -28,6 +28,8 @@ export const createGrnSchema = z.object({
         productId: z.string().uuid(),
         quantity: z.union([z.number(), z.string()]).transform((v) => String(v)),
         unitPrice: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
+        tradePrice: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
+        retailPrice: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
         purchaseOrderLineId: optionalUuid,
         batchCode: z.string().max(128).optional().nullable(),
         expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),

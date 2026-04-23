@@ -36,6 +36,8 @@ type Line = {
   productId: string;
   quantity: string;
   unitPrice: string;
+  tradePrice: string;
+  retailPrice: string;
   purchaseOrderLineId: string;
   batchCode: string;
   expiryDate: string;
@@ -56,7 +58,16 @@ export function GrnsPage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [grnDate, setGrnDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [lines, setLines] = useState<Line[]>([
-    { productId: '', quantity: '1', unitPrice: '0', purchaseOrderLineId: '', batchCode: '', expiryDate: '' },
+    {
+      productId: '',
+      quantity: '1',
+      unitPrice: '0',
+      tradePrice: '',
+      retailPrice: '',
+      purchaseOrderLineId: '',
+      batchCode: '',
+      expiryDate: '',
+    },
   ]);
   const [error, setError] = useState<string | null>(null);
   const [copiedGrnId, setCopiedGrnId] = useState<string | null>(null);
@@ -78,14 +89,41 @@ export function GrnsPage() {
     enabled: canRead && panelOpen && !purchaseOrderId,
     queryFn: () =>
       apiFetch<{
-        data: Array<{ id: string; sku: string; name: string; supplierId?: string; batchTracked: boolean; expiryTracked: boolean }>;
+        data: Array<{
+          id: string;
+          sku: string;
+          name: string;
+          supplierId?: string;
+          batchTracked: boolean;
+          expiryTracked: boolean;
+          costPrice: string;
+          sellingPrice: string;
+          retailPrice: string;
+        }>;
       }>('/products?limit=500&activeOnly=true').then((r) => r.data),
   });
 
   const productById = useMemo(() => {
-    const m = new Map<string, { batchTracked: boolean; expiryTracked: boolean; name: string }>();
+    const m = new Map<
+      string,
+      {
+        batchTracked: boolean;
+        expiryTracked: boolean;
+        name: string;
+        costPrice: string;
+        sellingPrice: string;
+        retailPrice: string;
+      }
+    >();
     for (const p of products.data ?? []) {
-      m.set(p.id, { batchTracked: p.batchTracked, expiryTracked: p.expiryTracked, name: p.name });
+      m.set(p.id, {
+        batchTracked: p.batchTracked,
+        expiryTracked: p.expiryTracked,
+        name: p.name,
+        costPrice: p.costPrice,
+        sellingPrice: p.sellingPrice,
+        retailPrice: p.retailPrice,
+      });
     }
     return m;
   }, [products.data]);
@@ -93,7 +131,10 @@ export function GrnsPage() {
   const warehouses = useQuery({
     queryKey: ['warehouses'],
     enabled: canRead && panelOpen,
-    queryFn: () => apiFetch<{ data: Array<{ id: string; name: string }> }>('/warehouses').then((r) => r.data),
+    queryFn: () =>
+      apiFetch<{ data: Array<{ id: string; name: string; code: string; isDefault: boolean }> }>('/warehouses').then(
+        (r) => r.data
+      ),
   });
 
   const eligible = useQuery({
@@ -108,7 +149,7 @@ export function GrnsPage() {
     [suppliers.data]
   );
   const warehouseOptions = useMemo(
-    () => (warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
+    () => (warehouses.data ?? []).map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` })),
     [warehouses.data]
   );
   const productLineOptions = useMemo(() => {
@@ -128,6 +169,8 @@ export function GrnsPage() {
           productId: l.productId,
           quantity: l.remaining,
           unitPrice: formatAmount(l.unitPrice),
+          tradePrice: '',
+          retailPrice: '',
           purchaseOrderLineId: l.purchaseOrderLineId,
           batchCode: '',
           expiryDate: '',
@@ -135,6 +178,13 @@ export function GrnsPage() {
       );
     }
   }, [eligible.data]);
+
+  useEffect(() => {
+    if (purchaseOrderId) return;
+    if (warehouseId || !warehouses.data?.length) return;
+    const defaultWarehouse = warehouses.data.find((w) => w.isDefault);
+    setWarehouseId(defaultWarehouse?.id ?? warehouses.data[0].id);
+  }, [purchaseOrderId, warehouseId, warehouses.data]);
 
   useEffect(() => {
     if (!supplierId || purchaseOrderId) return;
@@ -185,6 +235,8 @@ export function GrnsPage() {
             productId: l.productId,
             quantity: l.quantity,
             unitPrice: l.unitPrice || undefined,
+            tradePrice: l.tradePrice.trim() ? l.tradePrice.trim() : undefined,
+            retailPrice: l.retailPrice.trim() ? l.retailPrice.trim() : undefined,
             purchaseOrderLineId: l.purchaseOrderLineId || null,
             batchCode: l.batchCode.trim() ? l.batchCode.trim() : null,
             expiryDate: l.expiryDate.trim() ? l.expiryDate : null,
@@ -237,6 +289,8 @@ export function GrnsPage() {
                   productId: '',
                   quantity: '1',
                   unitPrice: '0',
+                  tradePrice: '',
+                  retailPrice: '',
                   purchaseOrderLineId: '',
                   batchCode: '',
                   expiryDate: '',
@@ -394,6 +448,8 @@ export function GrnsPage() {
                         productId: '',
                         quantity: '1',
                         unitPrice: '0',
+                        tradePrice: '',
+                        retailPrice: '',
                         purchaseOrderLineId: '',
                         batchCode: '',
                         expiryDate: '',
@@ -432,7 +488,14 @@ export function GrnsPage() {
                           onChange={(v) =>
                             setLines((prev) => {
                               const n = [...prev];
-                              n[idx] = { ...n[idx], productId: v };
+                              const p = v ? productById.get(v) : undefined;
+                              n[idx] = {
+                                ...n[idx],
+                                productId: v,
+                                unitPrice: p ? formatAmount(p.costPrice) : n[idx].unitPrice,
+                                tradePrice: p ? formatAmount(p.sellingPrice) : n[idx].tradePrice,
+                                retailPrice: p ? formatAmount(p.retailPrice) : n[idx].retailPrice,
+                              };
                               return n;
                             })
                           }
@@ -483,7 +546,35 @@ export function GrnsPage() {
                     />
                   </label>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <label>
+                    <span className="text-xs text-slate-500">Trade price (batch)</span>
+                    <input
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      value={line.tradePrice}
+                      onChange={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], tradePrice: e.target.value };
+                          return n;
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    <span className="text-xs text-slate-500">Retail price (batch)</span>
+                    <input
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      value={line.retailPrice}
+                      onChange={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], retailPrice: e.target.value };
+                          return n;
+                        })
+                      }
+                    />
+                  </label>
                   <label>
                     <span className="text-xs text-slate-500">
                       Batch{batchRequired ? <span className="text-amber-700 dark:text-amber-400"> *</span> : ' (optional)'}

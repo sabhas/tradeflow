@@ -65,6 +65,8 @@ function serializeGrn(g: Grn, lines?: GrnLine[]) {
         productId: l.productId,
         quantity: l.quantity,
         unitPrice: l.unitPrice,
+        tradePrice: l.tradePrice ?? null,
+        retailPrice: l.retailPrice ?? null,
         purchaseOrderLineId: l.purchaseOrderLineId ?? null,
         batchCode: l.batchCode ?? null,
         expiryDate: l.expiryDate ? String(l.expiryDate).slice(0, 10) : null,
@@ -156,6 +158,9 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
             productId: ln.productId,
             quantity: parseDecimalStrict(String(ln.quantity)),
             unitPrice: parseDecimalStrict(unitPriceStr),
+            tradePrice: ln.tradePrice != null && ln.tradePrice !== '' ? parseDecimalStrict(String(ln.tradePrice)) : undefined,
+            retailPrice:
+              ln.retailPrice != null && ln.retailPrice !== '' ? parseDecimalStrict(String(ln.retailPrice)) : undefined,
             purchaseOrderLineId: ln.purchaseOrderLineId ?? undefined,
             batchCode: ln.batchCode?.trim() || undefined,
             expiryDate: ln.expiryDate?.trim() ? ln.expiryDate.slice(0, 10) : undefined,
@@ -189,6 +194,8 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
       for (const line of grn.lines ?? []) {
         await assertProductInScope(line.productId, undefined);
         await assertWarehouseInScope(grn.warehouseId, undefined);
+        const product = await manager.findOne(Product, { where: { id: line.productId } });
+        if (!product) throw new Error('Product not found');
         const qty = parseDecimalStrict(line.quantity);
         await applyMovement(manager, {
           productId: line.productId,
@@ -200,9 +207,23 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
           movementDate: grn.grnDate,
           userId: req.auth?.userId,
           grnLineId: line.id,
+          tradePrice: line.tradePrice ?? product.sellingPrice,
+          retailPrice: line.retailPrice ?? product.retailPrice,
           batchCode: line.batchCode,
           expiryDate: line.expiryDate ? String(line.expiryDate).slice(0, 10) : undefined,
         });
+        if (product.tradePriceAllBatches && line.tradePrice != null && line.tradePrice !== '') {
+          await manager.query(
+            `
+            UPDATE stock_layers
+            SET trade_price = $1::numeric
+            WHERE product_id = $2
+              AND warehouse_id = $3
+              AND quantity_remaining::numeric > 0.00001
+            `,
+            [parseDecimalStrict(String(line.tradePrice)), line.productId, grn.warehouseId]
+          );
+        }
 
         if (line.purchaseOrderLineId) {
           const pol = await manager.findOne(PurchaseOrderLine, { where: { id: line.purchaseOrderLineId } });
