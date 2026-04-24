@@ -18,6 +18,14 @@ inventoryRouter.get(
 );
 
 inventoryRouter.get(
+  '/balances/batches',
+  requirePermission('inventory', 'read'),
+  asyncHandler(async (req, res) => {
+    sendControllerResult(res, await inventoryController.listBatchBalances(req));
+  })
+);
+
+inventoryRouter.get(
   '/balances/low-stock',
   requirePermission('inventory', 'read'),
   asyncHandler(async (req, res) => {

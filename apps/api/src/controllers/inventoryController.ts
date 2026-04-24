@@ -66,6 +66,8 @@ function serializeBalance(sb: StockBalance) {
           sku: sb.product.sku,
           name: sb.product.name,
           costPrice: sb.product.costPrice,
+          tradePrice: sb.product.sellingPrice,
+          retailPrice: sb.product.retailPrice,
         }
       : undefined,
     warehouse: sb.warehouse ? { id: sb.warehouse.id, name: sb.warehouse.name, code: sb.warehouse.code } : undefined,
@@ -118,6 +120,75 @@ export async function listBalances(req: Request): Promise<ControllerResult> {
       return { ...s, valueAtLayers: lv ?? '0.0000' };
     }),
   });
+}
+
+export async function listBatchBalances(req: Request): Promise<ControllerResult> {
+  const warehouseId = req.query.warehouseId as string | undefined;
+  const productId = req.query.productId as string | undefined;
+  const batchQuery = ((req.query.batch as string | undefined) ?? '').trim();
+  const expiryBefore = (req.query.expiryBefore as string | undefined)?.trim();
+
+  const where: string[] = ['l.quantity_remaining::numeric > 0', 'p.deleted_at IS NULL'];
+  const params: unknown[] = [];
+
+  if (warehouseId) {
+    params.push(warehouseId);
+    where.push(`l.warehouse_id = $${params.length}::uuid`);
+  }
+  if (productId) {
+    params.push(productId);
+    where.push(`l.product_id = $${params.length}::uuid`);
+  }
+  if (batchQuery) {
+    params.push(`%${batchQuery}%`);
+    where.push(`COALESCE(l.batch_code, '') ILIKE $${params.length}`);
+  }
+  if (expiryBefore) {
+    params.push(expiryBefore);
+    where.push(`l.expiry_date IS NOT NULL AND l.expiry_date <= $${params.length}::date`);
+  }
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      l.product_id AS "productId",
+      p.sku AS "productSku",
+      p.name AS "productName",
+      l.warehouse_id AS "warehouseId",
+      w.code AS "warehouseCode",
+      w.name AS "warehouseName",
+      COALESCE(NULLIF(l.batch_code, ''), 'Unspecified') AS "batchCode",
+      l.expiry_date::text AS "expiryDate",
+      SUM(l.quantity_remaining::numeric)::text AS "quantity",
+      SUM(l.quantity_remaining::numeric * l.unit_cost::numeric)::text AS "valueAtLayers",
+      COALESCE(
+        (
+          SUM(COALESCE(l.trade_price::numeric, p.selling_price::numeric) * l.quantity_remaining::numeric)
+          / NULLIF(SUM(l.quantity_remaining::numeric), 0)
+        )::text,
+        MAX(p.selling_price)::text
+      ) AS "tradePrice",
+      COALESCE(
+        (
+          SUM(COALESCE(l.retail_price::numeric, p.retail_price::numeric) * l.quantity_remaining::numeric)
+          / NULLIF(SUM(l.quantity_remaining::numeric), 0)
+        )::text,
+        MAX(p.retail_price)::text
+      ) AS "retailPrice",
+      COUNT(*)::int AS "layerCount",
+      MIN(l.received_at)::text AS "oldestReceivedAt",
+      MAX(l.received_at)::text AS "latestReceivedAt"
+    FROM stock_layers l
+    INNER JOIN products p ON p.id = l.product_id
+    INNER JOIN warehouses w ON w.id = l.warehouse_id
+    WHERE ${where.join(' AND ')}
+    GROUP BY l.product_id, p.sku, p.name, l.warehouse_id, w.code, w.name, COALESCE(NULLIF(l.batch_code, ''), 'Unspecified'), l.expiry_date
+    ORDER BY p.name ASC, w.name ASC, l.expiry_date ASC NULLS LAST, COALESCE(NULLIF(l.batch_code, ''), 'Unspecified') ASC
+    `,
+    params
+  );
+
+  return ok({ data: rows, meta: { rowCount: rows.length } });
 }
 
 export async function listLowStock(req: Request): Promise<ControllerResult> {
