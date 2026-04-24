@@ -15,6 +15,21 @@ export type ComboboxProps = {
   value: string;
   onChange: (value: string) => void;
   options: ComboboxOption[];
+  onQueryChange?: (query: string) => void;
+  /**
+   * When Enter is pressed, if this returns a string that value is picked instead of the highlighted option.
+   * Return `undefined` to use default list selection behavior.
+   */
+  selectOnEnter?: (input: string) => string | undefined;
+  /**
+   * Override the text shown in the input immediately after a pick (defaults to the picked option's label).
+   * Useful for synthetic rows (e.g. "Add …") where the committed value differs from the row label.
+   */
+  getInputValueAfterPick?: (
+    pickedValue: string,
+    option: ComboboxOption | undefined,
+    inputSnapshot: string
+  ) => string | undefined;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -87,6 +102,9 @@ export function Combobox({
   value,
   onChange,
   options,
+  onQueryChange,
+  selectOnEnter,
+  getInputValueAfterPick,
   placeholder = 'Search…',
   disabled,
   className = '',
@@ -108,6 +126,8 @@ export function Combobox({
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
   const [inputValue, setInputValue] = useState(selectedLabel);
+  const inputValueRef = useRef(inputValue);
+  inputValueRef.current = inputValue;
   const [highlighted, setHighlighted] = useState(0);
   /** Bumped on scroll/resize so we re-measure `getBoundingClientRect` for the fixed portal. */
   const [, setLayoutNonce] = useState(0);
@@ -163,7 +183,8 @@ export function Combobox({
   const closeAndRevert = useCallback(() => {
     setOpen(false);
     setInputValue(selectedLabel);
-  }, [selectedLabel]);
+    onQueryChange?.(selectedLabel);
+  }, [onQueryChange, selectedLabel]);
 
   useEffect(() => {
     if (!open) return;
@@ -173,23 +194,29 @@ export function Combobox({
       setOpen(false);
       setFocused(false);
       setInputValue(selectedLabel);
+      onQueryChange?.(selectedLabel);
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [open, selectedLabel]);
+  }, [open, selectedLabel, onQueryChange]);
 
   const pick = useCallback(
     (nextValue: string) => {
       onChange(nextValue);
       const next = options.find((o) => o.value === nextValue);
-      setInputValue(next?.label ?? '');
+      const snapshot = inputValueRef.current;
+      const override = getInputValueAfterPick?.(nextValue, next, snapshot);
+      const nextInput = override !== undefined && override !== null ? override : (next?.label ?? '');
+      setInputValue(nextInput);
+      onQueryChange?.(nextInput);
       setOpen(false);
     },
-    [onChange, options]
+    [getInputValueAfterPick, onChange, onQueryChange, options]
   );
 
   const onInputChange = (q: string) => {
     setInputValue(q);
+    onQueryChange?.(q);
     setOpen(true);
   };
 
@@ -204,6 +231,7 @@ export function Combobox({
         setFocused(false);
         setOpen(false);
         setInputValue(selectedLabel);
+        onQueryChange?.(selectedLabel);
       }
     });
   };
@@ -238,6 +266,12 @@ export function Combobox({
     }
 
     if (e.key === 'Enter') {
+      const intercepted = selectOnEnter?.(inputValue);
+      if (intercepted !== undefined) {
+        e.preventDefault();
+        pick(intercepted);
+        return;
+      }
       if (!open || filtered.length === 0) return;
       e.preventDefault();
       const opt = filtered[highlighted];

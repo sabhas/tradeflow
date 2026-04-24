@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
+import { CUSTOM_OPTION_VALUE, SelectOrCustomInput } from '../../components/SelectOrCustomInput';
 import { formatAmount, formatAmountInput, normalizeAmountInput } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -32,6 +33,16 @@ interface EligibleResponse {
   }>;
 }
 
+interface BatchBalanceRow {
+  productId: string;
+  batchCode: string;
+  expiryDate?: string | null;
+  quantity: string;
+  valueAtLayers: string;
+  tradePrice?: string;
+  retailPrice?: string;
+}
+
 type Line = {
   productId: string;
   quantity: string;
@@ -41,6 +52,7 @@ type Line = {
   purchaseOrderLineId: string;
   batchCode: string;
   expiryDate: string;
+  selectedExistingBatchKey: string;
 };
 
 export function GrnsPage() {
@@ -67,6 +79,7 @@ export function GrnsPage() {
       purchaseOrderLineId: '',
       batchCode: '',
       expiryDate: '',
+      selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
     },
   ]);
   const [error, setError] = useState<string | null>(null);
@@ -142,6 +155,15 @@ export function GrnsPage() {
     enabled: !!purchaseOrderId && panelOpen,
     queryFn: () => apiFetch<{ data: EligibleResponse }>(`/purchase-orders/${purchaseOrderId}/grn-eligible`).then((r) => r.data),
   });
+  const batchBalances = useQuery({
+    queryKey: ['inventory', 'balances', 'batches', warehouseId],
+    enabled: canRead && panelOpen && !!warehouseId,
+    queryFn: async () => {
+      const query = new URLSearchParams({ warehouseId });
+      const res = await apiFetch<{ data: BatchBalanceRow[] }>(`/inventory/balances/batches?${query.toString()}`);
+      return res.data;
+    },
+  });
 
   const poLinked = !!purchaseOrderId && !!eligible.data;
   const supplierOptions = useMemo(
@@ -158,6 +180,29 @@ export function GrnsPage() {
       supplierId && all.length > 0 ? all.filter((p) => p.supplierId === supplierId) : all;
     return filtered.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` }));
   }, [products.data, supplierId]);
+  const existingBatchesByProduct = useMemo(() => {
+    const map = new Map<
+      string,
+      Array<
+        BatchBalanceRow & {
+          key: string;
+          displayCode: string;
+          avgUnitCost: string;
+        }
+      >
+    >();
+    for (const row of batchBalances.data ?? []) {
+      const displayCode = row.batchCode === 'Unspecified' ? '' : row.batchCode;
+      const key = `${displayCode}::${row.expiryDate ?? ''}`;
+      const qty = Number(row.quantity);
+      const val = Number(row.valueAtLayers);
+      const avgUnitCost = qty > 0 ? String(val / qty) : '0';
+      const list = map.get(row.productId) ?? [];
+      list.push({ ...row, key, displayCode, avgUnitCost });
+      map.set(row.productId, list);
+    }
+    return map;
+  }, [batchBalances.data]);
 
   useEffect(() => {
     if (!eligible.data) return;
@@ -174,6 +219,7 @@ export function GrnsPage() {
           purchaseOrderLineId: l.purchaseOrderLineId,
           batchCode: '',
           expiryDate: '',
+          selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
         }))
       );
     }
@@ -294,6 +340,7 @@ export function GrnsPage() {
                   purchaseOrderLineId: '',
                   batchCode: '',
                   expiryDate: '',
+                  selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
                 },
               ]);
               setError(null);
@@ -453,6 +500,7 @@ export function GrnsPage() {
                         purchaseOrderLineId: '',
                         batchCode: '',
                         expiryDate: '',
+                        selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
                       },
                     ])
                   }
@@ -467,54 +515,121 @@ export function GrnsPage() {
                 const manualProduct = line.productId ? productById.get(line.productId) : undefined;
                 const batchRequired = poLine?.batchTracked ?? manualProduct?.batchTracked ?? false;
                 const expiryRequired = poLine?.expiryTracked ?? manualProduct?.expiryTracked ?? false;
+                const batchOptions = line.productId ? existingBatchesByProduct.get(line.productId) ?? [] : [];
+                const selectedExistingBatch = line.selectedExistingBatchKey
+                  ? batchOptions.find((b) => b.key === line.selectedExistingBatchKey)
+                  : undefined;
+                const lockBatchDerivedFields = !!selectedExistingBatch;
+                const batchDerivedLockInputClass =
+                  'disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 dark:disabled:border-slate-600 dark:disabled:bg-slate-950/80 dark:disabled:text-slate-400';
                 return (
                 <div
                   key={idx}
                   className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40"
                 >
                   <div className="grid gap-2 sm:grid-cols-12 sm:items-end">
-                  <label className="sm:col-span-5">
-                    <span className="text-xs text-slate-500">Product</span>
+                  <label className="flex flex-col gap-0.5 sm:col-span-5">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Product</span>
+                    {!supplierId && (
+                      <span className="text-[11px] font-medium text-amber-800 dark:text-amber-400">
+                        Select supplier first to choose a product.
+                      </span>
+                    )}
                     {purchaseOrderId && eligible.data?.lines[idx]?.productName ? (
                       <div className="mt-0.5 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950">
                         {eligible.data.lines[idx].productName}
                       </div>
                     ) : (
-                      <>
-                        <Combobox
-                          className="mt-0.5 w-full max-w-none"
-                          inputClassName="rounded border border-slate-300 px-2 py-1.5 text-sm"
-                          value={line.productId}
-                          onChange={(v) =>
-                            setLines((prev) => {
-                              const n = [...prev];
-                              const p = v ? productById.get(v) : undefined;
-                              n[idx] = {
-                                ...n[idx],
-                                productId: v,
-                                unitPrice: p ? formatAmount(p.costPrice) : n[idx].unitPrice,
-                                tradePrice: p ? formatAmount(p.sellingPrice) : n[idx].tradePrice,
-                                retailPrice: p ? formatAmount(p.retailPrice) : n[idx].retailPrice,
-                              };
-                              return n;
-                            })
-                          }
-                          options={productLineOptions}
-                          placeholder="Search product…"
-                          disabled={products.isLoading}
-                          aria-label="Product"
-                        />
-                        {!supplierId && (
-                          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">Select supplier first</p>
-                        )}
-                      </>
+                      <Combobox
+                        className="mt-0.5 w-full max-w-none"
+                        inputClassName="rounded border border-slate-300 px-2 py-1.5 text-sm"
+                        value={line.productId}
+                        onChange={(v) =>
+                          setLines((prev) => {
+                            const n = [...prev];
+                            const p = v ? productById.get(v) : undefined;
+                            n[idx] = {
+                              ...n[idx],
+                              productId: v,
+                              unitPrice: p ? formatAmount(p.costPrice) : n[idx].unitPrice,
+                              tradePrice: p ? formatAmount(p.sellingPrice) : n[idx].tradePrice,
+                              retailPrice: p ? formatAmount(p.retailPrice) : n[idx].retailPrice,
+                              batchCode: '',
+                              expiryDate: '',
+                              selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
+                            };
+                            return n;
+                          })
+                        }
+                        options={productLineOptions}
+                        placeholder="Search product…"
+                        disabled={products.isLoading}
+                        aria-label="Product"
+                      />
                     )}
+                  </label>
+                  <label className="sm:col-span-4">
+                    <span className="text-xs text-slate-500">
+                      Batch{batchRequired ? <span className="text-amber-700 dark:text-amber-400"> *</span> : ' (optional)'}
+                    </span>
+                    <SelectOrCustomInput
+                      className="mt-0.5"
+                      options={batchOptions.map((b) => ({ value: b.key, label: b.displayCode || 'Unspecified' }))}
+                      value={
+                        batchOptions.some((b) => b.key === line.selectedExistingBatchKey)
+                          ? line.selectedExistingBatchKey
+                          : line.batchCode
+                      }
+                      onChange={(value) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          const selected = batchOptions.find((b) => b.key === value);
+                          if (selected) {
+                            n[idx] = {
+                              ...n[idx],
+                              selectedExistingBatchKey: selected.key,
+                              batchCode: selected.displayCode,
+                              expiryDate: selected.expiryDate ? String(selected.expiryDate).slice(0, 10) : '',
+                              unitPrice: formatAmount(selected.avgUnitCost),
+                              tradePrice: formatAmount((selected.tradePrice ?? n[idx].tradePrice) || '0'),
+                              retailPrice: formatAmount((selected.retailPrice ?? n[idx].retailPrice) || '0'),
+                            };
+                            return n;
+                          }
+                          const p = n[idx].productId ? productById.get(n[idx].productId) : undefined;
+                          const wasLocked = batchOptions.some((b) => b.key === n[idx].selectedExistingBatchKey);
+                          n[idx] = {
+                            ...n[idx],
+                            batchCode: value,
+                            selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
+                            unitPrice:
+                              (wasLocked || !n[idx].unitPrice.trim()) && p ? formatAmount(p.costPrice) : n[idx].unitPrice,
+                            tradePrice:
+                              (wasLocked || !n[idx].tradePrice.trim()) && p
+                                ? formatAmount(p.sellingPrice)
+                                : n[idx].tradePrice,
+                            retailPrice:
+                              (wasLocked || !n[idx].retailPrice.trim()) && p
+                                ? formatAmount(p.retailPrice)
+                                : n[idx].retailPrice,
+                            expiryDate: wasLocked ? '' : n[idx].expiryDate,
+                          };
+                          return n;
+                        })
+                      }
+                      placeholder="Select existing or type new batch…"
+                      createOptionLabel={(query) => `Add "${query}" as new batch`}
+                      disabled={!line.productId}
+                      aria-label="Batch code"
+                    />
                   </label>
                   <label className="sm:col-span-3">
                     <span className="text-xs text-slate-500">Qty received</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
                       value={line.quantity}
+                      type='number'
+                      min={0}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
@@ -524,11 +639,14 @@ export function GrnsPage() {
                       }
                     />
                   </label>
-                  <label className="sm:col-span-4">
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <label>
                     <span className="text-xs text-slate-500">Unit cost</span>
                     <input
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      className={`mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm ${batchDerivedLockInputClass}`}
                       value={formatAmountInput(line.unitPrice)}
+                      disabled={lockBatchDerivedFields}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
@@ -545,13 +663,12 @@ export function GrnsPage() {
                       }
                     />
                   </label>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   <label>
                     <span className="text-xs text-slate-500">Trade price (batch)</span>
                     <input
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      className={`mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm ${batchDerivedLockInputClass}`}
                       value={line.tradePrice}
+                      disabled={lockBatchDerivedFields}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
@@ -564,8 +681,9 @@ export function GrnsPage() {
                   <label>
                     <span className="text-xs text-slate-500">Retail price (batch)</span>
                     <input
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      className={`mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm ${batchDerivedLockInputClass}`}
                       value={line.retailPrice}
+                      disabled={lockBatchDerivedFields}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
@@ -577,30 +695,14 @@ export function GrnsPage() {
                   </label>
                   <label>
                     <span className="text-xs text-slate-500">
-                      Batch{batchRequired ? <span className="text-amber-700 dark:text-amber-400"> *</span> : ' (optional)'}
-                    </span>
-                    <input
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                      value={line.batchCode}
-                      required={batchRequired}
-                      onChange={(e) =>
-                        setLines((prev) => {
-                          const n = [...prev];
-                          n[idx] = { ...n[idx], batchCode: e.target.value };
-                          return n;
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    <span className="text-xs text-slate-500">
                       Expiry{expiryRequired ? <span className="text-amber-700 dark:text-amber-400"> *</span> : ' (optional)'}
                     </span>
                     <input
                       type="date"
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      className={`mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm ${batchDerivedLockInputClass}`}
                       value={line.expiryDate}
                       required={expiryRequired}
+                      disabled={lockBatchDerivedFields}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
@@ -611,6 +713,11 @@ export function GrnsPage() {
                     />
                   </label>
                   </div>
+                  {selectedExistingBatch && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Existing batch selected. Expiry and price fields are locked to current batch values.
+                    </p>
+                  )}
                 </div>
               );
               })}
