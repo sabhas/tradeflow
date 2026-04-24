@@ -17,6 +17,28 @@ interface InvRow {
   supplier?: { name: string };
 }
 
+interface InvoiceDetailLine {
+  id: string;
+  productId: string;
+  quantity: string;
+  unitPrice: string;
+  discountAmount: string;
+  taxAmount: string;
+  taxProfileId?: string | null;
+  grnLineId?: string | null;
+}
+
+interface InvoiceDetail extends InvRow {
+  dueDate: string;
+  grnId: string | null;
+  purchaseOrderId?: string | null;
+  notes?: string | null;
+  subtotal: string;
+  taxAmount: string;
+  discountAmount: string;
+  lines?: InvoiceDetailLine[];
+}
+
 type Line = {
   productId: string;
   quantity: string;
@@ -57,6 +79,7 @@ export function SupplierInvoicesPage() {
   const [headerDiscount, setHeaderDiscount] = useState('0');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
+  const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
 
   const list = useQuery({
     queryKey: ['supplier-invoices'],
@@ -69,22 +92,46 @@ export function SupplierInvoicesPage() {
     enabled: !!editingId && panelOpen,
     queryFn: () =>
       apiFetch<{
-        data: InvRow & {
-          dueDate: string;
-          grnId: string | null;
-          notes?: string | null;
-          discountAmount: string;
-          lines: Array<{
-            productId: string;
-            quantity: string;
-            unitPrice: string;
-            discountAmount: string;
-            taxProfileId?: string | null;
-            grnLineId?: string | null;
-          }>;
-        };
+        data: InvoiceDetail;
       }>(`/supplier-invoices/${editingId}`).then((r) => r.data),
   });
+
+  const invoiceView = useQuery({
+    queryKey: ['supplier-invoice', 'view', viewInvoiceId],
+    enabled: canRead && !!viewInvoiceId,
+    queryFn: () => apiFetch<{ data: InvoiceDetail }>(`/supplier-invoices/${viewInvoiceId}`).then((r) => r.data),
+  });
+
+  const productsForInvoiceView = useQuery({
+    queryKey: ['products', 'si-view'],
+    enabled: canRead && !!viewInvoiceId,
+    queryFn: () =>
+      apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500&activeOnly=true').then(
+        (r) => r.data
+      ),
+  });
+
+  const taxProfilesForView = useQuery({
+    queryKey: ['tax-profiles', 'si-view'],
+    enabled: canRead && !!viewInvoiceId,
+    queryFn: () => apiFetch<{ data: Array<{ id: string; name: string }> }>('/tax-profiles').then((r) => r.data),
+  });
+
+  const productLabelByIdView = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of productsForInvoiceView.data ?? []) {
+      m.set(p.id, `${p.sku} — ${p.name}`);
+    }
+    return m;
+  }, [productsForInvoiceView.data]);
+
+  const taxProfileNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of taxProfilesForView.data ?? []) {
+      m.set(t.id, t.name);
+    }
+    return m;
+  }, [taxProfilesForView.data]);
 
   const suppliers = useQuery({
     queryKey: ['suppliers', 'si-dd'],
@@ -146,9 +193,10 @@ export function SupplierInvoicesPage() {
     setGrnId(d.grnId ?? '');
     setNotes(d.notes ?? '');
     setHeaderDiscount(formatAmount(d.discountAmount));
+    const invLines = d.lines ?? [];
     setLines(
-      (d.lines || []).length
-        ? d.lines.map((l) => ({
+      invLines.length
+        ? invLines.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
             unitPrice: formatAmount(l.unitPrice),
@@ -237,6 +285,7 @@ export function SupplierInvoicesPage() {
             type="button"
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
             onClick={() => {
+              setViewInvoiceId(null);
               setEditingId(null);
               setSupplierId('');
               setInvoiceNumber('');
@@ -281,12 +330,16 @@ export function SupplierInvoicesPage() {
                 <td className="px-4 py-3 capitalize">{r.status}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
                 <td className="px-4 py-3 text-right">
+                  <button type="button" className="text-indigo-600 hover:underline" onClick={() => setViewInvoiceId(r.id)}>
+                    View
+                  </button>
                   {canWrite && r.status === 'draft' && (
                     <>
                       <button
                         type="button"
-                        className="text-indigo-600 hover:underline"
+                        className="ml-3 text-indigo-600 hover:underline"
                         onClick={() => {
+                          setViewInvoiceId(null);
                           setEditingId(r.id);
                           setError(null);
                           setPanelOpen(true);
@@ -315,6 +368,137 @@ export function SupplierInvoicesPage() {
         </table>
         {list.isLoading && <p className="p-4 text-slate-500">Loading…</p>}
       </div>
+
+      {viewInvoiceId && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Supplier invoice</h2>
+                <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">{viewInvoiceId}</p>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                onClick={() => setViewInvoiceId(null)}
+              >
+                ×
+              </button>
+            </div>
+            {invoiceView.isLoading && <p className="mt-6 text-slate-500">Loading…</p>}
+            {invoiceView.isError && (
+              <p className="mt-6 text-sm text-red-700">Could not load this invoice. Check permissions or try again.</p>
+            )}
+            {invoiceView.data && (
+              <div className="mt-6 space-y-6">
+                <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Supplier</dt>
+                    <dd className="font-medium text-slate-900 dark:text-slate-100">{invoiceView.data.supplier?.name ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Supplier ref / invoice #</dt>
+                    <dd className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">{invoiceView.data.invoiceNumber}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Invoice date</dt>
+                    <dd className="font-medium text-slate-900 dark:text-slate-100">{invoiceView.data.invoiceDate}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Due date</dt>
+                    <dd className="font-medium text-slate-900 dark:text-slate-100">{invoiceView.data.dueDate}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Status</dt>
+                    <dd className="capitalize font-medium text-slate-900 dark:text-slate-100">{invoiceView.data.status}</dd>
+                  </div>
+                  {invoiceView.data.grnId && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-slate-500 dark:text-slate-400">Linked GRN</dt>
+                      <dd className="font-mono text-xs text-slate-800 dark:text-slate-200">{invoiceView.data.grnId}</dd>
+                    </div>
+                  )}
+                  {invoiceView.data.notes && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-slate-500 dark:text-slate-400">Notes</dt>
+                      <dd className="whitespace-pre-wrap text-slate-800 dark:text-slate-200">{invoiceView.data.notes}</dd>
+                    </div>
+                  )}
+                </dl>
+                <div>
+                  <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200">Lines</h3>
+                  <div className="mt-2 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-slate-950">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium">Product</th>
+                          <th className="px-3 py-2 text-right font-medium">Qty</th>
+                          <th className="px-3 py-2 text-right font-medium">Price</th>
+                          <th className="px-3 py-2 text-right font-medium">Discount</th>
+                          <th className="px-3 py-2 text-right font-medium">Tax</th>
+                          <th className="px-3 py-2 text-left font-medium">Tax profile</th>
+                          <th className="px-3 py-2 text-left font-medium">GRN line</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(invoiceView.data.lines ?? []).map((line) => (
+                          <tr key={line.id} className="border-t border-slate-100 dark:border-slate-800">
+                            <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
+                              {productLabelByIdView.get(line.productId) ?? (
+                                <span className="font-mono text-xs text-slate-500">{line.productId}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.quantity)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.unitPrice)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.discountAmount)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.taxAmount)}</td>
+                            <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                              {line.taxProfileId ? taxProfileNameById.get(line.taxProfileId) ?? line.taxProfileId : '—'}
+                            </td>
+                            <td className="px-3 py-2 font-mono text-[10px] text-slate-600 dark:text-slate-400">
+                              {line.grnLineId ?? '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(invoiceView.data.lines ?? []).length === 0 && (
+                      <p className="px-3 py-4 text-center text-slate-500">No lines on this invoice.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950/50 sm:ml-auto sm:max-w-sm">
+                  <div className="flex justify-between tabular-nums">
+                    <span className="text-slate-600 dark:text-slate-400">Subtotal</span>
+                    <span className="font-medium">{formatAmount(invoiceView.data.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between tabular-nums">
+                    <span className="text-slate-600 dark:text-slate-400">Header discount</span>
+                    <span className="font-medium">{formatAmount(invoiceView.data.discountAmount)}</span>
+                  </div>
+                  <div className="flex justify-between tabular-nums">
+                    <span className="text-slate-600 dark:text-slate-400">Tax</span>
+                    <span className="font-medium">{formatAmount(invoiceView.data.taxAmount)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold dark:border-slate-700">
+                    <span>Total</span>
+                    <span className="tabular-nums">{formatAmount(invoiceView.data.total)}</span>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    onClick={() => setViewInvoiceId(null)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">

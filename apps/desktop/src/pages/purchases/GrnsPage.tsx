@@ -18,6 +18,30 @@ interface GrnRow {
   purchaseOrderId?: string | null;
 }
 
+interface GrnDetailLine {
+  id: string;
+  productId: string;
+  quantity: string;
+  unitPrice: string;
+  tradePrice?: string | null;
+  retailPrice?: string | null;
+  purchaseOrderLineId?: string | null;
+  batchCode?: string | null;
+  expiryDate?: string | null;
+}
+
+interface GrnDetail {
+  id: string;
+  grnDate: string;
+  status: string;
+  supplierId: string;
+  purchaseOrderId?: string | null;
+  warehouseId: string;
+  supplier?: { id: string; name: string };
+  warehouse?: { id: string; name: string };
+  lines?: GrnDetailLine[];
+}
+
 interface EligibleResponse {
   purchaseOrderId: string;
   supplierId: string;
@@ -84,12 +108,36 @@ export function GrnsPage() {
   ]);
   const [error, setError] = useState<string | null>(null);
   const [copiedGrnId, setCopiedGrnId] = useState<string | null>(null);
+  const [viewGrnId, setViewGrnId] = useState<string | null>(null);
 
   const list = useQuery({
     queryKey: ['grns'],
     enabled: canRead,
     queryFn: () => apiFetch<{ data: GrnRow[] }>('/grns').then((r) => r.data),
   });
+
+  const grnDetail = useQuery({
+    queryKey: ['grn', viewGrnId],
+    enabled: canRead && !!viewGrnId,
+    queryFn: () => apiFetch<{ data: GrnDetail }>(`/grns/${viewGrnId}`).then((r) => r.data),
+  });
+
+  const productsForView = useQuery({
+    queryKey: ['products', 'grn-view'],
+    enabled: canRead && !!viewGrnId,
+    queryFn: () =>
+      apiFetch<{ data: Array<{ id: string; sku: string; name: string }> }>('/products?limit=500&activeOnly=true').then(
+        (r) => r.data
+      ),
+  });
+
+  const productLabelById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of productsForView.data ?? []) {
+      m.set(p.id, `${p.sku} — ${p.name}`);
+    }
+    return m;
+  }, [productsForView.data]);
 
   const suppliers = useQuery({
     queryKey: ['suppliers', 'grn-dd'],
@@ -327,6 +375,7 @@ export function GrnsPage() {
             type="button"
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
             onClick={() => {
+              setViewGrnId(null);
               setPurchaseOrderId(null);
               setSupplierId('');
               setGrnDate(new Date().toISOString().slice(0, 10));
@@ -399,18 +448,23 @@ export function GrnsPage() {
                   </button>
                 </td>
                 <td className="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    className="text-indigo-600 hover:underline"
+                    onClick={() => setViewGrnId(r.id)}
+                  >
+                    View
+                  </button>
                   {canPost && r.status === 'draft' && (
                     <button
                       type="button"
-                      className="font-medium text-emerald-700 hover:underline"
+                      className="ml-3 font-medium text-emerald-700 hover:underline"
                       onClick={() => postGrn.mutate(r.id)}
                     >
                       Post to stock
                     </button>
                   )}
-                  {r.status === 'posted' && (
-                    <span className="text-xs font-medium text-emerald-600">Stock updated</span>
-                  )}
+                  
                 </td>
               </tr>
             ))}
@@ -418,6 +472,124 @@ export function GrnsPage() {
         </table>
         {list.isLoading && <p className="p-4 text-slate-500">Loading…</p>}
       </div>
+
+      {viewGrnId && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Goods receipt (GRN)</h2>
+                <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">{viewGrnId}</p>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                onClick={() => setViewGrnId(null)}
+              >
+                ×
+              </button>
+            </div>
+            {grnDetail.isLoading && <p className="mt-6 text-slate-500">Loading…</p>}
+            {grnDetail.isError && (
+              <p className="mt-6 text-sm text-red-700">Could not load this GRN. Check permissions or try again.</p>
+            )}
+            {grnDetail.data && (
+              <div className="mt-6 space-y-6">
+                <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Supplier</dt>
+                    <dd className="font-medium text-slate-900 dark:text-slate-100">{grnDetail.data.supplier?.name ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Warehouse</dt>
+                    <dd className="font-medium text-slate-900 dark:text-slate-100">{grnDetail.data.warehouse?.name ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Receipt date</dt>
+                    <dd className="font-medium text-slate-900 dark:text-slate-100">{grnDetail.data.grnDate}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Status</dt>
+                    <dd className="capitalize font-medium text-slate-900 dark:text-slate-100">{grnDetail.data.status}</dd>
+                  </div>
+                  {grnDetail.data.purchaseOrderId && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-slate-500 dark:text-slate-400">Purchase order</dt>
+                      <dd className="font-mono text-xs text-slate-800 dark:text-slate-200">{grnDetail.data.purchaseOrderId}</dd>
+                    </div>
+                  )}
+                </dl>
+                <div>
+                  <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200">Lines</h3>
+                  <div className="mt-2 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-slate-950">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium">Product</th>
+                          <th className="px-3 py-2 text-right font-medium">Qty</th>
+                          <th className="px-3 py-2 text-right font-medium">Unit cost</th>
+                          <th className="px-3 py-2 text-left font-medium">Batch</th>
+                          <th className="px-3 py-2 text-left font-medium">Expiry</th>
+                          <th className="px-3 py-2 text-right font-medium">Trade</th>
+                          <th className="px-3 py-2 text-right font-medium">Retail</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(grnDetail.data.lines ?? []).map((line) => (
+                          <tr key={line.id} className="border-t border-slate-100 dark:border-slate-800">
+                            <td className="px-3 py-2 text-slate-800 dark:text-slate-200">
+                              {productLabelById.get(line.productId) ?? (
+                                <span className="font-mono text-xs text-slate-500">{line.productId}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.quantity)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.unitPrice)}</td>
+                            <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{line.batchCode ?? '—'}</td>
+                            <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{line.expiryDate ?? '—'}</td>
+                            <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                              {line.tradePrice != null && line.tradePrice !== '' ? formatAmount(line.tradePrice) : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                              {line.retailPrice != null && line.retailPrice !== '' ? formatAmount(line.retailPrice) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(grnDetail.data.lines ?? []).length === 0 && (
+                      <p className="px-3 py-4 text-center text-slate-500">No lines on this GRN.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(grnDetail.data!.id);
+                        setCopiedGrnId(grnDetail.data!.id);
+                        window.setTimeout(() => setCopiedGrnId((cur) => (cur === grnDetail.data!.id ? null : cur)), 2000);
+                      } catch {
+                        setError('Could not copy GRN id to clipboard');
+                      }
+                    }}
+                  >
+                    {copiedGrnId === grnDetail.data.id ? 'Copied id' : 'Copy GRN id'}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    onClick={() => setViewGrnId(null)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {panelOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
