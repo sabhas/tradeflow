@@ -307,7 +307,6 @@ type ProductSeed = {
   costPrice: string;
   sellingPrice: string;
   retailPrice: string;
-  cutPrice: string;
   expiryTracked: boolean;
   batchTracked: boolean;
   isFridged: boolean;
@@ -327,7 +326,6 @@ const DEMO_PRODUCTS: ProductSeed[] = [
     costPrice: '85.0000',
     sellingPrice: '95.0000',
     retailPrice: '120.0000',
-    cutPrice: '100.0000',
     expiryTracked: true,
     batchTracked: true,
     isFridged: false,
@@ -344,7 +342,6 @@ const DEMO_PRODUCTS: ProductSeed[] = [
     costPrice: '320.0000',
     sellingPrice: '380.0000',
     retailPrice: '450.0000',
-    cutPrice: '400.0000',
     expiryTracked: true,
     batchTracked: true,
     isFridged: false,
@@ -361,7 +358,6 @@ const DEMO_PRODUCTS: ProductSeed[] = [
     costPrice: '18500.0000',
     sellingPrice: '19900.0000',
     retailPrice: '22000.0000',
-    cutPrice: '20500.0000',
     expiryTracked: true,
     batchTracked: true,
     isFridged: true,
@@ -376,7 +372,6 @@ const DEMO_PRODUCTS: ProductSeed[] = [
     costPrice: '850.0000',
     sellingPrice: '980.0000',
     retailPrice: '1200.0000',
-    cutPrice: '1050.0000',
     expiryTracked: false,
     batchTracked: false,
     isFridged: false,
@@ -393,7 +388,6 @@ const DEMO_PRODUCTS: ProductSeed[] = [
     costPrice: '210.0000',
     sellingPrice: '245.0000',
     retailPrice: '290.0000',
-    cutPrice: '260.0000',
     expiryTracked: true,
     batchTracked: true,
     isFridged: false,
@@ -410,7 +404,6 @@ const DEMO_PRODUCTS: ProductSeed[] = [
     costPrice: '175.0000',
     sellingPrice: '195.0000',
     retailPrice: '240.0000',
-    cutPrice: '210.0000',
     expiryTracked: true,
     batchTracked: true,
     isFridged: false,
@@ -878,7 +871,6 @@ async function seed() {
             costPrice: raw.costPrice,
             sellingPrice: raw.sellingPrice,
             retailPrice: raw.retailPrice,
-            cutPrice: raw.cutPrice,
             expiryTracked: raw.expiryTracked,
             batchTracked: raw.batchTracked,
             isFridged: raw.isFridged,

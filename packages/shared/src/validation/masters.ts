@@ -84,7 +84,6 @@ export const createProductSchema = z.object({
   packing: optionalProductStr(128),
   hsCode: optionalProductStr(32),
   retailPrice: decimal.optional(),
-  cutPrice: decimal.optional(),
   purchaseDiscountPct: decimal.optional().nullable(),
   salesDiscountPct: decimal.optional().nullable(),
   purchaseSalesTaxPct: decimal.optional().nullable(),

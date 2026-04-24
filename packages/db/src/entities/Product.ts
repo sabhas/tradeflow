@@ -91,9 +91,6 @@ export class Product extends BaseEntity {
   @Column({ name: 'retail_price', type: 'decimal', precision: 14, scale: 4, default: 0 })
   retailPrice!: string;
 
-  @Column({ name: 'cut_price', type: 'decimal', precision: 14, scale: 4, default: 0 })
-  cutPrice!: string;
-
   @Column({ name: 'purchase_discount_pct', type: 'decimal', precision: 8, scale: 4, nullable: true })
   purchaseDiscountPct?: string;
 

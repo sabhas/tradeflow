@@ -18,7 +18,6 @@ export async function productImportTemplateBuffer(): Promise<Buffer> {
     'costPrice',
     'sellingPrice',
     'retailPrice',
-    'cutPrice',
     'batchTracked',
     'expiryTracked',
     'isActive',
@@ -43,7 +42,6 @@ export async function productImportTemplateBuffer(): Promise<Buffer> {
     '50.00',
     '65.00',
     '70.00',
-    '68.00',
     'false',
     'false',
     'true',
@@ -101,8 +99,8 @@ export async function openingBalanceTemplateBuffer(): Promise<Buffer> {
 
 export function productImportTemplateCsv(): string {
   return [
-    'supplier,category,sku,barcode,name,unit,manufacturerCode,shortName,genericName,packing,hsCode,costPrice,sellingPrice,retailPrice,cutPrice,batchTracked,expiryTracked,isActive,isNarcotic,isFridged,saleType,sroSchedule,sroItemSerial',
-    'Acme Pharma,BEV,SKU-001,,Sample tablets 500mg,EA,MFG-99,SMP Tabs,Paracetamol,"10\'s",3004.90,50.00,65.00,70.00,68.00,false,false,true,false,false,Retail,,',
+    'supplier,category,sku,barcode,name,unit,manufacturerCode,shortName,genericName,packing,hsCode,costPrice,sellingPrice,retailPrice,batchTracked,expiryTracked,isActive,isNarcotic,isFridged,saleType,sroSchedule,sroItemSerial',
+    'Acme Pharma,BEV,SKU-001,,Sample tablets 500mg,EA,MFG-99,SMP Tabs,Paracetamol,"10\'s",3004.90,50.00,65.00,70.00,false,false,true,false,false,Retail,,',
   ].join('\n');
 }
 

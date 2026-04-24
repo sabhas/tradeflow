@@ -28,7 +28,6 @@ interface ProductRow {
   packing?: string | null;
   hsCode?: string | null;
   retailPrice: string;
-  cutPrice: string;
   purchaseDiscountPct?: string | null;
   salesDiscountPct?: string | null;
   purchaseSalesTaxPct?: string | null;
@@ -80,7 +79,6 @@ const emptyProductProfileFields = {
   packing: '',
   hsCode: '',
   retailPrice: '0',
-  cutPrice: '0',
   purchaseDiscountPct: '',
   salesDiscountPct: '',
   purchaseSalesTaxPct: '',
@@ -268,7 +266,6 @@ export function ProductsPage() {
       packing: full.packing || '',
       hsCode: full.hsCode || '',
       retailPrice: full.retailPrice ?? '0',
-      cutPrice: full.cutPrice ?? '0',
       purchaseDiscountPct: full.purchaseDiscountPct || '',
       salesDiscountPct: full.salesDiscountPct || '',
       purchaseSalesTaxPct: full.purchaseSalesTaxPct || '',
@@ -324,7 +321,6 @@ export function ProductsPage() {
         packing: strOrNull(form.packing),
         hsCode: strOrNull(form.hsCode),
         retailPrice: form.retailPrice,
-        cutPrice: form.cutPrice,
         purchaseDiscountPct: decOrNull(form.purchaseDiscountPct),
         salesDiscountPct: decOrNull(form.salesDiscountPct),
         purchaseSalesTaxPct: decOrNull(form.purchaseSalesTaxPct),
@@ -642,8 +638,33 @@ export function ProductsPage() {
               </div>
             </div>
 
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  id="batch"
+                  type="checkbox"
+                  checked={form.batchTracked}
+                  onChange={(e) => setForm((f) => ({ ...f, batchTracked: e.target.checked }))}
+                />
+                <label htmlFor="batch" className="text-sm text-slate-700 dark:text-slate-300">
+                  Batch tracked
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="expiry"
+                  type="checkbox"
+                  checked={form.expiryTracked}
+                  onChange={(e) => setForm((f) => ({ ...f, expiryTracked: e.target.checked }))}
+                />
+                <label htmlFor="expiry" className="text-sm text-slate-700 dark:text-slate-300">
+                  Expiry tracked
+                </label>
+              </div>
+            </div>
+
             <div>
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Pricing & inventory</h3>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Pricing</h3>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Cost price</label>
@@ -669,39 +690,12 @@ export function ProductsPage() {
                     onChange={(e) => setForm((f) => ({ ...f, retailPrice: e.target.value }))}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Cut price</label>
-                  <input
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    value={form.cutPrice}
-                    onChange={(e) => setForm((f) => ({ ...f, cutPrice: e.target.value }))}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="batch"
-                      type="checkbox"
-                      checked={form.batchTracked}
-                      onChange={(e) => setForm((f) => ({ ...f, batchTracked: e.target.checked }))}
-                    />
-                    <label htmlFor="batch" className="text-sm text-slate-700">
-                      Batch tracked
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="expiry"
-                      type="checkbox"
-                      checked={form.expiryTracked}
-                      onChange={(e) => setForm((f) => ({ ...f, expiryTracked: e.target.checked }))}
-                    />
-                    <label htmlFor="expiry" className="text-sm text-slate-700">
-                      Expiry tracked
-                    </label>
-                  </div>
-                </div>
-                <div />
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Inventory</h3>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Min stock</label>
                   <input

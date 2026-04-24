@@ -37,7 +37,6 @@ export const productImportRowSchema = z.object({
   packing: z.string().optional().nullable(),
   hsCode: z.string().optional().nullable(),
   retailPrice: looseDecimal.optional(),
-  cutPrice: looseDecimal.optional(),
   isActive: looseBool,
   isHerbal: looseBool,
   isNarcotic: looseBool,

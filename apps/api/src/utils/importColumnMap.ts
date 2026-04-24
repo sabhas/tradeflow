@@ -28,7 +28,6 @@ const PRODUCT_ALIASES: Record<string, string> = {
   pack: 'packing',
   hscode: 'hsCode',
   retailprice: 'retailPrice',
-  cutprice: 'cutPrice',
   isactive: 'isActive',
   active: 'isActive',
   isherbal: 'isHerbal',

@@ -42,7 +42,6 @@ function serializeProduct(p: Product, prices?: ProductPrice[]) {
     packing: p.packing ?? null,
     hsCode: p.hsCode ?? null,
     retailPrice: p.retailPrice,
-    cutPrice: p.cutPrice,
     purchaseDiscountPct: p.purchaseDiscountPct ?? null,
     salesDiscountPct: p.salesDiscountPct ?? null,
     purchaseSalesTaxPct: p.purchaseSalesTaxPct ?? null,
@@ -251,7 +250,6 @@ export async function createProduct(req: Request, b: CreateProductInput): Promis
       packing: b.packing ?? undefined,
       hsCode: b.hsCode ?? undefined,
       retailPrice: b.retailPrice ?? '0',
-      cutPrice: b.cutPrice ?? '0',
       purchaseDiscountPct: b.purchaseDiscountPct ?? undefined,
       salesDiscountPct: b.salesDiscountPct ?? undefined,
       purchaseSalesTaxPct: b.purchaseSalesTaxPct ?? undefined,
@@ -350,7 +348,6 @@ export async function updateProduct(req: Request, b: UpdateProductInput): Promis
   if (b.packing !== undefined) row.packing = b.packing ?? undefined;
   if (b.hsCode !== undefined) row.hsCode = b.hsCode ?? undefined;
   if (b.retailPrice !== undefined) row.retailPrice = b.retailPrice ?? '0';
-  if (b.cutPrice !== undefined) row.cutPrice = b.cutPrice ?? '0';
   if (b.purchaseDiscountPct !== undefined) row.purchaseDiscountPct = b.purchaseDiscountPct ?? undefined;
   if (b.salesDiscountPct !== undefined) row.salesDiscountPct = b.salesDiscountPct ?? undefined;
   if (b.purchaseSalesTaxPct !== undefined) row.purchaseSalesTaxPct = b.purchaseSalesTaxPct ?? undefined;
