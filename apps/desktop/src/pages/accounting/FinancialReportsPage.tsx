@@ -1,12 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { apiFetch } from '../../api/client';
 import { AccountingSubNav } from '../../components/AccountingSubNav';
 import { ChartCard } from '../../components/charts/ChartCard';
 import { getChartTheme } from '../../components/charts/chartTheme';
 import { downloadXlsx } from '../../lib/downloadXlsx';
 import { printTableAsPdf } from '../../lib/printTable';
+import { formatAmount, parseAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -20,6 +32,14 @@ type ExpenseRow = {
   netExpense: string;
 };
 
+/** Recharts `Tooltip` `formatter` `value` may be `ValueType` (incl. arrays) — collapse to a display string. */
+function formatTooltipValue(value: number | string | ReadonlyArray<number | string> | undefined): string {
+  if (value == null) return formatAmount(0);
+  if (Array.isArray(value)) return value.map((v) => formatAmount(v)).join(', ');
+  // `Array.isArray` does not narrow `ReadonlyArray<>` in all TS versions
+  return formatAmount(value as number | string);
+}
+
 export function FinancialReportsPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
   const canRead = hasPermission(permissions, 'accounting:read');
@@ -32,6 +52,13 @@ export function FinancialReportsPage() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
   const chartTheme = getChartTheme();
+  const reportTooltip = {
+    contentStyle: {
+      backgroundColor: chartTheme.tooltipBg,
+      borderColor: chartTheme.tooltipBorder,
+      borderRadius: 8,
+    },
+  };
 
   const tbParams = useMemo(
     () =>
@@ -88,7 +115,7 @@ export function FinancialReportsPage() {
       `trial-balance-${dateFrom}-${dateTo}.xlsx`,
       'Trial balance',
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      tb.data.data.map((r) => [r.code, r.name, r.type, r.debit, r.credit])
+      tb.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
     );
   };
 
@@ -98,7 +125,7 @@ export function FinancialReportsPage() {
       'Trial balance',
       periodSubtitle,
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      tb.data.data.map((r) => [r.code, r.name, r.type, r.debit, r.credit])
+      tb.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
     );
   };
 
@@ -108,7 +135,7 @@ export function FinancialReportsPage() {
       `profit-loss-${dateFrom}-${dateTo}.xlsx`,
       'Profit and loss',
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      pl.data.data.map((r) => [r.code, r.name, r.type, r.debit, r.credit])
+      pl.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
     );
   };
 
@@ -118,7 +145,7 @@ export function FinancialReportsPage() {
       'Profit and loss',
       periodSubtitle,
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      pl.data.data.map((r) => [r.code, r.name, r.type, r.debit, r.credit])
+      pl.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
     );
   };
 
@@ -128,7 +155,7 @@ export function FinancialReportsPage() {
       `balance-sheet-${asOf}.xlsx`,
       'Balance sheet',
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      bs.data.data.map((r) => [r.code, r.name, r.type, r.debit, r.credit])
+      bs.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
     );
   };
 
@@ -138,7 +165,7 @@ export function FinancialReportsPage() {
       'Balance sheet',
       asOfSubtitle,
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      bs.data.data.map((r) => [r.code, r.name, r.type, r.debit, r.credit])
+      bs.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
     );
   };
 
@@ -148,7 +175,13 @@ export function FinancialReportsPage() {
       `expense-analysis-${dateFrom}-${dateTo}.xlsx`,
       'Expense analysis',
       ['Code', 'Name', 'Debit', 'Credit', 'Net expense'],
-      exp.data.data.map((r) => [r.code, r.name, r.debit, r.credit, r.netExpense])
+      exp.data.data.map((r) => [
+        r.code,
+        r.name,
+        formatAmount(r.debit),
+        formatAmount(r.credit),
+        formatAmount(r.netExpense),
+      ])
     );
   };
 
@@ -158,7 +191,13 @@ export function FinancialReportsPage() {
       'Expense analysis',
       periodSubtitle,
       ['Code', 'Name', 'Debit', 'Credit', 'Net'],
-      exp.data.data.map((r) => [r.code, r.name, r.debit, r.credit, r.netExpense])
+      exp.data.data.map((r) => [
+        r.code,
+        r.name,
+        formatAmount(r.debit),
+        formatAmount(r.credit),
+        formatAmount(r.netExpense),
+      ])
     );
   };
 
@@ -296,85 +335,114 @@ export function FinancialReportsPage() {
         </div>
       )}
 
+      {tab === 'tb' && tb.isPending && <p className="mt-4 text-sm text-slate-500">Loading…</p>}
+      {tab === 'tb' && tb.isError && (
+        <p className="mt-4 text-sm text-red-600">{(tb.error as Error).message}</p>
+      )}
       {tab === 'tb' && tb.data && (
         <div className="mt-4">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Totals — Debit: {tb.data.meta.totalDebit} · Credit: {tb.data.meta.totalCredit}
+            Totals — Debit: {formatAmount(tb.data.meta.totalDebit)} · Credit:{' '}
+            {formatAmount(tb.data.meta.totalCredit)}
           </p>
           <ReportTable rows={tb.data.data} />
         </div>
       )}
 
+      {tab === 'pl' && pl.isPending && <p className="mt-4 text-sm text-slate-500">Loading…</p>}
+      {tab === 'pl' && pl.isError && (
+        <p className="mt-4 text-sm text-red-600">{(pl.error as Error).message}</p>
+      )}
       {tab === 'pl' && pl.data && (
         <div className="mt-4">
           <ChartCard title="Income vs expense" subtitle={periodSubtitle}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={[
-                  { label: 'Income', value: Number(pl.data.meta.incomeNet || 0) },
-                  { label: 'Expense', value: Number(pl.data.meta.expenseNet || 0) },
+                  { label: 'Income', value: parseAmount(pl.data.meta.incomeNet) },
+                  { label: 'Expense', value: parseAmount(pl.data.meta.expenseNet) },
                 ]}
               >
                 <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
                 <XAxis dataKey="label" stroke={chartTheme.axis} />
-                <YAxis stroke={chartTheme.axis} />
-                <Tooltip />
-                <Bar dataKey="value" fill={chartTheme.palette[0]} />
+                <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v)} />
+                <Tooltip {...reportTooltip} formatter={(v) => formatTooltipValue(v)} />
+                <Bar dataKey="value" fill={chartTheme.palette[0]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Income (net): {pl.data.meta.incomeNet} · Expenses (net): {pl.data.meta.expenseNet} · Net:{' '}
-            {pl.data.meta.netProfit}
+            Income (net): {formatAmount(pl.data.meta.incomeNet)} · Expenses (net):{' '}
+            {formatAmount(pl.data.meta.expenseNet)} · Net: {formatAmount(pl.data.meta.netProfit)}
           </p>
           <ReportTable rows={pl.data.data} />
         </div>
       )}
 
+      {tab === 'bs' && bs.isPending && <p className="mt-4 text-sm text-slate-500">Loading…</p>}
+      {tab === 'bs' && bs.isError && (
+        <p className="mt-4 text-sm text-red-600">{(bs.error as Error).message}</p>
+      )}
       {tab === 'bs' && bs.data && (
         <div className="mt-4">
           <ChartCard title="Balance sheet overview" subtitle={asOfSubtitle}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={[
-                  { label: 'Assets', value: Number(bs.data.meta.totalAssets || 0) },
-                  { label: 'Liabilities+Equity', value: Number(bs.data.meta.liabilitiesPlusEquity || 0) },
+                  { label: 'Assets', value: parseAmount(bs.data.meta.totalAssets) },
+                  { label: 'Liabilities+Equity', value: parseAmount(bs.data.meta.liabilitiesPlusEquity) },
                 ]}
               >
                 <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
                 <XAxis dataKey="label" stroke={chartTheme.axis} />
-                <YAxis stroke={chartTheme.axis} />
-                <Tooltip />
-                <Bar dataKey="value" fill={chartTheme.palette[4]} />
+                <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v)} />
+                <Tooltip {...reportTooltip} formatter={(v) => formatTooltipValue(v)} />
+                <Bar dataKey="value" fill={chartTheme.palette[4]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Assets: {bs.data.meta.totalAssets} · Liabilities: {bs.data.meta.totalLiabilities} · Equity:{' '}
-            {bs.data.meta.totalEquity} · L+E: {bs.data.meta.liabilitiesPlusEquity}
+            Assets: {formatAmount(bs.data.meta.totalAssets)} · Liabilities:{' '}
+            {formatAmount(bs.data.meta.totalLiabilities)} · Equity: {formatAmount(bs.data.meta.totalEquity)} · L+E:{' '}
+            {formatAmount(bs.data.meta.liabilitiesPlusEquity)}
           </p>
           <ReportTable rows={bs.data.data} />
         </div>
       )}
 
+      {tab === 'exp' && exp.isPending && <p className="mt-4 text-sm text-slate-500">Loading…</p>}
+      {tab === 'exp' && exp.isError && (
+        <p className="mt-4 text-sm text-red-600">{(exp.error as Error).message}</p>
+      )}
       {tab === 'exp' && exp.data && (
         <div className="mt-4">
           <ChartCard title="Expense account mix" subtitle={periodSubtitle}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={exp.data.data.map((r) => ({ name: r.name, value: Number(r.netExpense || 0) }))}
+                  data={exp.data.data.map((r) => ({
+                    accountId: r.accountId,
+                    name: r.name,
+                    value: parseAmount(r.netExpense),
+                  }))}
                   dataKey="value"
                   nameKey="name"
                   outerRadius={90}
-                />
-                <Tooltip />
+                >
+                  {exp.data.data.map((r, i) => (
+                    <Cell
+                      key={r.accountId}
+                      fill={chartTheme.palette[i % chartTheme.palette.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip {...reportTooltip} formatter={(v) => formatTooltipValue(v)} />
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             Total net expense:{' '}
-            <span className="font-medium tabular-nums">{exp.data.meta.totalNetExpense}</span>
+            <span className="font-medium tabular-nums">{formatAmount(exp.data.meta.totalNetExpense)}</span>
           </p>
           <ExpenseTable rows={exp.data.data} />
         </div>
@@ -391,9 +459,9 @@ function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
           <tr>
             <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Code</th>
             <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Name</th>
-            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Debit</th>
-            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Credit</th>
-            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Net expense</th>
+            <th className="px-4 py-2 text-right font-medium text-slate-700 dark:text-slate-300">Debit</th>
+            <th className="px-4 py-2 text-right font-medium text-slate-700 dark:text-slate-300">Credit</th>
+            <th className="px-4 py-2 text-right font-medium text-slate-700 dark:text-slate-300">Net expense</th>
           </tr>
         </thead>
         <tbody>
@@ -408,9 +476,9 @@ function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
               <tr key={r.accountId} className="border-b border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-2 font-mono">{r.code}</td>
                 <td className="px-4 py-2 text-slate-800 dark:text-slate-100">{r.name}</td>
-                <td className="px-4 py-2 font-mono">{r.debit}</td>
-                <td className="px-4 py-2 font-mono">{r.credit}</td>
-                <td className="px-4 py-2 font-mono">{r.netExpense}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.debit)}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.credit)}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.netExpense)}</td>
               </tr>
             ))
           )}
@@ -429,8 +497,8 @@ function ReportTable({ rows }: { rows: TbRow[] }) {
             <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Code</th>
             <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Name</th>
             <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Type</th>
-            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Debit</th>
-            <th className="px-4 py-2 font-medium text-slate-700 dark:text-slate-300">Credit</th>
+            <th className="px-4 py-2 text-right font-medium text-slate-700 dark:text-slate-300">Debit</th>
+            <th className="px-4 py-2 text-right font-medium text-slate-700 dark:text-slate-300">Credit</th>
           </tr>
         </thead>
         <tbody>
@@ -446,8 +514,8 @@ function ReportTable({ rows }: { rows: TbRow[] }) {
                 <td className="px-4 py-2 font-mono">{r.code}</td>
                 <td className="px-4 py-2 text-slate-800 dark:text-slate-100">{r.name}</td>
                 <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{r.type}</td>
-                <td className="px-4 py-2 font-mono">{r.debit}</td>
-                <td className="px-4 py-2 font-mono">{r.credit}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.debit)}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.credit)}</td>
               </tr>
             ))
           )}
