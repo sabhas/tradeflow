@@ -32,6 +32,19 @@ type ExpenseRow = {
   netExpense: string;
 };
 
+function normalizeTrialBalanceRows(rows: TbRow[]): TbRow[] {
+  return rows.map((row) => {
+    const net = parseAmount(row.debit) - parseAmount(row.credit);
+    if (net > 0) {
+      return { ...row, debit: String(net), credit: '0' };
+    }
+    if (net < 0) {
+      return { ...row, debit: '0', credit: String(Math.abs(net)) };
+    }
+    return { ...row, debit: '0', credit: '0' };
+  });
+}
+
 /** Recharts `Tooltip` `formatter` `value` may be `ValueType` (incl. arrays) — collapse to a display string. */
 function formatTooltipValue(value: number | string | ReadonlyArray<number | string> | undefined): string {
   if (value == null) return formatAmount(0);
@@ -108,6 +121,22 @@ export function FinancialReportsPage() {
 
   const periodSubtitle = `${dateFrom} → ${dateTo}`;
   const asOfSubtitle = `As of ${asOf}`;
+  const trialBalanceRows = useMemo(
+    () => normalizeTrialBalanceRows(tb.data?.data ?? []),
+    [tb.data?.data]
+  );
+  const trialBalanceTotals = useMemo(
+    () =>
+      trialBalanceRows.reduce(
+        (acc, row) => {
+          acc.debit += parseAmount(row.debit);
+          acc.credit += parseAmount(row.credit);
+          return acc;
+        },
+        { debit: 0, credit: 0 }
+      ),
+    [trialBalanceRows]
+  );
 
   const exportTbExcel = async () => {
     if (!tb.data?.data) return;
@@ -115,7 +144,7 @@ export function FinancialReportsPage() {
       `trial-balance-${dateFrom}-${dateTo}.xlsx`,
       'Trial balance',
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      tb.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
+      trialBalanceRows.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
     );
   };
 
@@ -125,7 +154,7 @@ export function FinancialReportsPage() {
       'Trial balance',
       periodSubtitle,
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      tb.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
+      trialBalanceRows.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
     );
   };
 
@@ -342,10 +371,10 @@ export function FinancialReportsPage() {
       {tab === 'tb' && tb.data && (
         <div className="mt-4">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Totals — Debit: {formatAmount(tb.data.meta.totalDebit)} · Credit:{' '}
-            {formatAmount(tb.data.meta.totalCredit)}
+            Totals — Debit: {formatAmount(trialBalanceTotals.debit)} · Credit:{' '}
+            {formatAmount(trialBalanceTotals.credit)}
           </p>
-          <ReportTable rows={tb.data.data} />
+          <ReportTable rows={trialBalanceRows} />
         </div>
       )}
 
