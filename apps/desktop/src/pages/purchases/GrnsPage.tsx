@@ -408,7 +408,7 @@ export function GrnsPage() {
         </div>
       )}
 
-      {error && (
+      {!panelOpen && error && (
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
@@ -596,7 +596,14 @@ export function GrnsPage() {
           <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">New goods receipt</h2>
-              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
+              <button
+                type="button"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                onClick={() => {
+                  setPanelOpen(false);
+                  setError(null);
+                }}
+              >
                 ×
               </button>
             </div>
@@ -605,6 +612,14 @@ export function GrnsPage() {
               <span className="font-medium text-slate-700 dark:text-slate-200">Tip:</span>
               <span>Link from a purchase order to pre-fill lines, or create a standalone receipt for a supplier.</span>
             </div>
+            {error && (
+              <div
+                role="alert"
+                className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+              >
+                {error}
+              </div>
+            )}
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm sm:col-span-2">
@@ -902,6 +917,7 @@ export function GrnsPage() {
                 onClick={() => {
                   setPanelOpen(false);
                   setSearchParams({});
+                  setError(null);
                 }}
               >
                 Cancel
