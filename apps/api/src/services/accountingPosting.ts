@@ -14,6 +14,7 @@ const ACC = {
   TAX: GL_ACCOUNT_CODES.TAX_PAYABLE,
   INVENTORY: GL_ACCOUNT_CODES.INVENTORY,
   AP: GL_ACCOUNT_CODES.AP_TRADE,
+  ACCRUED_PURCHASES: GL_ACCOUNT_CODES.ACCRUED_PURCHASES,
   INPUT_VAT: GL_ACCOUNT_CODES.INPUT_VAT,
   COGS: GL_ACCOUNT_CODES.COGS,
 } as const;
@@ -178,6 +179,7 @@ export async function postSupplierInvoiceJournal(
     inventoryAmount: string;
     taxAmount: string;
     total: string;
+    baseDebitAccountCode?: string;
   }
 ): Promise<JournalEntry> {
   const existing = await manager.findOne(JournalEntry, {
@@ -185,14 +187,14 @@ export async function postSupplierInvoiceJournal(
   });
   if (existing) throw new Error('Supplier invoice already has accounting entry');
 
-  const [invId, vatId, apId] = await Promise.all([
-    accountIdByCode(manager, ACC.INVENTORY),
+  const [baseDebitId, vatId, apId] = await Promise.all([
+    accountIdByCode(manager, params.baseDebitAccountCode ?? ACC.INVENTORY),
     accountIdByCode(manager, ACC.INPUT_VAT),
     accountIdByCode(manager, ACC.AP),
   ]);
 
   const lines: Array<{ accountId: string; debit: string; credit: string }> = [
-    { accountId: invId, debit: params.inventoryAmount, credit: '0.0000' },
+    { accountId: baseDebitId, debit: params.inventoryAmount, credit: '0.0000' },
     { accountId: apId, debit: '0.0000', credit: params.total },
   ];
   if (parseFloat(params.taxAmount) > 0.00005) {
@@ -207,6 +209,58 @@ export async function postSupplierInvoiceJournal(
     status: 'posted',
     sourceType: 'supplier_invoice',
     sourceId: params.supplierInvoiceId,
+    createdBy: params.userId,
+  });
+  await manager.save(entry);
+
+  for (const l of lines) {
+    await manager.save(
+      manager.create(JournalLine, {
+        journalEntryId: entry.id,
+        accountId: l.accountId,
+        debit: l.debit,
+        credit: l.credit,
+      })
+    );
+  }
+
+  return entry;
+}
+
+export async function postGrnJournal(
+  manager: EntityManager,
+  params: {
+    entryDate: string;
+    reference: string;
+    description?: string;
+    userId?: string;
+    grnId: string;
+    total: string;
+  }
+): Promise<JournalEntry> {
+  const existing = await manager.findOne(JournalEntry, {
+    where: { sourceType: 'grn_posting', sourceId: params.grnId },
+  });
+  if (existing) throw new Error('GRN already has accounting entry');
+
+  const [inventoryId, accruedPurchasesId] = await Promise.all([
+    accountIdByCode(manager, ACC.INVENTORY),
+    accountIdByCode(manager, ACC.ACCRUED_PURCHASES),
+  ]);
+
+  const lines = [
+    { accountId: inventoryId, debit: params.total, credit: '0.0000' },
+    { accountId: accruedPurchasesId, debit: '0.0000', credit: params.total },
+  ];
+  assertBalanced(lines);
+
+  const entry = manager.create(JournalEntry, {
+    entryDate: params.entryDate,
+    reference: params.reference,
+    description: params.description,
+    status: 'posted',
+    sourceType: 'grn_posting',
+    sourceId: params.grnId,
     createdBy: params.userId,
   });
   await manager.save(entry);

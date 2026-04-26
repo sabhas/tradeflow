@@ -12,6 +12,8 @@ import {
 } from '../services/inventoryService';
 import { parseDecimalStrict } from '../utils/decimal';
 import { assertDateNotPeriodLocked } from '../services/periodLock';
+import { postGrnJournal } from '../services/accountingPosting';
+import { moneyAdd } from '../utils/money';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
 
@@ -233,6 +235,22 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
             await manager.save(pol);
           }
         }
+      }
+
+      let grnTotal = '0.0000';
+      for (const line of grn.lines ?? []) {
+        const lineAmount = (parseFloat(line.quantity) * parseFloat(line.unitPrice)).toFixed(4);
+        grnTotal = moneyAdd(grnTotal, lineAmount);
+      }
+      if (parseFloat(grnTotal) > 0.00005) {
+        await postGrnJournal(manager, {
+          entryDate: grn.grnDate,
+          reference: `GRN-${grn.id.slice(0, 8)}`,
+          description: `GRN stock posting ${grn.id.slice(0, 8)}`,
+          userId: req.auth?.userId,
+          grnId: grn.id,
+          total: grnTotal,
+        });
       }
 
       grn.status = 'posted';

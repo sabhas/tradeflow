@@ -17,6 +17,7 @@ import { resolveLiquidAccountId } from '../services/companySettings';
 import { runInTransaction, assertProductInScope } from '../services/inventoryService';
 import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { postSupplierInvoiceJournal } from '../services/accountingPosting';
+import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
 import { addDaysIso } from '../services/salesTotals';
 import { parseDecimalStrict } from '../utils/decimal';
 import { moneySub } from '../utils/money';
@@ -402,6 +403,7 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
         inventoryAmount: inventoryDebit,
         taxAmount: totals.taxAmount,
         total: totals.total,
+        baseDebitAccountCode: inv.grnId ? GL_ACCOUNT_CODES.ACCRUED_PURCHASES : GL_ACCOUNT_CODES.INVENTORY,
       });
 
       for (let i = 0; i < (inv.lines?.length ?? 0); i++) {
