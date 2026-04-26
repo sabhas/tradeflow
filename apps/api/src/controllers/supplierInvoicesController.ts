@@ -13,6 +13,7 @@ import {
 import { createSupplierInvoiceSchema, updateSupplierInvoiceSchema } from '@tradeflow/shared';
 import { getPagination } from '../utils/pagination';
 import { computePurchaseDocumentTotals } from '../services/purchaseTotals';
+import { resolveLiquidAccountId } from '../services/companySettings';
 import { runInTransaction, assertProductInScope } from '../services/inventoryService';
 import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { postSupplierInvoiceJournal } from '../services/accountingPosting';
@@ -82,6 +83,7 @@ export async function listSupplierInvoices(req: Request): Promise<ControllerResu
 export async function listOpenSupplierInvoices(req: Request): Promise<ControllerResult> {
   const supplierId = req.query.supplierId as string | undefined;
   const paymentDate = ((req.query.paymentDate as string | undefined) ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const paymentMethod = ((req.query.paymentMethod as string | undefined) ?? 'bank').trim() || 'bank';
   if (!supplierId) {
     throw new HttpError(400, { error: 'supplierId required' });
   }
@@ -140,8 +142,22 @@ export async function listOpenSupplierInvoices(req: Request): Promise<Controller
     [supplierId, supplier.payableAccountId, paymentDate]
   );
   const availableDebitAmount = parseFloat(advRows[0]?.available ?? '0').toFixed(4);
+  const liquidAccountId = await resolveLiquidAccountId(dataSource.manager, paymentMethod);
+  const liquidRows = await dataSource.query(
+    `
+    SELECT COALESCE(SUM(jl.debit::numeric - jl.credit::numeric), 0)::text AS available
+    FROM journal_lines jl
+    INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+    WHERE jl.account_id = $1::uuid
+      AND je.deleted_at IS NULL
+      AND je.status = 'posted'
+      AND je.entry_date <= $2::date
+    `,
+    [liquidAccountId, paymentDate]
+  );
+  const availableLiquidAmount = parseFloat(liquidRows[0]?.available ?? '0').toFixed(4);
 
-  return ok({ data: rows, meta: { availableDebitAmount, asOfDate: paymentDate } });
+  return ok({ data: rows, meta: { availableDebitAmount, availableLiquidAmount, asOfDate: paymentDate } });
 }
 
 export async function getSupplierInvoice(req: Request): Promise<ControllerResult> {

@@ -50,14 +50,14 @@ export function SupplierPaymentsPage() {
   });
 
   const openInvoices = useQuery({
-    queryKey: ['supplier-invoices-open', supplierId, paymentDate],
+    queryKey: ['supplier-invoices-open', supplierId, paymentDate, paymentMethod],
     enabled: !!supplierId && panelOpen,
     queryFn: () =>
       apiFetch<{
         data: OpenInv[];
-        meta?: { availableDebitAmount?: string; asOfDate?: string };
+        meta?: { availableDebitAmount?: string; availableLiquidAmount?: string; asOfDate?: string };
       }>(
-        `/supplier-invoices/open?supplierId=${encodeURIComponent(supplierId)}&paymentDate=${encodeURIComponent(paymentDate)}`
+        `/supplier-invoices/open?supplierId=${encodeURIComponent(supplierId)}&paymentDate=${encodeURIComponent(paymentDate)}&paymentMethod=${encodeURIComponent(paymentMethod)}`
       ).then((r) => ({ invoices: r.data, meta: r.meta })),
   });
 
@@ -76,6 +76,8 @@ export function SupplierPaymentsPage() {
   const payAmt = parseAmount(amount, 'nan');
   const debitAmt = parseAmount(useDebitAmount, 'nan');
   const availableDebit = parseAmount(openInvoices.data?.meta?.availableDebitAmount ?? '0', 'nan');
+  const availableLiquid = parseAmount(openInvoices.data?.meta?.availableLiquidAmount ?? '0', 'nan');
+  const liquidExceeded = payAmt - availableLiquid > 0.01;
   const expectedAllocation = (Number.isFinite(payAmt) ? payAmt : 0) + (Number.isFinite(debitAmt) ? debitAmt : 0);
   const allocationDelta = expectedAllocation - allocatedTotal;
   const allocationMatched =
@@ -95,6 +97,11 @@ export function SupplierPaymentsPage() {
       }
       if (debitAmt - (Number.isFinite(availableDebit) ? availableDebit : 0) > 0.01) {
         throw new Error(`Debit used cannot exceed available balance (${formatAmount(availableDebit)})`);
+      }
+      if (payAmt - (Number.isFinite(availableLiquid) ? availableLiquid : 0) > 0.01) {
+        throw new Error(
+          `Insufficient ${paymentMethod} balance. Available ${formatAmount(availableLiquid)}, required ${formatAmount(payAmt)}`
+        );
       }
       if (toCents(payAmt + debitAmt) !== toCents(allocSum)) {
         throw new Error('Allocations must equal total amount + debit used');
@@ -229,11 +236,23 @@ export function SupplierPaymentsPage() {
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Cash/Bank payment amount</span>
                 <input
-                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  className={`mt-1 w-full rounded-md border bg-white px-3 py-2 text-slate-900 dark:bg-slate-900 dark:text-slate-100 ${
+                    liquidExceeded
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500/70 dark:focus:border-red-400'
+                      : 'border-slate-300 dark:border-slate-600'
+                  }`}
                   value={formatAmountInput(amount)}
                   onChange={(e) => setAmount(normalizeAmountInput(e.target.value))}
                   onBlur={(e) => setAmount(formatAmount(normalizeAmountInput(e.target.value)))}
                 />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Available {paymentMethod} balance: {formatAmount(availableLiquid)}
+                </p>
+                {liquidExceeded && (
+                  <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">
+                    Insufficient {paymentMethod} balance. You need {formatAmount(payAmt - availableLiquid)} more.
+                  </p>
+                )}
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Use supplier debit balance</span>
@@ -327,7 +346,12 @@ export function SupplierPaymentsPage() {
               {canWrite && (
                 <button
                   type="button"
-                  disabled={pay.isPending || !allocationMatched || debitAmt - availableDebit > 0.01}
+                  disabled={
+                    pay.isPending ||
+                    !allocationMatched ||
+                    debitAmt - availableDebit > 0.01 ||
+                    payAmt - availableLiquid > 0.01
+                  }
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   onClick={() => pay.mutate()}
                 >

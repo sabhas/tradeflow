@@ -1,9 +1,10 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { createSupplierPaymentSchema } from '@tradeflow/shared';
-import { Supplier, SupplierPayment, SupplierPaymentAllocation } from '@tradeflow/db';
+import { dataSource, Supplier, SupplierPayment, SupplierPaymentAllocation } from '@tradeflow/db';
 import { getPagination } from '../utils/pagination';
 import { postSupplierPaymentJournal } from '../services/accountingPosting';
+import { resolveLiquidAccountId } from '../services/companySettings';
 import { validateSupplierPaymentAllocations } from '../services/supplierPayables';
 import { runInTransaction } from '../services/inventoryService';
 import { assertDateNotPeriodLocked } from '../services/periodLock';
@@ -62,6 +63,23 @@ async function getAvailableSupplierDebitAmount(supplierId: string, paymentDate: 
     )::text AS available
     `,
     [supplierId, supplier.payableAccountId, paymentDate]
+  );
+  return parseFloat(rows[0]?.available ?? '0');
+}
+
+async function getAvailableLiquidBalance(paymentMethod: string, paymentDate: string): Promise<number> {
+  const liquidAccountId = await resolveLiquidAccountId(dataSource.manager, paymentMethod);
+  const rows = await SupplierPayment.getRepository().query(
+    `
+    SELECT COALESCE(SUM(jl.debit::numeric - jl.credit::numeric), 0)::text AS available
+    FROM journal_lines jl
+    INNER JOIN journal_entries je ON je.id = jl.journal_entry_id
+    WHERE jl.account_id = $1::uuid
+      AND je.deleted_at IS NULL
+      AND je.status = 'posted'
+      AND je.entry_date <= $2::date
+    `,
+    [liquidAccountId, paymentDate]
   );
   return parseFloat(rows[0]?.available ?? '0');
 }
@@ -133,6 +151,12 @@ export async function createSupplierPayment(
     });
   }
   const paymentDate = body.paymentDate.slice(0, 10);
+  const availableLiquidBalance = await getAvailableLiquidBalance(body.paymentMethod, paymentDate);
+  if (payAmt - availableLiquidBalance > 0.01) {
+    throw new HttpError(400, {
+      error: `Insufficient balance. Available ${availableLiquidBalance.toFixed(4)}, required ${payAmt.toFixed(4)}`,
+    });
+  }
   const availableDebit = await getAvailableSupplierDebitAmount(body.supplierId, paymentDate);
   if (useDebitAmt - availableDebit > 0.01) {
     throw new HttpError(400, { error: `Only ${availableDebit.toFixed(4)} debit balance is available to use` });
