@@ -32,7 +32,6 @@ interface BatchBalanceRow {
   valueAtLayers: string;
   tradePrice?: string;
   retailPrice?: string;
-  layerCount: number;
   oldestReceivedAt?: string | null;
   latestReceivedAt?: string | null;
 }
@@ -234,7 +233,7 @@ export function InventoryStockPage() {
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs uppercase tracking-wide text-slate-500">
-            {viewMode === 'summary' ? 'Total value (layers)' : 'Batch rows'}
+            {viewMode === 'summary' ? 'Total value' : 'Batch rows'}
           </p>
           <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
             {viewMode === 'summary' ? formatAmount(totalValue) : formatAmount(totalBatchRows, 0)}
@@ -253,7 +252,7 @@ export function InventoryStockPage() {
                 <th className="px-4 py-3 text-right font-medium">Trade price</th>
                 <th className="px-4 py-3 text-right font-medium">Retail price</th>
                 <th className="px-4 py-3 text-right font-medium">Quantity</th>
-                <th className="px-4 py-3 text-right font-medium">Value (layers)</th>
+                <th className="px-4 py-3 text-right font-medium">Value</th>
                 <th className="px-4 py-3 text-right font-medium">Value (product cost)</th>
               </tr>
             </thead>
@@ -297,23 +296,22 @@ export function InventoryStockPage() {
                 <th className="px-4 py-3 text-left font-medium">Warehouse</th>
                 <th className="px-4 py-3 text-left font-medium">Batch</th>
                 <th className="px-4 py-3 text-left font-medium">Expiry</th>
-                <th className="px-4 py-3 text-right font-medium">Layers</th>
                 <th className="px-4 py-3 text-right font-medium">Trade price</th>
                 <th className="px-4 py-3 text-right font-medium">Retail price</th>
                 <th className="px-4 py-3 text-right font-medium">Quantity</th>
-                <th className="px-4 py-3 text-right font-medium">Value (layers)</th>
+                <th className="px-4 py-3 text-right font-medium">Value</th>
               </tr>
             </thead>
             <tbody>
               {batchBalances.isLoading ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                     Loading batch rows…
                   </td>
                 </tr>
               ) : (batchBalances.data ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                     No batch rows for selected filters.
                   </td>
                 </tr>
@@ -328,7 +326,6 @@ export function InventoryStockPage() {
                     <td className="px-4 py-2">{`${row.warehouseCode} — ${row.warehouseName}`}</td>
                     <td className="px-4 py-2">{row.batchCode || 'Unspecified'}</td>
                     <td className="px-4 py-2">{row.expiryDate ?? '—'}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{formatAmount(row.layerCount, 0)}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{renderMoney(row.tradePrice)}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{renderMoney(row.retailPrice)}</td>
                     <td className="px-4 py-2 text-right tabular-nums">{renderQuantity(row.quantity)}</td>
