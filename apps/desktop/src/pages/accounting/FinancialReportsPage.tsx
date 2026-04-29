@@ -79,10 +79,15 @@ export function FinancialReportsPage() {
     [dateFrom, dateTo]
   );
   const plParams = tbParams;
+  const reportsQueryBehavior = {
+    // Always refetch on page/tab re-entry so reports do not show stale cached values.
+    refetchOnMount: 'always' as const,
+  };
 
   const tb = useQuery({
     queryKey: ['reports', 'trial-balance', tbParams],
     enabled: canRead && tab === 'tb',
+    ...reportsQueryBehavior,
     queryFn: () =>
       apiFetch<{ data: TbRow[]; meta: Record<string, string> }>(`/reports/trial-balance?${tbParams}`).then(
         (r) => r
@@ -92,6 +97,7 @@ export function FinancialReportsPage() {
   const pl = useQuery({
     queryKey: ['reports', 'profit-loss', plParams],
     enabled: canRead && tab === 'pl',
+    ...reportsQueryBehavior,
     queryFn: () =>
       apiFetch<{ data: TbRow[]; meta: Record<string, string> }>(`/reports/profit-loss?${plParams}`).then(
         (r) => r
@@ -101,6 +107,7 @@ export function FinancialReportsPage() {
   const bs = useQuery({
     queryKey: ['reports', 'balance-sheet', asOf],
     enabled: canRead && tab === 'bs',
+    ...reportsQueryBehavior,
     queryFn: () =>
       apiFetch<{ data: TbRow[]; meta: Record<string, string> }>(
         `/reports/balance-sheet?asOfDate=${encodeURIComponent(asOf)}`
@@ -110,7 +117,7 @@ export function FinancialReportsPage() {
   const exp = useQuery({
     queryKey: ['reports', 'expense-analysis', tbParams],
     enabled: canRead && tab === 'exp',
-    staleTime: 60_000,
+    ...reportsQueryBehavior,
     queryFn: () =>
       apiFetch<{ data: ExpenseRow[]; meta: Record<string, string> }>(
         `/reports/expense-analysis?${tbParams}`
