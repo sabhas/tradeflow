@@ -62,7 +62,7 @@ export function SalesOrdersPage() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertOrderId, setConvertOrderId] = useState<string | null>(null);
   const [invWarehouse, setInvWarehouse] = useState('');
-  const [invPayment, setInvPayment] = useState<'credit' | 'cash' | ''>('');
+  const [invPayment, setInvPayment] = useState<'credit' | 'cash' | ''>('credit');
   const [invLines, setInvLines] = useState<Array<{ salesOrderLineId: string; quantity: string }>>([]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -368,6 +368,7 @@ export function SalesOrdersPage() {
                       className="ml-3 text-green-700 hover:underline"
                       onClick={() => {
                         setConvertOrderId(r.id);
+                        setInvPayment('credit');
                         setConvertOpen(true);
                         setError(null);
                       }}

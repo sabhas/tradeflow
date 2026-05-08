@@ -57,7 +57,7 @@ export function InvoicesPage() {
   const [customerId, setCustomerId] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState('');
-  const [paymentType, setPaymentType] = useState<'credit' | 'cash' | ''>('');
+  const [paymentType, setPaymentType] = useState<'credit' | 'cash' | ''>('credit');
   const [warehouseId, setWarehouseId] = useState('');
   const [salespersonId, setSalespersonId] = useState('');
   const [notes, setNotes] = useState('');
@@ -324,7 +324,7 @@ export function InvoicesPage() {
                 setCustomerId('');
                 setInvoiceDate(new Date().toISOString().slice(0, 10));
                 setDueDate('');
-                setPaymentType('');
+                setPaymentType('credit');
                 setWarehouseId('');
                 setNotes('');
                 setHeaderDiscount('0');
