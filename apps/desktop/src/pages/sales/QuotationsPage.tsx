@@ -122,21 +122,18 @@ export function QuotationsPage() {
 
   const customerOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
     ],
     [customers.data]
   );
   const productLineOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
     ],
     [products.data]
   );
   const taxLineOptions = useMemo(
     () => [
-      { value: '', label: 'Default' },
       ...(taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
     ],
     [taxProfiles.data]

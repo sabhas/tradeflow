@@ -132,8 +132,15 @@ export function InvoicesPage() {
   const warehouses = useQuery({
     queryKey: ['warehouses'],
     enabled: canRead && panelOpen,
-    queryFn: () => apiFetchData<Array<{ id: string; name: string }>>('/warehouses'),
+    queryFn: () => apiFetchData<Array<{ id: string; name: string; isDefault?: boolean }>>('/warehouses'),
   });
+
+  useEffect(() => {
+    if (!panelOpen || editingId) return;
+    if (warehouseId || !warehouses.data?.length) return;
+    const defaultWarehouse = warehouses.data.find((w) => w.isDefault);
+    setWarehouseId(defaultWarehouse?.id ?? warehouses.data[0].id);
+  }, [panelOpen, editingId, warehouseId, warehouses.data]);
 
   const taxProfiles = useQuery({
     queryKey: ['tax-profiles'],
@@ -155,42 +162,36 @@ export function InvoicesPage() {
 
   const customerOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
     ],
     [customers.data]
   );
   const warehouseOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
     ],
     [warehouses.data]
   );
   const salespersonOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(salespersons.data ?? []).map((s) => ({ value: s.id, label: s.name })),
     ],
     [salespersons.data]
   );
   const invoiceTemplateOptions = useMemo(
     () => [
-      { value: '', label: 'Default (from settings)' },
       ...(invoiceTemplates.data ?? []).map((t) => ({ value: t.id, label: t.name })),
     ],
     [invoiceTemplates.data]
   );
   const productLineOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
     ],
     [products.data]
   );
   const taxLineOptions = useMemo(
     () => [
-      { value: '', label: 'Default' },
       ...(taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
     ],
     [taxProfiles.data]
@@ -319,6 +320,7 @@ export function InvoicesPage() {
                 setInvoiceDate(new Date().toISOString().slice(0, 10));
                 setDueDate('');
                 setPaymentType('');
+                setWarehouseId('');
                 setNotes('');
                 setHeaderDiscount('0');
                 setSalespersonId('');

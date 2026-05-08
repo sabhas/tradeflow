@@ -3,7 +3,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
-import { formatAmount, parseAmount } from '../../lib/numberFormat';
+import {
+  formatAmount,
+  formatAmountInput,
+  parseAmount,
+} from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -37,7 +41,7 @@ export function ReceiptsPage() {
   const [customerId, setCustomerId] = useState('');
   const [receiptDate, setReceiptDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [reference, setReference] = useState('');
   const [allocInvoiceId, setAllocInvoiceId] = useState<string[]>([]);
   const [allocAmount, setAllocAmount] = useState<Record<string, string>>({});
@@ -68,7 +72,6 @@ export function ReceiptsPage() {
 
   const customerOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
     ],
     [customers.data]
@@ -102,7 +105,7 @@ export function ReceiptsPage() {
       const apply = Math.min(due, left);
       if (apply > 0) {
         ids.push(i.id);
-        nextAmt[i.id] = apply.toFixed(4);
+        nextAmt[i.id] = apply.toFixed(2);
         left -= apply;
       }
     }
@@ -116,6 +119,7 @@ export function ReceiptsPage() {
       if (!customerId) throw new Error('Customer required');
       const totalAmt = parseAmount(amount);
       if (totalAmt <= 0) throw new Error('Amount required');
+      if (!paymentMethod) throw new Error('Payment method required');
       const allocations = allocInvoiceId.map((invoiceId) => ({
         invoiceId,
         amount: allocAmount[invoiceId] || '0',
@@ -123,7 +127,7 @@ export function ReceiptsPage() {
       let sum = 0;
       for (const a of allocations) sum += parseAmount(a.amount);
       if (allocations.length === 0) throw new Error('Select invoices to allocate');
-      if (Math.abs(sum - totalAmt) > 0.0001) throw new Error('Allocation sum must equal receipt amount');
+      if (Math.abs(sum - totalAmt) > 0.009) throw new Error('Allocation sum must equal receipt amount');
 
       await apiFetch('/receipts', {
         method: 'POST',
@@ -191,16 +195,24 @@ export function ReceiptsPage() {
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) =>
+                  setAmount(formatAmountInput(e.target.value))
+                }
               />
             </label>
             <label className="block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Method</span>
-              <input
+              <select
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-              />
+              >
+                <option value="">— Select —</option>
+                <option value="cash">Cash</option>
+                <option value="bank">Bank transfer</option>
+                <option value="cheque">Cheque</option>
+                <option value="card">Card</option>
+              </select>
             </label>
             <label className="block text-sm sm:col-span-2">
               <span className="text-slate-600 dark:text-slate-400">Reference</span>
@@ -253,7 +265,12 @@ export function ReceiptsPage() {
                             disabled={!allocInvoiceId.includes(i.id)}
                             value={allocAmount[i.id] ?? ''}
                             onChange={(e) =>
-                              setAllocAmount((prev) => ({ ...prev, [i.id]: e.target.value }))
+                              setAllocAmount((prev) => ({
+                                ...prev,
+                                [i.id]: formatAmountInput(
+                                  e.target.value
+                                ),
+                              }))
                             }
                           />
                         </td>

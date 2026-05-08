@@ -81,7 +81,7 @@ export function SalesOrdersPage() {
   const warehouses = useQuery({
     queryKey: ['warehouses'],
     enabled: canRead && (panelOpen || convertOpen),
-    queryFn: () => apiFetchData<Array<{ id: string; name: string }>>('/warehouses'),
+    queryFn: () => apiFetchData<Array<{ id: string; name: string; isDefault?: boolean }>>('/warehouses'),
   });
 
   const detail = useQuery({
@@ -142,6 +142,20 @@ export function SalesOrdersPage() {
     );
   }, [convertDetail.data, convertOpen]);
 
+  useEffect(() => {
+    if (!panelOpen || editingId) return;
+    if (warehouseId || !warehouses.data?.length) return;
+    const defaultWarehouse = warehouses.data.find((w) => w.isDefault);
+    setWarehouseId(defaultWarehouse?.id ?? warehouses.data[0].id);
+  }, [panelOpen, editingId, warehouseId, warehouses.data]);
+
+  useEffect(() => {
+    if (!convertOpen) return;
+    if (invWarehouse || !warehouses.data?.length) return;
+    const defaultWarehouse = warehouses.data.find((w) => w.isDefault);
+    setInvWarehouse(defaultWarehouse?.id ?? warehouses.data[0].id);
+  }, [convertOpen, invWarehouse, warehouses.data]);
+
   const customers = useQuery({
     queryKey: ['customers', 'sales-dd'],
     enabled: canRead && panelOpen,
@@ -168,35 +182,30 @@ export function SalesOrdersPage() {
 
   const customerOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
     ],
     [customers.data]
   );
   const warehouseOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(warehouses.data ?? []).map((w) => ({ value: w.id, label: w.name })),
     ],
     [warehouses.data]
   );
   const salespersonOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(salespersons.data ?? []).map((s) => ({ value: s.id, label: s.name })),
     ],
     [salespersons.data]
   );
   const productLineOptions = useMemo(
     () => [
-      { value: '', label: '—' },
       ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
     ],
     [products.data]
   );
   const taxLineOptions = useMemo(
     () => [
-      { value: '', label: 'Default' },
       ...(taxProfiles.data ?? []).map((t) => ({ value: t.id, label: t.name })),
     ],
     [taxProfiles.data]

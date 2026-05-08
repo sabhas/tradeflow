@@ -74,7 +74,6 @@ export function SalesReportsPage() {
 
   const customerOptions = useMemo(
     () => [
-      { value: '', label: '— Select —' },
       ...(customers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
     ],
     [customers.data]
