@@ -3,7 +3,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
-import { formatAmount } from '../../lib/numberFormat';
+import {
+  formatAmount,
+  formatAmountInput,
+} from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 
@@ -54,6 +57,8 @@ export function QuotationsPage() {
   const [headerDiscount, setHeaderDiscount] = useState('0');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
+  const formatMoneyInput = (value: string) => formatAmountInput(value);
+  const formatQtyInput = (value: string) => formatAmountInput(value);
 
   const list = useQuery({
     queryKey: ['quotations'],
@@ -337,7 +342,7 @@ export function QuotationsPage() {
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={headerDiscount}
-                  onChange={(e) => setHeaderDiscount(e.target.value)}
+                  onChange={(e) => setHeaderDiscount(formatMoneyInput(e.target.value))}
                 />
               </label>
             </div>
@@ -401,7 +406,7 @@ export function QuotationsPage() {
                         onChange={(e) =>
                           setLines((prev) => {
                             const n = [...prev];
-                            n[idx] = { ...n[idx], quantity: e.target.value };
+                            n[idx] = { ...n[idx], quantity: formatQtyInput(e.target.value) };
                             return n;
                           })
                         }
@@ -415,7 +420,7 @@ export function QuotationsPage() {
                         onChange={(e) =>
                           setLines((prev) => {
                             const n = [...prev];
-                            n[idx] = { ...n[idx], unitPrice: e.target.value };
+                            n[idx] = { ...n[idx], unitPrice: formatMoneyInput(e.target.value) };
                             return n;
                           })
                         }
@@ -429,7 +434,10 @@ export function QuotationsPage() {
                         onChange={(e) =>
                           setLines((prev) => {
                             const n = [...prev];
-                            n[idx] = { ...n[idx], discountAmount: e.target.value };
+                            n[idx] = {
+                              ...n[idx],
+                              discountAmount: formatMoneyInput(e.target.value),
+                            };
                             return n;
                           })
                         }

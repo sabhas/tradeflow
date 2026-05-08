@@ -46,6 +46,7 @@ export function ReceiptsPage() {
   const [allocInvoiceId, setAllocInvoiceId] = useState<string[]>([]);
   const [allocAmount, setAllocAmount] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const formatMoneyInput = (value: string) => formatAmountInput(value);
 
   const customers = useQuery({
     queryKey: ['customers', 'sales-dd'],
@@ -195,9 +196,7 @@ export function ReceiptsPage() {
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                 value={amount}
-                onChange={(e) =>
-                  setAmount(formatAmountInput(e.target.value))
-                }
+                onChange={(e) => setAmount(formatMoneyInput(e.target.value))}
               />
             </label>
             <label className="block text-sm">
@@ -267,9 +266,7 @@ export function ReceiptsPage() {
                             onChange={(e) =>
                               setAllocAmount((prev) => ({
                                 ...prev,
-                                [i.id]: formatAmountInput(
-                                  e.target.value
-                                ),
+                                [i.id]: formatMoneyInput(e.target.value),
                               }))
                             }
                           />
