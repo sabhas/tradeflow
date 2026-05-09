@@ -6,6 +6,7 @@ import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { formatAmount, formatAmountInput, normalizeAmountInput, parseAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface OpenInv {
   id: string;
@@ -23,6 +24,7 @@ export function SupplierPaymentsPage() {
   const canRead = hasPermission(permissions, 'purchases.payments:read');
   const canWrite = hasPermission(permissions, 'purchases.payments:write');
   const qc = useQueryClient();
+  const { formatMoney, formatMoneyInput, normalizeMoneyInput } = useMoneyFormat();
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [supplierId, setSupplierId] = useState('');
@@ -96,11 +98,11 @@ export function SupplierPaymentsPage() {
         throw new Error('Enter valid numeric amounts');
       }
       if (debitAmt - (Number.isFinite(availableDebit) ? availableDebit : 0) > 0.01) {
-        throw new Error(`Debit used cannot exceed available balance (${formatAmount(availableDebit)})`);
+        throw new Error(`Debit used cannot exceed available balance (${formatMoney(availableDebit)})`);
       }
       if (payAmt - (Number.isFinite(availableLiquid) ? availableLiquid : 0) > 0.01) {
         throw new Error(
-          `Insufficient ${paymentMethod} balance. Available ${formatAmount(availableLiquid)}, required ${formatAmount(payAmt)}`
+          `Insufficient ${paymentMethod} balance. Available ${formatMoney(availableLiquid)}, required ${formatMoney(payAmt)}`
         );
       }
       if (toCents(payAmt + debitAmt) !== toCents(allocSum)) {
@@ -175,7 +177,7 @@ export function SupplierPaymentsPage() {
               <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-800/50">
                 <td className="px-4 py-3">{r.paymentDate}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.amount)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(r.amount)}</td>
               </tr>
             ))}
           </tbody>
@@ -241,16 +243,16 @@ export function SupplierPaymentsPage() {
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500/70 dark:focus:border-red-400'
                       : 'border-slate-300 dark:border-slate-600'
                   }`}
-                  value={formatAmountInput(amount)}
-                  onChange={(e) => setAmount(normalizeAmountInput(e.target.value))}
-                  onBlur={(e) => setAmount(formatAmount(normalizeAmountInput(e.target.value)))}
+                  value={formatMoneyInput(amount)}
+                  onChange={(e) => setAmount(normalizeMoneyInput(e.target.value))}
+                  onBlur={(e) => setAmount(formatMoney(normalizeMoneyInput(e.target.value)))}
                 />
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Available {paymentMethod} balance: {formatAmount(availableLiquid)}
+                  Available {paymentMethod} balance: {formatMoney(availableLiquid)}
                 </p>
                 {liquidExceeded && (
                   <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">
-                    Insufficient {paymentMethod} balance. You need {formatAmount(payAmt - availableLiquid)} more.
+                    Insufficient {paymentMethod} balance. You need {formatMoney(payAmt - availableLiquid)} more.
                   </p>
                 )}
               </label>
@@ -259,13 +261,13 @@ export function SupplierPaymentsPage() {
                 <div className="mt-1 flex gap-2">
                   <input
                     className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                    value={formatAmountInput(useDebitAmount)}
-                    onChange={(e) => setUseDebitAmount(normalizeAmountInput(e.target.value))}
-                    onBlur={(e) => setUseDebitAmount(formatAmount(normalizeAmountInput(e.target.value)))}
+                    value={formatMoneyInput(useDebitAmount)}
+                    onChange={(e) => setUseDebitAmount(normalizeMoneyInput(e.target.value))}
+                    onBlur={(e) => setUseDebitAmount(formatMoney(normalizeMoneyInput(e.target.value)))}
                   />
                 </div>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Available debit: {formatAmount(availableDebit)}
+                  Available debit: {formatMoney(availableDebit)}
                 </p>
               </label>
               <label className="block text-sm sm:col-span-2">
@@ -281,20 +283,20 @@ export function SupplierPaymentsPage() {
             <div className="mt-4 grid gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800/40 sm:grid-cols-4">
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">Allocated</p>
-                <p className="tabular-nums font-semibold text-slate-800 dark:text-slate-100">{formatAmount(allocatedTotal)}</p>
+                <p className="tabular-nums font-semibold text-slate-800 dark:text-slate-100">{formatMoney(allocatedTotal)}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">Cash + Bank</p>
-                <p className="tabular-nums font-semibold text-slate-800 dark:text-slate-100">{formatAmount(payAmt || 0)}</p>
+                <p className="tabular-nums font-semibold text-slate-800 dark:text-slate-100">{formatMoney(payAmt || 0)}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">Debit Used</p>
-                <p className="tabular-nums font-semibold text-slate-800 dark:text-slate-100">{formatAmount(debitAmt || 0)}</p>
+                <p className="tabular-nums font-semibold text-slate-800 dark:text-slate-100">{formatMoney(debitAmt || 0)}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">Difference</p>
                 <p className={`tabular-nums font-semibold ${Math.abs(allocationDelta) <= 0.01 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
-                  {formatAmount(allocationDelta)}
+                  {formatMoney(allocationDelta)}
                 </p>
               </div>
             </div>
@@ -308,14 +310,14 @@ export function SupplierPaymentsPage() {
                     <span className="font-mono text-xs text-slate-600 dark:text-slate-300">{inv.invoiceNumber}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">due {inv.dueDate}</span>
                     <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                      open {formatAmount(inv.openAmount)}
+                      open {formatMoney(inv.openAmount)}
                     </span>
                     <input
                       className="w-32 rounded border border-slate-300 bg-white px-2 py-1 text-right text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       placeholder="allocate"
-                      value={formatAmountInput(row?.amount ?? '')}
+                      value={formatMoneyInput(row?.amount ?? '')}
                       onChange={(e) => {
-                        const v = normalizeAmountInput(e.target.value);
+                        const v = normalizeMoneyInput(e.target.value);
                         setAllocations((prev) => {
                           const rest = prev.filter((a) => a.supplierInvoiceId !== inv.id);
                           if (!v) return rest;
@@ -323,11 +325,11 @@ export function SupplierPaymentsPage() {
                         });
                       }}
                       onBlur={(e) => {
-                        const v = normalizeAmountInput(e.target.value);
+                        const v = normalizeMoneyInput(e.target.value);
                         setAllocations((prev) => {
                           const rest = prev.filter((a) => a.supplierInvoiceId !== inv.id);
                           if (!v) return rest;
-                          return [...rest, { supplierInvoiceId: inv.id, amount: formatAmount(v) }];
+                          return [...rest, { supplierInvoiceId: inv.id, amount: formatMoney(v) }];
                         });
                       }}
                     />

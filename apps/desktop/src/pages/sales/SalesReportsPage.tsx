@@ -6,9 +6,9 @@ import { ChartCard } from '../../components/charts/ChartCard';
 import { getChartTheme } from '../../components/charts/chartTheme';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
-import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface CustomerOpt {
   id: string;
@@ -28,6 +28,7 @@ export function SalesReportsPage() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
   const chartTheme = getChartTheme();
+  const { formatMoney } = useMoneyFormat();
 
   const customers = useQuery({
     queryKey: ['customers', 'sales-dd'],
@@ -158,8 +159,8 @@ export function SalesReportsPage() {
           {statement.data && (
             <div className="mt-6">
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Opening: <span className="font-medium tabular-nums">{formatAmount(statement.data.openingBalance)}</span> · Closing:{' '}
-                <span className="font-medium tabular-nums">{formatAmount(statement.data.closingBalance)}</span>
+                Opening: <span className="font-medium tabular-nums">{formatMoney(statement.data.openingBalance)}</span> · Closing:{' '}
+                <span className="font-medium tabular-nums">{formatMoney(statement.data.closingBalance)}</span>
               </p>
               <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 dark:bg-slate-950">
                 <table className="min-w-full text-sm">
@@ -179,9 +180,9 @@ export function SalesReportsPage() {
                         <td className="px-3 py-2">{row.date}</td>
                         <td className="px-3 py-2 capitalize">{row.kind}</td>
                         <td className="px-3 py-2">{row.ref}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(row.debit)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(row.credit)}</td>
-                        <td className="px-3 py-2 text-right font-medium tabular-nums">{formatAmount(row.balance)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatMoney(row.debit)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatMoney(row.credit)}</td>
+                        <td className="px-3 py-2 text-right font-medium tabular-nums">{formatMoney(row.balance)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -231,12 +232,12 @@ export function SalesReportsPage() {
                 {(aging.data?.data ?? []).map((r) => (
                   <tr key={r.customerId} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="px-3 py-2">{r.customerName}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.totalOpen)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.current)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d1_30)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d31_60)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d61_90)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.buckets.d90p)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.totalOpen)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.buckets.current)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.buckets.d1_30)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.buckets.d31_60)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.buckets.d61_90)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.buckets.d90p)}</td>
                   </tr>
                 ))}
               </tbody>

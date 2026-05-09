@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   Bar,
   BarChart,
@@ -18,9 +18,10 @@ import { ChartCard } from '../../components/charts/ChartCard';
 import { getChartTheme } from '../../components/charts/chartTheme';
 import { downloadXlsx } from '../../lib/downloadXlsx';
 import { printTableAsPdf } from '../../lib/printTable';
-import { formatAmount, parseAmount } from '../../lib/numberFormat';
-import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
+import { hasPermission } from '../../lib/permissions';
+import { parseAmount } from '../../lib/numberFormat';
 
 type TbRow = { accountId: string; code: string; name: string; type: string; debit: string; credit: string };
 type ExpenseRow = {
@@ -45,14 +46,6 @@ function normalizeTrialBalanceRows(rows: TbRow[]): TbRow[] {
   });
 }
 
-/** Recharts `Tooltip` `formatter` `value` may be `ValueType` (incl. arrays) — collapse to a display string. */
-function formatTooltipValue(value: number | string | ReadonlyArray<number | string> | undefined): string {
-  if (value == null) return formatAmount(0);
-  if (Array.isArray(value)) return value.map((v) => formatAmount(v)).join(', ');
-  // `Array.isArray` does not narrow `ReadonlyArray<>` in all TS versions
-  return formatAmount(value as number | string);
-}
-
 export function FinancialReportsPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
   const canRead = hasPermission(permissions, 'accounting:read');
@@ -65,6 +58,15 @@ export function FinancialReportsPage() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
   const chartTheme = getChartTheme();
+  const { formatMoney } = useMoneyFormat();
+  const formatTooltipValue = useCallback(
+    (value: number | string | ReadonlyArray<number | string> | undefined): string => {
+      if (value == null) return formatMoney(0);
+      if (Array.isArray(value)) return value.map((v) => formatMoney(v)).join(', ');
+      return formatMoney(value as number | string);
+    },
+    [formatMoney]
+  );
   const reportTooltip = {
     contentStyle: {
       backgroundColor: chartTheme.tooltipBg,
@@ -151,7 +153,7 @@ export function FinancialReportsPage() {
       `trial-balance-${dateFrom}-${dateTo}.xlsx`,
       'Trial balance',
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      trialBalanceRows.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
+      trialBalanceRows.map((r) => [r.code, r.name, r.type, formatMoney(r.debit), formatMoney(r.credit)])
     );
   };
 
@@ -161,7 +163,7 @@ export function FinancialReportsPage() {
       'Trial balance',
       periodSubtitle,
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      trialBalanceRows.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
+      trialBalanceRows.map((r) => [r.code, r.name, r.type, formatMoney(r.debit), formatMoney(r.credit)])
     );
   };
 
@@ -171,7 +173,7 @@ export function FinancialReportsPage() {
       `profit-loss-${dateFrom}-${dateTo}.xlsx`,
       'Profit and loss',
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      pl.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
+      pl.data.data.map((r) => [r.code, r.name, r.type, formatMoney(r.debit), formatMoney(r.credit)])
     );
   };
 
@@ -181,7 +183,7 @@ export function FinancialReportsPage() {
       'Profit and loss',
       periodSubtitle,
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      pl.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
+      pl.data.data.map((r) => [r.code, r.name, r.type, formatMoney(r.debit), formatMoney(r.credit)])
     );
   };
 
@@ -191,7 +193,7 @@ export function FinancialReportsPage() {
       `balance-sheet-${asOf}.xlsx`,
       'Balance sheet',
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      bs.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
+      bs.data.data.map((r) => [r.code, r.name, r.type, formatMoney(r.debit), formatMoney(r.credit)])
     );
   };
 
@@ -201,7 +203,7 @@ export function FinancialReportsPage() {
       'Balance sheet',
       asOfSubtitle,
       ['Code', 'Name', 'Type', 'Debit', 'Credit'],
-      bs.data.data.map((r) => [r.code, r.name, r.type, formatAmount(r.debit), formatAmount(r.credit)])
+      bs.data.data.map((r) => [r.code, r.name, r.type, formatMoney(r.debit), formatMoney(r.credit)])
     );
   };
 
@@ -214,9 +216,9 @@ export function FinancialReportsPage() {
       exp.data.data.map((r) => [
         r.code,
         r.name,
-        formatAmount(r.debit),
-        formatAmount(r.credit),
-        formatAmount(r.netExpense),
+        formatMoney(r.debit),
+        formatMoney(r.credit),
+        formatMoney(r.netExpense),
       ])
     );
   };
@@ -230,9 +232,9 @@ export function FinancialReportsPage() {
       exp.data.data.map((r) => [
         r.code,
         r.name,
-        formatAmount(r.debit),
-        formatAmount(r.credit),
-        formatAmount(r.netExpense),
+        formatMoney(r.debit),
+        formatMoney(r.credit),
+        formatMoney(r.netExpense),
       ])
     );
   };
@@ -378,8 +380,8 @@ export function FinancialReportsPage() {
       {tab === 'tb' && tb.data && (
         <div className="mt-4">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Totals — Debit: {formatAmount(trialBalanceTotals.debit)} · Credit:{' '}
-            {formatAmount(trialBalanceTotals.credit)}
+            Totals — Debit: {formatMoney(trialBalanceTotals.debit)} · Credit:{' '}
+            {formatMoney(trialBalanceTotals.credit)}
           </p>
           <ReportTable rows={trialBalanceRows} />
         </div>
@@ -401,15 +403,15 @@ export function FinancialReportsPage() {
               >
                 <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
                 <XAxis dataKey="label" stroke={chartTheme.axis} />
-                <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v)} />
+                <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatMoney(v)} />
                 <Tooltip {...reportTooltip} formatter={(v) => formatTooltipValue(v)} />
                 <Bar dataKey="value" fill={chartTheme.palette[0]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Income (net): {formatAmount(pl.data.meta.incomeNet)} · Expenses (net):{' '}
-            {formatAmount(pl.data.meta.expenseNet)} · Net: {formatAmount(pl.data.meta.netProfit)}
+            Income (net): {formatMoney(pl.data.meta.incomeNet)} · Expenses (net):{' '}
+            {formatMoney(pl.data.meta.expenseNet)} · Net: {formatMoney(pl.data.meta.netProfit)}
           </p>
           <ReportTable rows={pl.data.data} />
         </div>
@@ -431,16 +433,16 @@ export function FinancialReportsPage() {
               >
                 <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
                 <XAxis dataKey="label" stroke={chartTheme.axis} />
-                <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v)} />
+                <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatMoney(v)} />
                 <Tooltip {...reportTooltip} formatter={(v) => formatTooltipValue(v)} />
                 <Bar dataKey="value" fill={chartTheme.palette[4]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Assets: {formatAmount(bs.data.meta.totalAssets)} · Liabilities:{' '}
-            {formatAmount(bs.data.meta.totalLiabilities)} · Equity: {formatAmount(bs.data.meta.totalEquity)} · L+E:{' '}
-            {formatAmount(bs.data.meta.liabilitiesPlusEquity)}
+            Assets: {formatMoney(bs.data.meta.totalAssets)} · Liabilities:{' '}
+            {formatMoney(bs.data.meta.totalLiabilities)} · Equity: {formatMoney(bs.data.meta.totalEquity)} · L+E:{' '}
+            {formatMoney(bs.data.meta.liabilitiesPlusEquity)}
           </p>
           <ReportTable rows={bs.data.data} />
         </div>
@@ -478,7 +480,7 @@ export function FinancialReportsPage() {
           </ChartCard>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             Total net expense:{' '}
-            <span className="font-medium tabular-nums">{formatAmount(exp.data.meta.totalNetExpense)}</span>
+            <span className="font-medium tabular-nums">{formatMoney(exp.data.meta.totalNetExpense)}</span>
           </p>
           <ExpenseTable rows={exp.data.data} />
         </div>
@@ -488,6 +490,7 @@ export function FinancialReportsPage() {
 }
 
 function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
+  const { formatMoney } = useMoneyFormat();
   return (
     <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
       <table className="min-w-full text-left text-sm">
@@ -512,9 +515,9 @@ function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
               <tr key={r.accountId} className="border-b border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-2 font-mono">{r.code}</td>
                 <td className="px-4 py-2 text-slate-800 dark:text-slate-100">{r.name}</td>
-                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.debit)}</td>
-                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.credit)}</td>
-                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.netExpense)}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.debit)}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.credit)}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.netExpense)}</td>
               </tr>
             ))
           )}
@@ -525,6 +528,7 @@ function ExpenseTable({ rows }: { rows: ExpenseRow[] }) {
 }
 
 function ReportTable({ rows }: { rows: TbRow[] }) {
+  const { formatMoney } = useMoneyFormat();
   return (
     <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
       <table className="min-w-full text-left text-sm">
@@ -550,8 +554,8 @@ function ReportTable({ rows }: { rows: TbRow[] }) {
                 <td className="px-4 py-2 font-mono">{r.code}</td>
                 <td className="px-4 py-2 text-slate-800 dark:text-slate-100">{r.name}</td>
                 <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{r.type}</td>
-                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.debit)}</td>
-                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatAmount(r.credit)}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.debit)}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums">{formatMoney(r.credit)}</td>
               </tr>
             ))
           )}

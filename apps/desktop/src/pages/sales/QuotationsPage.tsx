@@ -3,12 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
-import {
-  formatAmount,
-  formatAmountInput,
-} from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface CustomerOpt {
   id: string;
@@ -47,6 +44,7 @@ export function QuotationsPage() {
   const canRead = hasPermission(permissions, 'sales:read');
   const canWrite = hasPermission(permissions, 'sales:create') || hasPermission(permissions, 'sales:update');
   const qc = useQueryClient();
+  const { formatMoney, formatMoneyInput } = useMoneyFormat();
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -57,7 +55,6 @@ export function QuotationsPage() {
   const [headerDiscount, setHeaderDiscount] = useState('0');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
-  const formatMoneyInput = (value: string) => formatAmountInput(value);
 
   const list = useQuery({
     queryKey: ['quotations'],
@@ -241,7 +238,7 @@ export function QuotationsPage() {
               <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.quotationDate}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(r.total)}</td>
                 {canWrite && (
                   <td className="px-4 py-3 text-right">
                     <button

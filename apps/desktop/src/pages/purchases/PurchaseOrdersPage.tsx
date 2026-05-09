@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
-import { formatAmount, formatAmountInput, normalizeAmountInput } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface SupplierOpt {
   id: string;
@@ -48,6 +48,7 @@ export function PurchaseOrdersPage() {
   const canWrite = hasPermission(permissions, 'purchases.orders:write');
   const canPost = hasPermission(permissions, 'purchases.orders:post');
   const qc = useQueryClient();
+  const { formatMoney, formatMoneyInput, normalizeMoneyInput } = useMoneyFormat();
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -147,14 +148,14 @@ export function PurchaseOrdersPage() {
     setOrderDate(d.orderDate);
     setExpectedDate(d.expectedDate ?? '');
     setNotes(d.notes ?? '');
-    setHeaderDiscount(formatAmount(d.discountAmount));
+    setHeaderDiscount(formatMoney(d.discountAmount));
     setLines(
       (d.lines || []).length
         ? d.lines.map((l) => ({
             productId: l.productId,
             quantity: parseFloat(l.quantity),
-            unitPrice: formatAmount(l.unitPrice),
-            discountAmount: formatAmount(l.discountAmount),
+            unitPrice: formatMoney(l.unitPrice),
+            discountAmount: formatMoney(l.discountAmount),
             taxProfileId: l.taxProfileId ?? '',
           }))
         : [emptyLine()]
@@ -298,7 +299,7 @@ export function PurchaseOrdersPage() {
                 <td className="px-4 py-3 tabular-nums">{r.orderDate}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(r.total)}</td>
                 <td className="px-4 py-3 text-right">
                   {canWrite && r.status === 'draft' && (
                     <>
@@ -415,9 +416,9 @@ export function PurchaseOrdersPage() {
                 <span className="text-slate-600 dark:text-slate-400">Header discount</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                  value={formatAmountInput(headerDiscount)}
-                  onChange={(e) => setHeaderDiscount(normalizeAmountInput(e.target.value))}
-                  onBlur={(e) => setHeaderDiscount(formatAmount(normalizeAmountInput(e.target.value)))}
+                  value={formatMoneyInput(headerDiscount)}
+                  onChange={(e) => setHeaderDiscount(normalizeMoneyInput(e.target.value))}
+                  onBlur={(e) => setHeaderDiscount(formatMoney(normalizeMoneyInput(e.target.value)))}
                 />
               </label>
             </div>
@@ -457,7 +458,7 @@ export function PurchaseOrdersPage() {
                           next[idx] = {
                             ...next[idx],
                             productId: pid,
-                            unitPrice: p?.costPrice ? formatAmount(p.costPrice) : next[idx].unitPrice,
+                            unitPrice: p?.costPrice ? formatMoney(p.costPrice) : next[idx].unitPrice,
                           };
                           return next;
                         });
@@ -495,18 +496,18 @@ export function PurchaseOrdersPage() {
                     <span className="text-xs text-slate-500">Cost</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                      value={formatAmountInput(line.unitPrice)}
+                      value={formatMoneyInput(line.unitPrice)}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: normalizeAmountInput(e.target.value) };
+                          n[idx] = { ...n[idx], unitPrice: normalizeMoneyInput(e.target.value) };
                           return n;
                         })
                       }
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: formatAmount(normalizeAmountInput(e.target.value)) };
+                          n[idx] = { ...n[idx], unitPrice: formatMoney(normalizeMoneyInput(e.target.value)) };
                           return n;
                         })
                       }
@@ -516,18 +517,18 @@ export function PurchaseOrdersPage() {
                     <span className="text-xs text-slate-500">Disc.</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                      value={formatAmountInput(line.discountAmount)}
+                      value={formatMoneyInput(line.discountAmount)}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], discountAmount: normalizeAmountInput(e.target.value) };
+                          n[idx] = { ...n[idx], discountAmount: normalizeMoneyInput(e.target.value) };
                           return n;
                         })
                       }
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], discountAmount: formatAmount(normalizeAmountInput(e.target.value)) };
+                          n[idx] = { ...n[idx], discountAmount: formatMoney(normalizeMoneyInput(e.target.value)) };
                           return n;
                         })
                       }

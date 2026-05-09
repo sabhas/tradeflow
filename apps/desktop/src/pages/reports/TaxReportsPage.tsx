@@ -10,6 +10,7 @@ import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { printTableAsPdf } from '../../lib/printTable';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface TaxProfileOpt {
   id: string;
@@ -76,6 +77,7 @@ export function TaxReportsPage() {
   const [dateFrom, setDateFrom] = useState(initialRange.dateFrom);
   const [dateTo, setDateTo] = useState(initialRange.dateTo);
   const [taxProfileId, setTaxProfileId] = useState('');
+  const { formatMoney, roundMoney } = useMoneyFormat();
 
   const [tab, setTab] = useState<'collected' | 'paid' | 'summary'>(() => {
     if (canCollected) return 'collected';
@@ -182,13 +184,13 @@ export function TaxReportsPage() {
       r.customerName,
       `${r.productSku} ${r.productName}`,
       r.quantity,
-      formatAmount(r.unitPrice, 2),
-      formatAmount(r.discountAmount, 2),
-      formatAmount(r.lineNetBeforeTax, 2),
+      formatMoney(r.unitPrice),
+      formatMoney(r.discountAmount),
+      formatMoney(r.lineNetBeforeTax),
       r.taxProfileName ?? '',
       r.taxProfileRate ?? '',
       r.taxProfileIsInclusive ? 'Yes' : 'No',
-      formatAmount(r.taxAmount, 2),
+      formatMoney(r.taxAmount),
     ]);
     await downloadXlsx(`tax-collected-${dateFrom}-${dateTo}.xlsx`, 'Tax collected', cols, rows);
   };
@@ -201,8 +203,8 @@ export function TaxReportsPage() {
       r.invoiceDate,
       r.customerName,
       r.productName,
-      formatAmount(r.lineNetBeforeTax, 2),
-      formatAmount(r.taxAmount, 2),
+      formatMoney(r.lineNetBeforeTax),
+      formatMoney(r.taxAmount),
     ]);
     printTableAsPdf('Tax collected', subtitle, cols, rows);
   };
@@ -230,13 +232,13 @@ export function TaxReportsPage() {
       r.supplierName,
       `${r.productSku} ${r.productName}`,
       r.quantity,
-      formatAmount(r.unitPrice, 2),
-      formatAmount(r.discountAmount,  2),
-      formatAmount(r.lineNetBeforeTax, 2),
+      formatMoney(r.unitPrice),
+      formatMoney(r.discountAmount,  2),
+      formatMoney(r.lineNetBeforeTax),
       r.taxProfileName ?? '',
       r.taxProfileRate ?? '',
       r.taxProfileIsInclusive ? 'Yes' : 'No',
-      formatAmount(r.taxAmount, 2),
+      formatMoney(r.taxAmount),
     ]);
     await downloadXlsx(`tax-paid-${dateFrom}-${dateTo}.xlsx`, 'Tax paid', cols, rows);
   };
@@ -249,8 +251,8 @@ export function TaxReportsPage() {
       r.invoiceDate,
       r.supplierName,
       r.supplierInvoiceNumber,
-      formatAmount(r.lineNetBeforeTax, 2),
-      formatAmount(r.taxAmount, 2),
+      formatMoney(r.lineNetBeforeTax),
+      formatMoney(r.taxAmount),
     ]);
     printTableAsPdf('Tax paid', subtitle, cols, rows);
   };
@@ -260,14 +262,14 @@ export function TaxReportsPage() {
     if (!bp?.length) return;
     const cols = ['Tax profile', 'Rate', 'Inclusive', 'Collected', 'Paid', 'Net'];
     const rows = bp.map((r) => {
-      const net = (parseFloat(r.collected) - parseFloat(r.paid)).toFixed(4);
+      const net = roundMoney(parseFloat(r.collected) - parseFloat(r.paid));
       return [
         r.taxProfileName,
         r.taxProfileRate ?? '',
         r.taxProfileIsInclusive ? 'Yes' : 'No',
-        formatAmount(r.collected, 2),
-        formatAmount(r.paid, 2),
-        formatAmount(net, 2),
+        formatMoney(r.collected),
+        formatMoney(r.paid),
+        formatMoney(net),
       ];
     });
     await downloadXlsx(`tax-summary-${dateFrom}-${dateTo}.xlsx`, 'Tax summary', cols, rows);
@@ -279,9 +281,9 @@ export function TaxReportsPage() {
     const cols = ['Tax profile', 'Collected', 'Paid', 'Net'];
     const rows = bp.map((r) => [
       r.taxProfileName,
-      formatAmount(r.collected, 2),
-      formatAmount(r.paid, 2),
-      formatAmount((parseFloat(r.collected) - parseFloat(r.paid)).toFixed(2), 2),
+      formatMoney(r.collected),
+      formatMoney(r.paid),
+      formatMoney(roundMoney(parseFloat(r.collected) - parseFloat(r.paid))),
     ]);
     printTableAsPdf('Tax summary', subtitle, cols, rows);
   };
@@ -383,7 +385,7 @@ export function TaxReportsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <p className="rounded-md bg-indigo-50 px-3 py-1 text-sm text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-200">
                 Total tax:{' '}
-                <span className="font-medium tabular-nums">{formatAmount(collected.data?.meta.totalTax, 2)}</span>
+                <span className="font-medium tabular-nums">{formatMoney(collected.data?.meta.totalTax)}</span>
               </p>
               <button
                 type="button"
@@ -422,9 +424,9 @@ export function TaxReportsPage() {
                       <td className="px-3 py-2">
                         <span className="text-slate-500">{r.productSku}</span> {r.productName}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.lineNetBeforeTax, 2)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.lineNetBeforeTax)}</td>
                       <td className="px-3 py-2">{r.taxProfileName ?? '—'}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.taxAmount, 2)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.taxAmount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -447,7 +449,7 @@ export function TaxReportsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <p className="rounded-md bg-emerald-50 px-3 py-1 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
                 Total tax:{' '}
-                <span className="font-medium tabular-nums">{formatAmount(paid.data?.meta.totalTax, 2)}</span>
+                <span className="font-medium tabular-nums">{formatMoney(paid.data?.meta.totalTax)}</span>
               </p>
               <button
                 type="button"
@@ -488,9 +490,9 @@ export function TaxReportsPage() {
                       <td className="px-3 py-2">
                         <span className="text-slate-500">{r.productSku}</span> {r.productName}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.lineNetBeforeTax, 2)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.lineNetBeforeTax)}</td>
                       <td className="px-3 py-2">{r.taxProfileName ?? '—'}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.taxAmount, 2)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.taxAmount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -546,11 +548,11 @@ export function TaxReportsPage() {
             </p>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Total collected{' '}
-              <span className="font-medium tabular-nums">{formatAmount(summary.data.meta.totalCollected, 2)}</span>
+              <span className="font-medium tabular-nums">{formatMoney(summary.data.meta.totalCollected)}</span>
               {' · '}
-              Total paid <span className="font-medium tabular-nums">{formatAmount(summary.data.meta.totalPaid, 2)}</span>
+              Total paid <span className="font-medium tabular-nums">{formatMoney(summary.data.meta.totalPaid)}</span>
               {' · '}
-              Net <span className="font-medium tabular-nums">{formatAmount(summary.data.meta.netTax, 2)}</span>
+              Net <span className="font-medium tabular-nums">{formatMoney(summary.data.meta.netTax)}</span>
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -584,15 +586,15 @@ export function TaxReportsPage() {
                 </thead>
                 <tbody>
                   {summary.data.data.byProfile.map((r, i) => {
-                    const net = (parseFloat(r.collected) - parseFloat(r.paid)).toFixed(4);
+                    const net = roundMoney(parseFloat(r.collected) - parseFloat(r.paid));
                     return (
                       <tr key={`${r.taxProfileName}-${i}`} className="border-t border-slate-100 dark:border-slate-800">
                         <td className="px-3 py-2">{r.taxProfileName}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.taxProfileRate ?? '—'}</td>
                         <td className="px-3 py-2">{r.taxProfileIsInclusive ? 'Yes' : 'No'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.collected, 2)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.paid, 2)}</td>
-                        <td className="px-3 py-2 text-right font-medium tabular-nums">{formatAmount(net, 2)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.collected)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.paid)}</td>
+                        <td className="px-3 py-2 text-right font-medium tabular-nums">{formatMoney(net)}</td>
                       </tr>
                     );
                   })}

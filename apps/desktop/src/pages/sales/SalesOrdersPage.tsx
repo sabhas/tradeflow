@@ -4,12 +4,9 @@ import { apiFetch, apiFetchData } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { LineStockInfo } from '../../components/LineStockInfo';
 import { SalesSubNav } from '../../components/SalesSubNav';
-import {
-  formatAmount,
-  formatAmountInput,
-} from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface CustomerOpt {
   id: string;
@@ -58,6 +55,7 @@ export function SalesOrdersPage() {
   const canRead = hasPermission(permissions, 'sales:read');
   const canWrite = hasPermission(permissions, 'sales:create') || hasPermission(permissions, 'sales:update');
   const qc = useQueryClient();
+  const { formatMoney, formatMoneyPlain, formatMoneyInput, normalizeMoneyInput } = useMoneyFormat();
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
@@ -75,7 +73,6 @@ export function SalesOrdersPage() {
   const [headerDiscount, setHeaderDiscount] = useState('0');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
-  const formatMoneyInput = (value: string) => formatAmountInput(value);
 
   const list = useQuery({
     queryKey: ['sales-orders'],
@@ -112,26 +109,36 @@ export function SalesOrdersPage() {
   });
 
   useEffect(() => {
-    if (!detail.data || !editingId) return;
+    if (!panelOpen || !editingId) return;
+    // While the selected order is loading, clear line state so we do not briefly show
+    // stale amounts (e.g. from "New order" or another order) with API precision.
+    if (detail.isLoading) {
+      setLines([emptyLine()]);
+      setHeaderDiscount('0');
+      return;
+    }
+    if (!detail.data) return;
+    if (detail.data.id !== editingId) return;
+
     const d = detail.data;
     setCustomerId(d.customerId);
     setOrderDate(d.orderDate);
     setWarehouseId(d.warehouseId ?? '');
     setSalespersonId(d.salespersonId ?? '');
     setNotes(d.notes ?? '');
-    setHeaderDiscount(d.discountAmount);
+    setHeaderDiscount(formatMoneyPlain(d.discountAmount));
     setLines(
       (d.lines || []).length
         ? d.lines.map((l) => ({
             productId: l.productId,
             quantity: parseFloat(l.quantity),
-            unitPrice: l.unitPrice,
-            discountAmount: l.discountAmount,
+            unitPrice: formatMoneyPlain(l.unitPrice),
+            discountAmount: formatMoneyPlain(l.discountAmount),
             taxProfileId: l.taxProfileId ?? '',
           }))
         : [emptyLine()]
     );
-  }, [detail.data, editingId]);
+  }, [panelOpen, editingId, detail.data, detail.isLoading, formatMoneyPlain]);
 
   useEffect(() => {
     const d = convertDetail.data;
@@ -340,7 +347,7 @@ export function SalesOrdersPage() {
               <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.orderDate}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(r.total)}</td>
                 {canWrite && (
                   <td className="px-4 py-3 text-right">
                     <button
@@ -457,6 +464,7 @@ export function SalesOrdersPage() {
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={headerDiscount}
                   onChange={(e) => setHeaderDiscount(formatMoneyInput(e.target.value))}
+                  onBlur={(e) => setHeaderDiscount(formatMoneyPlain(normalizeMoneyInput(e.target.value)))}
                 />
               </label>
             </div>
@@ -495,7 +503,7 @@ export function SalesOrdersPage() {
                           next[idx] = {
                             ...next[idx],
                             productId: pid,
-                            unitPrice: p ? p.sellingPrice : next[idx].unitPrice,
+                            unitPrice: p ? formatMoneyPlain(p.sellingPrice) : next[idx].unitPrice,
                           };
                           return next;
                         });
@@ -538,6 +546,16 @@ export function SalesOrdersPage() {
                           return n;
                         })
                       }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = {
+                            ...n[idx],
+                            unitPrice: formatMoneyPlain(normalizeMoneyInput(e.target.value)),
+                          };
+                          return n;
+                        })
+                      }
                     />
                   </label>
                   <label className="sm:col-span-2">
@@ -551,6 +569,16 @@ export function SalesOrdersPage() {
                           n[idx] = {
                             ...n[idx],
                             discountAmount: formatMoneyInput(e.target.value),
+                          };
+                          return n;
+                        })
+                      }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = {
+                            ...n[idx],
+                            discountAmount: formatMoneyPlain(normalizeMoneyInput(e.target.value)),
                           };
                           return n;
                         })

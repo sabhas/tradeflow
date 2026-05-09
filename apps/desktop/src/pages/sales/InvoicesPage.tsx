@@ -4,12 +4,9 @@ import { apiFetch, apiFetchData, downloadAuthenticatedFile, openAuthenticatedRou
 import { Combobox } from '../../components/Combobox';
 import { LineStockInfo } from '../../components/LineStockInfo';
 import { SalesSubNav } from '../../components/SalesSubNav';
-import {
-  formatAmount,
-  formatAmountInput,
-} from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface CustomerOpt {
   id: string;
@@ -51,6 +48,7 @@ export function InvoicesPage() {
   const canPost = hasPermission(permissions, 'sales:post');
   const canPickTemplate = hasPermission(permissions, 'settings:read');
   const qc = useQueryClient();
+  const { formatMoney, formatMoneyInput } = useMoneyFormat();
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,7 +64,6 @@ export function InvoicesPage() {
   const [invoiceTemplateId, setInvoiceTemplateId] = useState('');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
-  const formatMoneyInput = (value: string) => formatAmountInput(value);
 
   const list = useQuery({
     queryKey: ['invoices'],
@@ -363,7 +360,7 @@ export function InvoicesPage() {
                 <td className="px-4 py-3">{r.invoiceDate}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
                 <td className="px-4 py-3">{r.paymentType}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(r.total)}</td>
                 <td className="px-4 py-3 text-right">
                   {canWrite && r.status === 'draft' && (
                     <>

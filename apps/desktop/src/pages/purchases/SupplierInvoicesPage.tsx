@@ -6,6 +6,7 @@ import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { formatAmount, formatAmountInput, normalizeAmountInput } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface InvRow {
   id: string;
@@ -67,6 +68,7 @@ export function SupplierInvoicesPage() {
   const canWrite = hasPermission(permissions, 'purchases.supplier_invoices:write');
   const canPost = hasPermission(permissions, 'purchases.supplier_invoices:post');
   const qc = useQueryClient();
+  const { formatMoney, formatMoneyInput, normalizeMoneyInput } = useMoneyFormat();
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -192,15 +194,15 @@ export function SupplierInvoicesPage() {
     setDueDate(d.dueDate);
     setGrnId(d.grnId ?? '');
     setNotes(d.notes ?? '');
-    setHeaderDiscount(formatAmount(d.discountAmount));
+    setHeaderDiscount(formatMoney(d.discountAmount));
     const invLines = d.lines ?? [];
     setLines(
       invLines.length
         ? invLines.map((l) => ({
             productId: l.productId,
             quantity: parseFloat(l.quantity),
-            unitPrice: formatAmount(l.unitPrice),
-            discountAmount: formatAmount(l.discountAmount),
+            unitPrice: formatMoney(l.unitPrice),
+            discountAmount: formatMoney(l.discountAmount),
             taxProfileId: l.taxProfileId ?? '',
             grnLineId: l.grnLineId ?? '',
           }))
@@ -328,7 +330,7 @@ export function SupplierInvoicesPage() {
                 <td className="px-4 py-3 font-mono text-xs">{r.invoiceNumber}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.total)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(r.total)}</td>
                 <td className="px-4 py-3 text-right">
                   <button type="button" className="text-indigo-600 hover:underline" onClick={() => setViewInvoiceId(r.id)}>
                     View
@@ -448,10 +450,10 @@ export function SupplierInvoicesPage() {
                                 <span className="font-mono text-xs text-slate-500">{line.productId}</span>
                               )}
                             </td>
-                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.quantity)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.unitPrice)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.discountAmount)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.taxAmount)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.quantity, 4)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatMoney(line.unitPrice)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatMoney(line.discountAmount)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatMoney(line.taxAmount)}</td>
                             <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
                               {line.taxProfileId ? taxProfileNameById.get(line.taxProfileId) ?? line.taxProfileId : '—'}
                             </td>
@@ -470,19 +472,19 @@ export function SupplierInvoicesPage() {
                 <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950/50 sm:ml-auto sm:max-w-sm">
                   <div className="flex justify-between tabular-nums">
                     <span className="text-slate-600 dark:text-slate-400">Subtotal</span>
-                    <span className="font-medium">{formatAmount(invoiceView.data.subtotal)}</span>
+                    <span className="font-medium">{formatMoney(invoiceView.data.subtotal)}</span>
                   </div>
                   <div className="flex justify-between tabular-nums">
                     <span className="text-slate-600 dark:text-slate-400">Header discount</span>
-                    <span className="font-medium">{formatAmount(invoiceView.data.discountAmount)}</span>
+                    <span className="font-medium">{formatMoney(invoiceView.data.discountAmount)}</span>
                   </div>
                   <div className="flex justify-between tabular-nums">
                     <span className="text-slate-600 dark:text-slate-400">Tax</span>
-                    <span className="font-medium">{formatAmount(invoiceView.data.taxAmount)}</span>
+                    <span className="font-medium">{formatMoney(invoiceView.data.taxAmount)}</span>
                   </div>
                   <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold dark:border-slate-700">
                     <span>Total</span>
-                    <span className="tabular-nums">{formatAmount(invoiceView.data.total)}</span>
+                    <span className="tabular-nums">{formatMoney(invoiceView.data.total)}</span>
                   </div>
                 </div>
                 <div className="flex justify-end">
@@ -591,8 +593,8 @@ export function SupplierInvoicesPage() {
                               gl.map((l) => ({
                                 productId: l.productId,
                                 quantity: parseFloat(l.quantity),
-                                unitPrice: formatAmount(l.unitPrice),
-                                discountAmount: formatAmount('0'),
+                                unitPrice: formatMoney(l.unitPrice),
+                                discountAmount: formatMoney('0'),
                                 taxProfileId: '',
                                 grnLineId: l.id,
                               }))
@@ -611,9 +613,9 @@ export function SupplierInvoicesPage() {
                 <span className="text-slate-600 dark:text-slate-400">Header discount</span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                  value={formatAmountInput(headerDiscount)}
-                  onChange={(e) => setHeaderDiscount(normalizeAmountInput(e.target.value))}
-                  onBlur={(e) => setHeaderDiscount(formatAmount(normalizeAmountInput(e.target.value)))}
+                  value={formatMoneyInput(headerDiscount)}
+                  onChange={(e) => setHeaderDiscount(normalizeMoneyInput(e.target.value))}
+                  onBlur={(e) => setHeaderDiscount(formatMoney(normalizeMoneyInput(e.target.value)))}
                 />
               </label>
             </div>
@@ -687,18 +689,18 @@ export function SupplierInvoicesPage() {
                     <span className="text-xs text-slate-500">Price</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                      value={formatAmountInput(line.unitPrice)}
+                      value={formatMoneyInput(line.unitPrice)}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: normalizeAmountInput(e.target.value) };
+                          n[idx] = { ...n[idx], unitPrice: normalizeMoneyInput(e.target.value) };
                           return n;
                         })
                       }
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: formatAmount(normalizeAmountInput(e.target.value)) };
+                          n[idx] = { ...n[idx], unitPrice: formatMoney(normalizeMoneyInput(e.target.value)) };
                           return n;
                         })
                       }
@@ -708,18 +710,18 @@ export function SupplierInvoicesPage() {
                     <span className="text-xs text-slate-500">Disc.</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                      value={formatAmountInput(line.discountAmount)}
+                      value={formatMoneyInput(line.discountAmount)}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], discountAmount: normalizeAmountInput(e.target.value) };
+                          n[idx] = { ...n[idx], discountAmount: normalizeMoneyInput(e.target.value) };
                           return n;
                         })
                       }
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], discountAmount: formatAmount(normalizeAmountInput(e.target.value)) };
+                          n[idx] = { ...n[idx], discountAmount: formatMoney(normalizeMoneyInput(e.target.value)) };
                           return n;
                         })
                       }

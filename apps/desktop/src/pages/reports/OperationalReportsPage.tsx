@@ -10,6 +10,7 @@ import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { printTableAsPdf } from '../../lib/printTable';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 type DailyRow = { date: string; count: number; totalAmount: string };
 type MovementRow = {
@@ -58,6 +59,7 @@ export function OperationalReportsPage() {
   const [limit, setLimit] = useState(50);
   const [sortBy, setSortBy] = useState<'quantity' | 'value'>('quantity');
   const chartTheme = getChartTheme();
+  const { formatMoney } = useMoneyFormat();
 
   const customers = useQuery({
     queryKey: ['customers', 'report-dd'],
@@ -197,7 +199,7 @@ export function OperationalReportsPage() {
       `daily-sales-${dateFrom}-${dateTo}.xlsx`,
       'Daily sales',
       ['Date', 'Invoice count', 'Total amount'],
-      d.map((r) => [r.date, r.count, formatAmount(r.totalAmount)])
+      d.map((r) => [r.date, r.count, formatMoney(r.totalAmount)])
     );
   };
 
@@ -208,7 +210,7 @@ export function OperationalReportsPage() {
       'Daily sales',
       rangeSubtitle,
       ['Date', 'Count', 'Total'],
-      d.map((r) => [r.date, String(r.count), formatAmount(r.totalAmount)])
+      d.map((r) => [r.date, String(r.count), formatMoney(r.totalAmount)])
     );
   };
 
@@ -250,7 +252,7 @@ export function OperationalReportsPage() {
       `fast-moving-${dateFrom}-${dateTo}.xlsx`,
       'Fast-moving',
       ['SKU', 'Product', 'Qty sold', 'Line value'],
-      d.map((r) => [r.productSku, r.productName, r.quantitySold, formatAmount(r.lineValue)])
+      d.map((r) => [r.productSku, r.productName, r.quantitySold, formatMoney(r.lineValue)])
     );
   };
 
@@ -261,7 +263,7 @@ export function OperationalReportsPage() {
       'Fast-moving products',
       `${rangeSubtitle} · Top ${limit} by ${sortBy}`,
       ['Product', 'Qty sold', 'Line value'],
-      d.map((r) => [`${r.productSku} ${r.productName}`, r.quantitySold, formatAmount(r.lineValue)])
+      d.map((r) => [`${r.productSku} ${r.productName}`, r.quantitySold, formatMoney(r.lineValue)])
     );
   };
 
@@ -433,7 +435,7 @@ export function OperationalReportsPage() {
                 <ComposedChart data={dailyChartData}>
                   <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
                   <XAxis dataKey="date" stroke={chartTheme.axis} />
-                  <YAxis yAxisId="amount" stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v)} />
+                  <YAxis yAxisId="amount" stroke={chartTheme.axis} tickFormatter={(v) => formatMoney(v)} />
                   <YAxis yAxisId="count" orientation="right" stroke={chartTheme.axis} />
                   <Tooltip />
                   <Bar yAxisId="amount" dataKey="totalAmount" fill={chartTheme.palette[0]} radius={[4, 4, 0, 0]} />
@@ -447,7 +449,7 @@ export function OperationalReportsPage() {
                 <span className="font-medium tabular-nums">{daily.data.meta.invoiceCount as number}</span>
                 {' · '}
                 Total:{' '}
-                <span className="font-medium tabular-nums">{formatAmount(daily.data.meta.grandTotal as string | number)}</span>
+                <span className="font-medium tabular-nums">{formatMoney(daily.data.meta.grandTotal as string | number)}</span>
               </p>
               <button
                 type="button"
@@ -480,7 +482,7 @@ export function OperationalReportsPage() {
                     <tr key={r.date} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{r.date}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.count}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.totalAmount)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.totalAmount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -577,7 +579,7 @@ export function OperationalReportsPage() {
                   <XAxis
                     type="number"
                     stroke={chartTheme.axis}
-                    tickFormatter={(v) => (sortBy === 'value' ? formatAmount(v, 0) : formatAmount(v, 0))}
+                    tickFormatter={(v) => (sortBy === 'value' ? formatMoney(v) : formatAmount(v, 0))}
                   />
                   <YAxis dataKey="product" type="category" width={180} stroke={chartTheme.axis} />
                   <Tooltip />
@@ -623,7 +625,7 @@ export function OperationalReportsPage() {
                         <span className="text-slate-500">{r.productSku}</span> {r.productName}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.quantitySold}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatAmount(r.lineValue)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.lineValue)}</td>
                     </tr>
                   ))}
                 </tbody>

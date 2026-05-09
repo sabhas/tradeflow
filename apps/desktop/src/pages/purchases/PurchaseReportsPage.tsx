@@ -6,9 +6,9 @@ import { ChartCard } from '../../components/charts/ChartCard';
 import { getChartTheme } from '../../components/charts/chartTheme';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
-import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface SupplierOpt {
   id: string;
@@ -28,6 +28,7 @@ export function PurchaseReportsPage() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [asOf, setAsOf] = useState(() => new Date().toISOString().slice(0, 10));
   const chartTheme = getChartTheme();
+  const { formatMoney } = useMoneyFormat();
 
   const suppliers = useQuery({
     queryKey: ['suppliers', 'rep-dd'],
@@ -194,10 +195,10 @@ export function PurchaseReportsPage() {
             <div className="mt-6">
               <div className="flex flex-wrap gap-4 text-sm">
                 <span>
-                  Opening balance: <strong className="tabular-nums">{formatAmount(statement.data.openingBalance)}</strong>
+                  Opening balance: <strong className="tabular-nums">{formatMoney(statement.data.openingBalance)}</strong>
                 </span>
                 <span>
-                  Closing balance: <strong className="tabular-nums">{formatAmount(statement.data.closingBalance)}</strong>
+                  Closing balance: <strong className="tabular-nums">{formatMoney(statement.data.closingBalance)}</strong>
                 </span>
               </div>
               <table className="mt-4 min-w-full text-sm">
@@ -218,9 +219,9 @@ export function PurchaseReportsPage() {
                     >
                       <td className="py-2 pr-4 tabular-nums">{row.date}</td>
                       <td className="py-2 pr-4">{row.ref}</td>
-                      <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(row.debit)}</td>
-                      <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(row.credit)}</td>
-                      <td className="py-2 text-right tabular-nums font-medium">{formatAmount(row.balance)}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">{formatMoney(row.debit)}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">{formatMoney(row.credit)}</td>
+                      <td className="py-2 text-right tabular-nums font-medium">{formatMoney(row.balance)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -271,12 +272,12 @@ export function PurchaseReportsPage() {
                   className="border-t border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-800/50"
                 >
                   <td className="py-2 pr-4">{r.supplierName}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.totalOpen)}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.buckets.current)}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.buckets.d1_30)}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.buckets.d31_60)}</td>
-                  <td className="py-2 pr-4 text-right tabular-nums">{formatAmount(r.buckets.d61_90)}</td>
-                  <td className="py-2 text-right tabular-nums">{formatAmount(r.buckets.d90p)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatMoney(r.totalOpen)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatMoney(r.buckets.current)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatMoney(r.buckets.d1_30)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatMoney(r.buckets.d31_60)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums">{formatMoney(r.buckets.d61_90)}</td>
+                  <td className="py-2 text-right tabular-nums">{formatMoney(r.buckets.d90p)}</td>
                 </tr>
               ))}
             </tbody>
@@ -331,7 +332,7 @@ export function PurchaseReportsPage() {
                   <td className="py-2 pr-4 tabular-nums">{r.date}</td>
                   <td className="py-2 pr-4 capitalize">{r.source.replace('_', ' ')}</td>
                   <td className="py-2 pr-4">{productName(r.productId)}</td>
-                  <td className="py-2 text-right tabular-nums">{formatAmount(r.unitPrice)}</td>
+                  <td className="py-2 text-right tabular-nums">{formatMoney(r.unitPrice)}</td>
                 </tr>
               ))}
             </tbody>

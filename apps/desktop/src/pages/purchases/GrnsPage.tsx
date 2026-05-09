@@ -8,6 +8,7 @@ import { CUSTOM_OPTION_VALUE, SelectOrCustomInput } from '../../components/Selec
 import { formatAmount, formatAmountInput, normalizeAmountInput } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface GrnRow {
   id: string;
@@ -85,6 +86,7 @@ export function GrnsPage() {
   const canWrite = hasPermission(permissions, 'purchases.grn:write');
   const canPost = hasPermission(permissions, 'purchases.grn:post');
   const qc = useQueryClient();
+  const { formatMoney, formatMoneyInput, normalizeMoneyInput } = useMoneyFormat();
   const [searchParams, setSearchParams] = useSearchParams();
   const fromPo = searchParams.get('fromPo') || '';
 
@@ -261,7 +263,7 @@ export function GrnsPage() {
         eligible.data.lines.map((l) => ({
           productId: l.productId,
           quantity: parseFloat(l.remaining),
-          unitPrice: formatAmount(l.unitPrice),
+          unitPrice: formatMoney(l.unitPrice),
           tradePrice: '',
           retailPrice: '',
           purchaseOrderLineId: l.purchaseOrderLineId,
@@ -542,15 +544,15 @@ export function GrnsPage() {
                                 <span className="font-mono text-xs text-slate-500">{line.productId}</span>
                               )}
                             </td>
-                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.quantity)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.unitPrice)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.quantity, 4)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatMoney(line.unitPrice)}</td>
                             <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{line.batchCode ?? '—'}</td>
                             <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{line.expiryDate ?? '—'}</td>
                             <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                              {line.tradePrice != null && line.tradePrice !== '' ? formatAmount(line.tradePrice) : '—'}
+                              {line.tradePrice != null && line.tradePrice !== '' ? formatMoney(line.tradePrice) : '—'}
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                              {line.retailPrice != null && line.retailPrice !== '' ? formatAmount(line.retailPrice) : '—'}
+                              {line.retailPrice != null && line.retailPrice !== '' ? formatMoney(line.retailPrice) : '—'}
                             </td>
                           </tr>
                         ))}
@@ -738,9 +740,9 @@ export function GrnsPage() {
                             n[idx] = {
                               ...n[idx],
                               productId: v,
-                              unitPrice: p ? formatAmount(p.costPrice) : n[idx].unitPrice,
-                              tradePrice: p ? formatAmount(p.sellingPrice) : n[idx].tradePrice,
-                              retailPrice: p ? formatAmount(p.retailPrice) : n[idx].retailPrice,
+                              unitPrice: p ? formatMoney(p.costPrice) : n[idx].unitPrice,
+                              tradePrice: p ? formatMoney(p.sellingPrice) : n[idx].tradePrice,
+                              retailPrice: p ? formatMoney(p.retailPrice) : n[idx].retailPrice,
                               batchCode: '',
                               expiryDate: '',
                               selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
@@ -777,9 +779,9 @@ export function GrnsPage() {
                               selectedExistingBatchKey: selected.key,
                               batchCode: selected.displayCode,
                               expiryDate: selected.expiryDate ? String(selected.expiryDate).slice(0, 10) : '',
-                              unitPrice: formatAmount(selected.avgUnitCost),
-                              tradePrice: formatAmount((selected.tradePrice ?? n[idx].tradePrice) || '0'),
-                              retailPrice: formatAmount((selected.retailPrice ?? n[idx].retailPrice) || '0'),
+                              unitPrice: formatMoney(selected.avgUnitCost),
+                              tradePrice: formatMoney((selected.tradePrice ?? n[idx].tradePrice) || '0'),
+                              retailPrice: formatMoney((selected.retailPrice ?? n[idx].retailPrice) || '0'),
                             };
                             return n;
                           }
@@ -790,14 +792,14 @@ export function GrnsPage() {
                             batchCode: value,
                             selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
                             unitPrice:
-                              (wasLocked || !n[idx].unitPrice.trim()) && p ? formatAmount(p.costPrice) : n[idx].unitPrice,
+                              (wasLocked || !n[idx].unitPrice.trim()) && p ? formatMoney(p.costPrice) : n[idx].unitPrice,
                             tradePrice:
                               (wasLocked || !n[idx].tradePrice.trim()) && p
-                                ? formatAmount(p.sellingPrice)
+                                ? formatMoney(p.sellingPrice)
                                 : n[idx].tradePrice,
                             retailPrice:
                               (wasLocked || !n[idx].retailPrice.trim()) && p
-                                ? formatAmount(p.retailPrice)
+                                ? formatMoney(p.retailPrice)
                                 : n[idx].retailPrice,
                             expiryDate: wasLocked ? '' : n[idx].expiryDate,
                           };
@@ -836,19 +838,19 @@ export function GrnsPage() {
                     <span className="text-xs text-slate-500">Unit cost</span>
                     <input
                       className={`mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm ${batchDerivedLockInputClass}`}
-                      value={formatAmountInput(line.unitPrice)}
+                      value={formatMoneyInput(line.unitPrice)}
                       disabled={lockBatchDerivedFields}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: normalizeAmountInput(e.target.value) };
+                          n[idx] = { ...n[idx], unitPrice: normalizeMoneyInput(e.target.value) };
                           return n;
                         })
                       }
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: formatAmount(normalizeAmountInput(e.target.value)) };
+                          n[idx] = { ...n[idx], unitPrice: formatMoney(normalizeMoneyInput(e.target.value)) };
                           return n;
                         })
                       }

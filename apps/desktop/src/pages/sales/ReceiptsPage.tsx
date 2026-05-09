@@ -3,13 +3,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { SalesSubNav } from '../../components/SalesSubNav';
-import {
-  formatAmount,
-  formatAmountInput,
-  parseAmount,
-} from '../../lib/numberFormat';
+import { parseAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface CustomerOpt {
   id: string;
@@ -37,6 +34,7 @@ export function ReceiptsPage() {
   const canRead = hasPermission(permissions, 'sales:read');
   const canPost = hasPermission(permissions, 'sales:post');
   const qc = useQueryClient();
+  const { formatMoney, formatMoneyInput, moneyToFixed } = useMoneyFormat();
 
   const [customerId, setCustomerId] = useState('');
   const [receiptDate, setReceiptDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -46,7 +44,6 @@ export function ReceiptsPage() {
   const [allocInvoiceId, setAllocInvoiceId] = useState<string[]>([]);
   const [allocAmount, setAllocAmount] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
-  const formatMoneyInput = (value: string) => formatAmountInput(value);
 
   const customers = useQuery({
     queryKey: ['customers', 'sales-dd'],
@@ -106,7 +103,7 @@ export function ReceiptsPage() {
       const apply = Math.min(due, left);
       if (apply > 0) {
         ids.push(i.id);
-        nextAmt[i.id] = apply.toFixed(2);
+        nextAmt[i.id] = moneyToFixed(apply);
         left -= apply;
       }
     }
@@ -257,7 +254,7 @@ export function ReceiptsPage() {
                           />
                         </td>
                         <td className="px-3 py-2">{i.invoiceDate}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{formatAmount(i.total)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{formatMoney(i.total)}</td>
                         <td className="px-3 py-2 text-right">
                           <input
                             className="w-28 rounded border border-slate-300 px-2 py-1 text-right text-sm"
@@ -311,7 +308,7 @@ export function ReceiptsPage() {
             {(list.data ?? []).map((r) => (
               <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-4 py-3">{r.receiptDate}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(r.amount)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(r.amount)}</td>
                 <td className="px-4 py-3">{r.paymentMethod}</td>
               </tr>
             ))}

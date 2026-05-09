@@ -14,10 +14,10 @@ import {
 } from 'recharts';
 import { useAppSelector } from '../hooks/useAppSelector';
 import { useAppDispatch } from '../hooks/useAppDispatch';
+import { useMoneyFormat } from '../hooks/useMoneyFormat';
 import { logout, setSession } from '../store/slices/authSlice';
 import { apiFetch } from '../api/client';
 import { hasPermission } from '../lib/permissions';
-import { formatAmount } from '../lib/numberFormat';
 import { getChartTheme } from '../components/charts/chartTheme';
 
 export function DashboardPage() {
@@ -25,6 +25,7 @@ export function DashboardPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { formatMoney } = useMoneyFormat();
 
   const canKpi =
     hasPermission(permissions, 'sales:read') || hasPermission(permissions, 'purchases.reports:read');
@@ -162,13 +163,13 @@ export function DashboardPage() {
                 <div className="rounded-lg border border-slate-200 border-l-4 border-l-indigo-500 bg-white p-4 shadow-sm dark:border-slate-800 dark:border-l-indigo-400 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales (today)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {formatAmount(d?.salesToday)}
+                    {formatMoney(d?.salesToday)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 border-l-4 border-l-indigo-500 bg-white p-4 shadow-sm dark:border-slate-800 dark:border-l-indigo-400 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales (MTD)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {formatAmount(d?.salesMtd)}
+                    {formatMoney(d?.salesMtd)}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">From {d?.monthStart}</p>
                 </div>
@@ -185,13 +186,13 @@ export function DashboardPage() {
                 <div className="rounded-lg border border-slate-200 border-l-4 border-l-emerald-500 bg-white p-4 shadow-sm dark:border-slate-800 dark:border-l-emerald-400 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Purchases (today)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {formatAmount(d?.purchasesToday)}
+                    {formatMoney(d?.purchasesToday)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 border-l-4 border-l-emerald-500 bg-white p-4 shadow-sm dark:border-slate-800 dark:border-l-emerald-400 dark:bg-slate-900 dark:shadow-none">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Purchases (MTD)</p>
                   <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {formatAmount(d?.purchasesMtd)}
+                    {formatMoney(d?.purchasesMtd)}
                   </p>
                 </div>
               </>
@@ -205,7 +206,7 @@ export function DashboardPage() {
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Open AR (credit invoices):{' '}
                   <span className="font-semibold text-slate-900 dark:text-slate-100">
-                    {formatAmount(d?.arOpen)}
+                    {formatMoney(d?.arOpen)}
                   </span>
                 </p>
                 <p className="mt-4 text-xs font-medium uppercase text-slate-500">Aging (as of {d?.asOfDate})</p>
@@ -234,7 +235,7 @@ export function DashboardPage() {
                           />
                           {entry.name}
                         </div>
-                        <div className="font-medium text-slate-800 dark:text-slate-100">{formatAmount(entry.value)}</div>
+                        <div className="font-medium text-slate-800 dark:text-slate-100">{formatMoney(entry.value)}</div>
                       </div>
                     ))}
                   </div>
@@ -246,13 +247,13 @@ export function DashboardPage() {
                 <h2 className="font-medium text-slate-800 dark:text-slate-100">Payables</h2>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Open AP:{' '}
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{formatAmount(d?.apOpen)}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{formatMoney(d?.apOpen)}</span>
                 </p>
                 <div className="mt-4 h-44">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={apArCompare}>
                       <XAxis dataKey="label" stroke={chartTheme.axis} />
-                      <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatAmount(v)} />
+                      <YAxis stroke={chartTheme.axis} tickFormatter={(v) => formatMoney(v)} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: chartTheme.tooltipBg,

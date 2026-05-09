@@ -461,6 +461,9 @@ export function SettingsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, moneyDecimals: Number(e.target.value) }))}
                 disabled={!canWrite}
               />
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                Applies across the desktop app for prices, totals, and money inputs after you save below.
+              </span>
             </label>
             <label className="block text-sm">
               <span className="text-slate-600 dark:text-slate-400">Quantity decimal places</span>

@@ -6,6 +6,7 @@ import { InventorySubNav } from '../../components/InventorySubNav';
 import { formatAmount } from '../../lib/numberFormat';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
 
 interface BalanceRow {
   id: string;
@@ -51,6 +52,7 @@ interface ProductOpt {
 export function InventoryStockPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
   const canRead = hasPermission(permissions, 'inventory:read');
+  const { formatMoney } = useMoneyFormat();
 
   const [warehouseId, setWarehouseId] = useState('');
   const [productId, setProductId] = useState('');
@@ -124,7 +126,7 @@ export function InventoryStockPage() {
     ],
     [products.data]
   );
-  const renderMoney = (value?: string) => (value == null ? '—' : formatAmount(value));
+  const renderMoney = (value?: string) => (value == null ? '—' : formatMoney(value));
   const renderQuantity = (value?: string) => (value == null ? '—' : formatAmount(value, 0));
   const activeRows = viewMode === 'summary' ? balances.data ?? [] : batchBalances.data ?? [];
   const totalQty = activeRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
@@ -236,7 +238,7 @@ export function InventoryStockPage() {
             {viewMode === 'summary' ? 'Total value' : 'Batch rows'}
           </p>
           <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
-            {viewMode === 'summary' ? formatAmount(totalValue) : formatAmount(totalBatchRows, 0)}
+            {viewMode === 'summary' ? formatMoney(totalValue) : formatAmount(totalBatchRows, 0)}
           </p>
         </div>
       </div>

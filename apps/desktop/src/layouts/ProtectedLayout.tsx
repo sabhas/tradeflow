@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from '../components/Sidebar';
 import { Header } from '../components/Header';
+import { MoneyDecimalsSync } from '../components/MoneyDecimalsSync';
+import { Sidebar } from '../components/Sidebar';
 import { useAppSelector } from '../hooks/useAppSelector';
 
 export function ProtectedLayout() {
@@ -8,6 +9,7 @@ export function ProtectedLayout() {
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
+      <MoneyDecimalsSync />
       <Sidebar />
       <div className={`flex flex-col flex-1 min-w-0 transition-all ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
         <Header />

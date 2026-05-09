@@ -6,7 +6,8 @@ import { Combobox } from '../../components/Combobox';
 import { MastersModal } from '../../components/MastersModal';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
-import { formatAmount, formatAmountInput, normalizeAmountInput, parseAmount } from '../../lib/numberFormat';
+import { useMoneyFormat } from '../../hooks/useMoneyFormat';
+import { parseAmount } from '../../lib/numberFormat';
 
 type AccountOpt = { id: string; code: string; name: string; type: string };
 type JournalLine = { id?: string; accountId: string; debit: string; credit: string };
@@ -36,6 +37,7 @@ export function JournalEntriesPage() {
   const canRead = hasPermission(permissions, 'accounting:read');
   const canWrite = hasPermission(permissions, 'accounting:write');
   const qc = useQueryClient();
+  const { formatMoney, formatMoneyInput, normalizeMoneyInput } = useMoneyFormat();
 
   const [status, setStatus] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -317,12 +319,12 @@ export function JournalEntriesPage() {
                               <span className="font-mono tabular-nums text-slate-600 dark:text-slate-400">
                                 {parseAmount(line.debit) > 0 && (
                                   <span className="text-emerald-700 dark:text-emerald-400">
-                                    Dr {formatAmount(line.debit)}
+                                    Dr {formatMoney(line.debit)}
                                   </span>
                                 )}
                                 {parseAmount(line.credit) > 0 && (
                                   <span className="text-sky-800 dark:text-sky-300">
-                                    Cr {formatAmount(line.credit)}
+                                    Cr {formatMoney(line.credit)}
                                   </span>
                                 )}
                               </span>
@@ -470,9 +472,9 @@ export function JournalEntriesPage() {
                     <td className="py-2 pr-2">
                       <input
                         className="w-28 rounded-md border border-slate-300 px-2 py-1.5 font-mono dark:border-slate-600 dark:bg-slate-900"
-                        value={formatAmountInput(l.debit)}
+                        value={formatMoneyInput(l.debit)}
                         onChange={(e) => {
-                          const v = normalizeAmountInput(e.target.value);
+                          const v = normalizeMoneyInput(e.target.value);
                           setLines((ls) => ls.map((x, j) => (j === i ? { ...x, debit: v } : x)));
                         }}
                       />
@@ -480,9 +482,9 @@ export function JournalEntriesPage() {
                     <td className="py-2 pr-2">
                       <input
                         className="w-28 rounded-md border border-slate-300 px-2 py-1.5 font-mono dark:border-slate-600 dark:bg-slate-900"
-                        value={formatAmountInput(l.credit)}
+                        value={formatMoneyInput(l.credit)}
                         onChange={(e) => {
-                          const v = normalizeAmountInput(e.target.value);
+                          const v = normalizeMoneyInput(e.target.value);
                           setLines((ls) => ls.map((x, j) => (j === i ? { ...x, credit: v } : x)));
                         }}
                       />
@@ -506,7 +508,7 @@ export function JournalEntriesPage() {
           <p
             className={`mt-2 text-sm ${balanced ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300'}`}
           >
-            Debits: {formatAmount(debitTot)} · Credits: {formatAmount(creditTot)}
+            Debits: {formatMoney(debitTot)} · Credits: {formatMoney(creditTot)}
             {!balanced && ' · Must balance before save/post'}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
