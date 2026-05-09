@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../api/client';
-import { formatAmount, parseAmount } from '../lib/numberFormat';
+import { formatAmount } from '../lib/numberFormat';
 
 interface BatchBalanceRow {
   productId: string;
@@ -31,7 +31,7 @@ interface Props {
   productId: string;
   warehouseId: string;
   /** Optional requested quantity to compare against available stock for an inline warning. */
-  requestedQuantity?: string;
+  requestedQuantity?: number;
   /** Render the summary row inline (no top spacing) so callers can place it where they want. */
   compact?: boolean;
 }
@@ -200,7 +200,7 @@ export function LineStockInfo({ productId, warehouseId, requestedQuantity, compa
     ? rows.reduce((sum, r) => sum + Number(r.quantity || 0), 0)
     : Number(meta?.totalQuantity ?? rows.reduce((sum, r) => sum + Number(r.quantity || 0), 0));
   const batchCount = debouncedFilter ? rows.length : Number(meta?.batchCount ?? rows.length);
-  const requested = requestedQuantity != null ? parseAmount(requestedQuantity) : 0;
+  const requested = requestedQuantity ?? 0;
   const insufficient = !debouncedFilter && requested > 0 && requested - totalQty > 1e-6;
   const truncated = batchCount > rows.length;
 

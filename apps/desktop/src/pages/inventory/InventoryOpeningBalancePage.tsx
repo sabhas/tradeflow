@@ -18,7 +18,7 @@ interface ProductOpt {
   name: string;
 }
 
-type Line = { productId: string; quantity: string; unitCost: string; batchCode: string; expiryDate: string };
+type Line = { productId: string; quantity: number; unitCost: string; batchCode: string; expiryDate: string };
 
 export function InventoryOpeningBalancePage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
@@ -28,7 +28,7 @@ export function InventoryOpeningBalancePage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [movementDate, setMovementDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [lines, setLines] = useState<Line[]>([
-    { productId: '', quantity: '1', unitCost: '', batchCode: '', expiryDate: '' },
+    { productId: '', quantity: 1, unitCost: '', batchCode: '', expiryDate: '' },
   ]);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +73,7 @@ export function InventoryOpeningBalancePage() {
   const submit = useMutation({
     mutationFn: async () => {
       setError(null);
-      const cleaned = lines.filter((l) => l.productId && parseFloat(l.quantity) > 0);
+      const cleaned = lines.filter((l) => l.productId && l.quantity > 0);
       if (!warehouseId) throw new Error('Select a warehouse');
       if (cleaned.length === 0) throw new Error('Add at least one line with a product and quantity');
       await apiFetch('/inventory/opening-balance', {
@@ -93,7 +93,7 @@ export function InventoryOpeningBalancePage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['inventory'] });
-      setLines([{ productId: '', quantity: '1', unitCost: '', batchCode: '', expiryDate: '' }]);
+      setLines([{ productId: '', quantity: 1, unitCost: '', batchCode: '', expiryDate: '' }]);
     },
     onError: (e: Error) => setError(e.message || 'Request failed'),
   });
@@ -144,7 +144,7 @@ export function InventoryOpeningBalancePage() {
               type="button"
               className="text-sm text-indigo-600 hover:text-indigo-800"
               onClick={() =>
-                setLines((prev) => [...prev, { productId: '', quantity: '1', unitCost: '', batchCode: '', expiryDate: '' }])
+                setLines((prev) => [...prev, { productId: '', quantity: 1, unitCost: '', batchCode: '', expiryDate: '' }])
               }
             >
               + Add line
@@ -168,13 +168,19 @@ export function InventoryOpeningBalancePage() {
               <label className="w-28 flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Qty</span>
                 <input
-                  type="text"
+                  type="number"
                   inputMode="decimal"
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  step="any"
+                  min={0}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm tabular-nums"
                   value={line.quantity}
-                  onChange={(e) =>
-                    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, quantity: e.target.value } : l)))
-                  }
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const v = raw === '' ? 0 : Number(raw);
+                    setLines((prev) =>
+                      prev.map((l, i) => (i === idx ? { ...l, quantity: Number.isFinite(v) ? v : 0 } : l))
+                    );
+                  }}
                 />
               </label>
               <label className="w-32 flex flex-col gap-1 text-sm">

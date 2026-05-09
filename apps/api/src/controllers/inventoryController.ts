@@ -313,7 +313,7 @@ export async function postOpeningBalance(req: Request, body: PostOpeningBalanceI
       const out: Awaited<ReturnType<typeof applyMovement>>[] = [];
       for (const line of body.lines) {
         await assertProductInScope(line.productId, undefined);
-        const qty = parseDecimalStrict(line.quantity);
+        const qty = parseDecimalStrict(String(line.quantity));
         const mov = await applyMovement(manager, {
           productId: line.productId,
           warehouseId: body.warehouseId,
@@ -369,7 +369,7 @@ export async function postStockAdjustment(req: Request, body: PostStockAdjustmen
       const out: Awaited<ReturnType<typeof applyMovement>>[] = [];
       for (const line of body.lines) {
         await assertProductInScope(line.productId, undefined);
-        const delta = parseDecimalStrict(line.quantityDelta);
+        const delta = parseDecimalStrict(String(line.quantityDelta));
         const mov = await applyMovement(manager, {
           productId: line.productId,
           warehouseId: body.warehouseId,

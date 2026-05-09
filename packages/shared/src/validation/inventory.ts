@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const decimal = z.union([z.number(), z.string()]).transform((v) => String(v));
+const lineQuantityPositive = z.number().finite().positive();
 
 export const inventoryRefTypeSchema = z.enum([
   'opening_balance',
@@ -11,15 +12,13 @@ export const inventoryRefTypeSchema = z.enum([
   'transfer_out',
 ]);
 
-const openingLineSchema = z
-  .object({
-    productId: z.string().uuid(),
-    quantity: decimal,
-    unitCost: decimal.optional().nullable(),
-    batchCode: z.string().max(128).optional().nullable(),
-    expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  })
-  .refine((l) => parseFloat(l.quantity) > 0, { message: 'Opening quantity must be positive' });
+const openingLineSchema = z.object({
+  productId: z.string().uuid(),
+  quantity: lineQuantityPositive,
+  unitCost: decimal.optional().nullable(),
+  batchCode: z.string().max(128).optional().nullable(),
+  expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+});
 
 export const postOpeningBalanceSchema = z.object({
   warehouseId: z.string().uuid(),
@@ -30,9 +29,9 @@ export const postOpeningBalanceSchema = z.object({
 const adjustmentLineSchema = z
   .object({
     productId: z.string().uuid(),
-    quantityDelta: decimal,
+    quantityDelta: z.number().finite(),
   })
-  .refine((l) => parseFloat(l.quantityDelta) !== 0, { message: 'Adjustment delta must be non-zero' });
+  .refine((l) => l.quantityDelta !== 0, { message: 'Adjustment delta must be non-zero' });
 
 export const postStockAdjustmentSchema = z.object({
   warehouseId: z.string().uuid(),
@@ -55,7 +54,7 @@ export const createStockTransferSchema = z.object({
     .array(
       z.object({
         productId: z.string().uuid(),
-        quantity: decimal,
+        quantity: lineQuantityPositive,
       })
     )
     .min(1),

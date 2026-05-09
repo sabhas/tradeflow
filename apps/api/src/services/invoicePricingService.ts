@@ -5,7 +5,7 @@ import { loadCompanyForInventory, planLayerConsumptions } from './stockLayerServ
 
 export interface InvoiceLinePricingInput {
   productId: string;
-  quantity: string;
+  quantity: number;
   unitPrice?: string;
   discountAmount?: string;
   taxProfileId?: string | null;
@@ -23,12 +23,12 @@ function pickLayerPrice(product: Product, lineUsesRetail: boolean, trade?: strin
 }
 
 function weightedLayerPrice(
-  totalQty: string,
+  totalQty: number,
   parts: Array<{ quantity: string; tradePrice?: string; retailPrice?: string }>,
   product: Product
 ): string {
   const useRetail = product.autoPriceFromRetail === true;
-  const qty = parseFloat(parseDecimalStrict(totalQty));
+  const qty = totalQty;
   if (qty <= 0) throw new Error('Line quantity must be positive');
   let weighted = 0;
   for (const part of parts) {
@@ -61,7 +61,7 @@ export async function resolveInvoiceLineUnitPrices(
     }
     const product = productById.get(line.productId);
     if (!product) throw new Error(`Product not found: ${line.productId}`);
-    const parts = await planLayerConsumptions(manager, product, company, warehouseId, line.quantity);
+    const parts = await planLayerConsumptions(manager, product, company, warehouseId, String(line.quantity));
     resolved.push({
       ...line,
       unitPrice: weightedLayerPrice(line.quantity, parts, product),

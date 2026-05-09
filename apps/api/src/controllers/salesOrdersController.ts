@@ -175,7 +175,7 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
       } else if (b.discountAmount !== undefined) {
         const lines = (o.lines || []).map((l) => ({
           productId: l.productId,
-          quantity: l.quantity,
+          quantity: parseFloat(l.quantity),
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
@@ -257,7 +257,7 @@ export async function convertSalesOrderToInvoice(
 
       const lineInputs: Array<{
         productId: string;
-        quantity: string;
+        quantity: number;
         unitPrice: string;
         discountAmount: string;
         taxProfileId?: string;
@@ -267,7 +267,7 @@ export async function convertSalesOrderToInvoice(
       for (const pl of b.lines) {
         const sol = o.lines?.find((x) => x.id === pl.salesOrderLineId);
         if (!sol) throw new HttpError(400, { error: `Unknown sales order line ${pl.salesOrderLineId}` });
-        const qty = parseFloat(pl.quantity);
+        const qty = pl.quantity;
         if (qty <= 0) throw new HttpError(400, { error: 'Invoice quantity must be positive' });
         const remaining = parseFloat(sol.quantity) - parseFloat(sol.deliveredQuantity) + 1e-9;
         if (qty > remaining) throw new HttpError(400, { error: 'Quantity exceeds remaining on sales order line' });

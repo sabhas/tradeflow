@@ -296,7 +296,7 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
       } else if (b.discountAmount !== undefined) {
         const lines = (inv.lines || []).map((l) => ({
           productId: l.productId,
-          quantity: l.quantity,
+          quantity: parseFloat(l.quantity),
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,

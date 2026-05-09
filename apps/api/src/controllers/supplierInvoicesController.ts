@@ -198,7 +198,7 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
         b.supplierId,
         b.lines.map((l) => ({
           productId: l.productId,
-          quantity: String(l.quantity),
+          quantity: l.quantity,
           unitPrice: String(l.unitPrice),
           discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
           taxProfileId: l.taxProfileId,
@@ -286,7 +286,7 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
       const linesIn =
         b.lines?.map((l) => ({
           productId: l.productId,
-          quantity: String(l.quantity),
+          quantity: l.quantity,
           unitPrice: String(l.unitPrice),
           discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
           taxProfileId: l.taxProfileId,
@@ -333,7 +333,7 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
         const dbLines = await manager.find(SupplierInvoiceLine, { where: { supplierInvoiceId: inv.id } });
         const existingLines = dbLines.map((l) => ({
           productId: l.productId,
-          quantity: l.quantity,
+          quantity: parseFloat(l.quantity),
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
@@ -386,7 +386,7 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
       const linesForCalc =
         inv.lines?.map((l) => ({
           productId: l.productId,
-          quantity: l.quantity,
+          quantity: parseFloat(l.quantity),
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
@@ -410,7 +410,7 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
         const line = inv.lines![i];
         const cmp = totals.lines[i];
         if (!line.grnLineId) continue;
-        const qty = parseFloat(cmp.quantity);
+        const qty = cmp.quantity;
         if (qty <= 0) continue;
         const unitCost = (parseFloat(cmp.lineBase) / qty).toFixed(4);
         const uc = parseDecimalStrict(unitCost);

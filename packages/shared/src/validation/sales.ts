@@ -3,9 +3,12 @@ import { z } from 'zod';
 const decimal = z.union([z.number(), z.string()]).transform((v) => String(v));
 const optionalUuid = z.union([z.string().uuid(), z.null()]).optional();
 
+/** Line quantity from API / clients (positive finite number). */
+export const lineQuantitySchema = z.number().finite().positive();
+
 export const documentLineInputSchema = z.object({
   productId: z.string().uuid(),
-  quantity: decimal,
+  quantity: lineQuantitySchema,
   unitPrice: decimal,
   discountAmount: decimal.optional(),
   taxProfileId: optionalUuid,
@@ -71,7 +74,7 @@ export const partialInvoiceFromOrderSchema = z.object({
     .array(
       z.object({
         salesOrderLineId: z.string().uuid(),
-        quantity: decimal,
+        quantity: lineQuantitySchema,
       })
     )
     .min(1),

@@ -16,7 +16,7 @@ interface TransferRow {
   toWarehouse?: { name: string; code: string };
 }
 
-type Line = { productId: string; quantity: string };
+type Line = { productId: string; quantity: number };
 
 export function InventoryTransfersPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
@@ -29,7 +29,7 @@ export function InventoryTransfersPage() {
   const [toWarehouseId, setToWarehouseId] = useState('');
   const [transferDate, setTransferDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
-  const [lines, setLines] = useState<Line[]>([{ productId: '', quantity: '1' }]);
+  const [lines, setLines] = useState<Line[]>([{ productId: '', quantity: 1 }]);
   const [error, setError] = useState<string | null>(null);
 
   const list = useQuery({
@@ -79,7 +79,7 @@ export function InventoryTransfersPage() {
   const createTransfer = useMutation({
     mutationFn: async () => {
       setError(null);
-      const cleaned = lines.filter((l) => l.productId && parseFloat(l.quantity) > 0);
+      const cleaned = lines.filter((l) => l.productId && l.quantity > 0);
       if (!fromWarehouseId || !toWarehouseId) throw new Error('Select both warehouses');
       if (fromWarehouseId === toWarehouseId) throw new Error('Warehouses must differ');
       if (cleaned.length === 0) throw new Error('Add at least one line');
@@ -98,7 +98,7 @@ export function InventoryTransfersPage() {
       qc.invalidateQueries({ queryKey: ['stock-transfers'] });
       qc.invalidateQueries({ queryKey: ['inventory'] });
       setPanelOpen(false);
-      setLines([{ productId: '', quantity: '1' }]);
+      setLines([{ productId: '', quantity: 1 }]);
       setNotes('');
     },
     onError: (e: Error) => setError(e.message || 'Failed'),
@@ -199,12 +199,19 @@ export function InventoryTransfersPage() {
                   aria-label="Product"
                 />
                 <input
-                  className="w-28 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min={0}
+                  className="w-28 rounded-md border border-slate-300 px-2 py-1.5 text-sm tabular-nums"
                   placeholder="Qty"
                   value={line.quantity}
                   onChange={(e) => {
-                    const v = e.target.value;
-                    setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, quantity: v } : x)));
+                    const raw = e.target.value;
+                    const v = raw === '' ? 0 : Number(raw);
+                    setLines((prev) =>
+                      prev.map((x, i) => (i === idx ? { ...x, quantity: Number.isFinite(v) ? v : 0 } : x))
+                    );
                   }}
                 />
                 <button
@@ -219,7 +226,7 @@ export function InventoryTransfersPage() {
             <button
               type="button"
               className="text-sm text-indigo-600 hover:underline"
-              onClick={() => setLines((prev) => [...prev, { productId: '', quantity: '1' }])}
+              onClick={() => setLines((prev) => [...prev, { productId: '', quantity: 1 }])}
             >
               + Add line
             </button>

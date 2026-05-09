@@ -130,7 +130,7 @@ export async function createPurchaseOrder(req: Request, body: CreatePurchaseOrde
         b.supplierId,
         b.lines.map((l) => ({
           productId: l.productId,
-          quantity: String(l.quantity),
+          quantity: l.quantity,
           unitPrice: String(l.unitPrice),
           discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
           taxProfileId: l.taxProfileId,
@@ -193,7 +193,7 @@ export async function updatePurchaseOrder(req: Request, body: UpdatePurchaseOrde
       const linesIn =
         b.lines?.map((l) => ({
           productId: l.productId,
-          quantity: String(l.quantity),
+          quantity: l.quantity,
           unitPrice: String(l.unitPrice),
           discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
           taxProfileId: l.taxProfileId,
@@ -257,7 +257,7 @@ export async function updatePurchaseOrder(req: Request, body: UpdatePurchaseOrde
         const existingLines =
           dbLines.map((l) => ({
             productId: l.productId,
-            quantity: l.quantity,
+            quantity: parseFloat(l.quantity),
             unitPrice: l.unitPrice,
             discountAmount: l.discountAmount,
             taxProfileId: l.taxProfileId,

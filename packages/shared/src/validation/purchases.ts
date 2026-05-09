@@ -26,7 +26,7 @@ export const createGrnSchema = z.object({
     .array(
       z.object({
         productId: z.string().uuid(),
-        quantity: z.union([z.number(), z.string()]).transform((v) => String(v)),
+        quantity: z.number().finite().positive(),
         unitPrice: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
         tradePrice: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
         retailPrice: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
@@ -51,7 +51,7 @@ export const createSupplierInvoiceSchema = z.object({
     .array(
       z.object({
         productId: z.string().uuid(),
-        quantity: z.union([z.number(), z.string()]).transform((v) => String(v)),
+        quantity: z.number().finite().positive(),
         unitPrice: z.union([z.number(), z.string()]).transform((v) => String(v)),
         discountAmount: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
         taxProfileId: optionalUuid,

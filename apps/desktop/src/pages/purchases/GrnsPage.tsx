@@ -69,7 +69,7 @@ interface BatchBalanceRow {
 
 type Line = {
   productId: string;
-  quantity: string;
+  quantity: number;
   unitPrice: string;
   tradePrice: string;
   retailPrice: string;
@@ -96,7 +96,7 @@ export function GrnsPage() {
   const [lines, setLines] = useState<Line[]>([
     {
       productId: '',
-      quantity: '1',
+      quantity: 1,
       unitPrice: '0',
       tradePrice: '',
       retailPrice: '',
@@ -260,7 +260,7 @@ export function GrnsPage() {
       setLines(
         eligible.data.lines.map((l) => ({
           productId: l.productId,
-          quantity: l.remaining,
+          quantity: parseFloat(l.remaining),
           unitPrice: formatAmount(l.unitPrice),
           tradePrice: '',
           retailPrice: '',
@@ -295,13 +295,13 @@ export function GrnsPage() {
   const createGrn = useMutation({
     mutationFn: async () => {
       setError(null);
-      const cleaned = lines.filter((l) => l.productId && parseFloat(l.quantity) > 0);
+      const cleaned = lines.filter((l) => l.productId && l.quantity > 0);
       if (!supplierId) throw new Error('Select a supplier');
       if (!warehouseId) throw new Error('Select a warehouse');
       if (cleaned.length === 0) throw new Error('Add at least one line with quantity');
       for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
         const l = lines[lineIdx];
-        if (!l.productId || parseFloat(l.quantity) <= 0) continue;
+        if (!l.productId || l.quantity <= 0) continue;
         const fromPo = poLinked && eligible.data?.lines[lineIdx];
         const meta = fromPo
           ? {
@@ -382,7 +382,7 @@ export function GrnsPage() {
               setLines([
                 {
                   productId: '',
-                  quantity: '1',
+                  quantity: 1,
                   unitPrice: '0',
                   tradePrice: '',
                   retailPrice: '',
@@ -680,7 +680,7 @@ export function GrnsPage() {
                       ...prev,
                       {
                         productId: '',
-                        quantity: '1',
+                        quantity: 1,
                         unitPrice: '0',
                         tradePrice: '',
                         retailPrice: '',
@@ -813,14 +813,18 @@ export function GrnsPage() {
                   <label className="sm:col-span-3">
                     <span className="text-xs text-slate-500">Qty received</span>
                     <input
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-                      value={line.quantity}
-                      type='number'
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
                       min={0}
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm tabular-nums"
+                      value={line.quantity}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], quantity: e.target.value };
+                          const raw = e.target.value;
+                          const v = raw === '' ? 0 : Number(raw);
+                          n[idx] = { ...n[idx], quantity: Number.isFinite(v) ? v : 0 };
                           return n;
                         })
                       }

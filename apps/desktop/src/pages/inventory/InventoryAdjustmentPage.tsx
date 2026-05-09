@@ -18,7 +18,7 @@ interface ProductOpt {
   name: string;
 }
 
-type Line = { productId: string; quantityDelta: string };
+type Line = { productId: string; quantityDelta: number };
 
 export function InventoryAdjustmentPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
@@ -28,7 +28,7 @@ export function InventoryAdjustmentPage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [reason, setReason] = useState('');
   const [movementDate, setMovementDate] = useState('');
-  const [lines, setLines] = useState<Line[]>([{ productId: '', quantityDelta: '1' }]);
+  const [lines, setLines] = useState<Line[]>([{ productId: '', quantityDelta: 1 }]);
   const [error, setError] = useState<string | null>(null);
 
   const warehouses = useQuery({
@@ -72,7 +72,7 @@ export function InventoryAdjustmentPage() {
   const submit = useMutation({
     mutationFn: async () => {
       setError(null);
-      const cleaned = lines.filter((l) => l.productId && parseFloat(l.quantityDelta) !== 0);
+      const cleaned = lines.filter((l) => l.productId && l.quantityDelta !== 0);
       if (!warehouseId) throw new Error('Select a warehouse');
       if (!reason.trim()) throw new Error('Enter a reason');
       if (cleaned.length === 0) throw new Error('Add at least one line with a product and non-zero delta');
@@ -92,7 +92,7 @@ export function InventoryAdjustmentPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['inventory'] });
-      setLines([{ productId: '', quantityDelta: '1' }]);
+      setLines([{ productId: '', quantityDelta: 1 }]);
       setReason('');
     },
     onError: (e: Error) => setError(e.message),
@@ -154,7 +154,7 @@ export function InventoryAdjustmentPage() {
             <button
               type="button"
               className="text-sm text-indigo-600 hover:text-indigo-800"
-              onClick={() => setLines((prev) => [...prev, { productId: '', quantityDelta: '1' }])}
+              onClick={() => setLines((prev) => [...prev, { productId: '', quantityDelta: 1 }])}
             >
               + Add line
             </button>
@@ -177,13 +177,18 @@ export function InventoryAdjustmentPage() {
               <label className="w-36 flex flex-col gap-1 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Qty delta (+/−)</span>
                 <input
-                  type="text"
+                  type="number"
                   inputMode="decimal"
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  step="any"
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm tabular-nums"
                   value={line.quantityDelta}
-                  onChange={(e) =>
-                    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, quantityDelta: e.target.value } : l)))
-                  }
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const v = raw === '' ? 0 : Number(raw);
+                    setLines((prev) =>
+                      prev.map((l, i) => (i === idx ? { ...l, quantityDelta: Number.isFinite(v) ? v : 0 } : l))
+                    );
+                  }}
                 />
               </label>
               {lines.length > 1 && (

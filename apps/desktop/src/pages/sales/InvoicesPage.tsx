@@ -34,11 +34,11 @@ interface InvRow {
   total: string;
 }
 
-type Line = { productId: string; quantity: string; unitPrice: string; discountAmount: string; taxProfileId: string };
+type Line = { productId: string; quantity: number; unitPrice: string; discountAmount: string; taxProfileId: string };
 
 const emptyLine = (): Line => ({
   productId: '',
-  quantity: '1',
+  quantity: 1,
   unitPrice: '0',
   discountAmount: '0',
   taxProfileId: '',
@@ -67,7 +67,6 @@ export function InvoicesPage() {
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
   const formatMoneyInput = (value: string) => formatAmountInput(value);
-  const formatQtyInput = (value: string) => formatAmountInput(value);
 
   const list = useQuery({
     queryKey: ['invoices'],
@@ -114,7 +113,7 @@ export function InvoicesPage() {
       (d.lines || []).length
         ? d.lines.map((l) => ({
             productId: l.productId,
-            quantity: l.quantity,
+            quantity: parseFloat(l.quantity),
             unitPrice: l.unitPrice,
             discountAmount: l.discountAmount,
             taxProfileId: l.taxProfileId ?? '',
@@ -217,7 +216,7 @@ export function InvoicesPage() {
           const next = [...prev];
           next[next.length - 1] = {
             productId: data.id,
-            quantity: '1',
+            quantity: 1,
             unitPrice: data.sellingPrice,
             discountAmount: '0',
             taxProfileId: '',
@@ -228,7 +227,7 @@ export function InvoicesPage() {
           ...prev,
           {
             productId: data.id,
-            quantity: '1',
+            quantity: 1,
             unitPrice: data.sellingPrice,
             discountAmount: '0',
             taxProfileId: '',
@@ -592,12 +591,18 @@ export function InvoicesPage() {
                   <label className="sm:col-span-2">
                     <span className="text-xs text-slate-500">Qty</span>
                     <input
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      min={0}
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm tabular-nums"
                       value={line.quantity}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], quantity: formatQtyInput(e.target.value) };
+                          const raw = e.target.value;
+                          const v = raw === '' ? 0 : Number(raw);
+                          n[idx] = { ...n[idx], quantity: Number.isFinite(v) ? v : 0 };
                           return n;
                         })
                       }

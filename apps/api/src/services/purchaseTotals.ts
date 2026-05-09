@@ -5,14 +5,19 @@ import { moneyAdd, moneySub, moneyIsNegative } from '../utils/money';
 
 export interface PurchaseLineIn {
   productId: string;
-  quantity: string;
+  quantity: number;
   unitPrice: string;
   discountAmount?: string;
   taxProfileId?: string | null;
 }
 
-export interface PurchaseComputedLine extends PurchaseLineIn {
+export interface PurchaseComputedLine {
+  productId: string;
+  quantity: number;
+  unitPrice: string;
+  discountAmount: string;
   taxAmount: string;
+  taxProfileId?: string | null;
   /** Line amount excluding tax (inventory cost basis). */
   lineBase: string;
 }
@@ -46,7 +51,7 @@ export async function computePurchaseDocumentTotals(
       const tp = await manager.findOne(TaxProfile, { where: { id: tpId } });
       if (tp) profile = { rate: tp.rate, isInclusive: tp.isInclusive };
     }
-    const q = parseFloat(line.quantity);
+    const q = line.quantity;
     const p = parseFloat(line.unitPrice);
     const ld = parseFloat(line.discountAmount || '0');
     if (q <= 0) throw new Error('Line quantity must be positive');

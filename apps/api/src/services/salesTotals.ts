@@ -7,14 +7,19 @@ import { getCompanySettingsRow } from './companySettings';
 
 export interface LineIn {
   productId: string;
-  quantity: string;
+  quantity: number;
   unitPrice: string;
   discountAmount?: string;
   taxProfileId?: string | null;
 }
 
-export interface ComputedLine extends LineIn {
+export interface ComputedLine {
+  productId: string;
+  quantity: string;
+  unitPrice: string;
+  discountAmount: string;
   taxAmount: string;
+  taxProfileId?: string | null;
 }
 
 export async function computeSalesDocumentTotals(

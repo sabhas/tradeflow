@@ -163,7 +163,7 @@ export async function updateQuotation(req: Request, body: UpdateQuotationInput):
       } else if (b.discountAmount !== undefined) {
         const lines = (q.lines || []).map((l) => ({
           productId: l.productId,
-          quantity: l.quantity,
+          quantity: parseFloat(l.quantity),
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,

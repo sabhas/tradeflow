@@ -43,11 +43,11 @@ interface OrderLine {
   product?: { sku: string; name: string };
 }
 
-type Line = { productId: string; quantity: string; unitPrice: string; discountAmount: string; taxProfileId: string };
+type Line = { productId: string; quantity: number; unitPrice: string; discountAmount: string; taxProfileId: string };
 
 const emptyLine = (): Line => ({
   productId: '',
-  quantity: '1',
+  quantity: 1,
   unitPrice: '0',
   discountAmount: '0',
   taxProfileId: '',
@@ -64,7 +64,7 @@ export function SalesOrdersPage() {
   const [convertOrderId, setConvertOrderId] = useState<string | null>(null);
   const [invWarehouse, setInvWarehouse] = useState('');
   const [invPayment, setInvPayment] = useState<'credit' | 'cash' | ''>('credit');
-  const [invLines, setInvLines] = useState<Array<{ salesOrderLineId: string; quantity: string }>>([]);
+  const [invLines, setInvLines] = useState<Array<{ salesOrderLineId: string; quantity: number }>>([]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState('');
@@ -76,7 +76,6 @@ export function SalesOrdersPage() {
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
   const formatMoneyInput = (value: string) => formatAmountInput(value);
-  const formatQtyInput = (value: string) => formatAmountInput(value);
 
   const list = useQuery({
     queryKey: ['sales-orders'],
@@ -125,7 +124,7 @@ export function SalesOrdersPage() {
       (d.lines || []).length
         ? d.lines.map((l) => ({
             productId: l.productId,
-            quantity: l.quantity,
+            quantity: parseFloat(l.quantity),
             unitPrice: l.unitPrice,
             discountAmount: l.discountAmount,
             taxProfileId: l.taxProfileId ?? '',
@@ -143,7 +142,7 @@ export function SalesOrdersPage() {
           0,
           parseFloat(l.quantity) - parseFloat(l.deliveredQuantity || '0')
         ).toFixed(4);
-        return { salesOrderLineId: l.id, quantity: rem };
+        return { salesOrderLineId: l.id, quantity: parseFloat(rem) };
       })
     );
   }, [convertDetail.data, convertOpen]);
@@ -268,7 +267,7 @@ export function SalesOrdersPage() {
       if (!convertOrderId) throw new Error('No order');
       if (!invWarehouse) throw new Error('Select warehouse');
       if (!invPayment) throw new Error('Select payment type');
-      const linesPayload = invLines.filter((l) => parseFloat(l.quantity) > 0);
+      const linesPayload = invLines.filter((l) => l.quantity > 0);
       if (linesPayload.length === 0) throw new Error('Enter quantity on at least one line');
       await apiFetch(`/sales-orders/${convertOrderId}/convert-to-invoice`, {
         method: 'POST',
@@ -510,12 +509,18 @@ export function SalesOrdersPage() {
                   <label className="sm:col-span-2">
                     <span className="text-xs text-slate-500">Qty</span>
                     <input
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      min={0}
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm tabular-nums"
                       value={line.quantity}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], quantity: formatQtyInput(e.target.value) };
+                          const raw = e.target.value;
+                          const v = raw === '' ? 0 : Number(raw);
+                          n[idx] = { ...n[idx], quantity: Number.isFinite(v) ? v : 0 };
                           return n;
                         })
                       }
@@ -656,12 +661,18 @@ export function SalesOrdersPage() {
                         {ol?.product ? `${ol.product.sku} — ${ol.product.name}` : ol?.productId ?? il.salesOrderLineId}
                       </span>
                       <input
+                        type="number"
+                        inputMode="decimal"
+                        step="any"
+                        min={0}
                         className="w-24 rounded border border-slate-300 px-2 py-1 text-right tabular-nums dark:border-slate-600 dark:bg-slate-900"
                         value={il.quantity}
                         onChange={(e) =>
                           setInvLines((prev) => {
                             const n = [...prev];
-                            n[idx] = { ...n[idx], quantity: formatQtyInput(e.target.value) };
+                            const raw = e.target.value;
+                            const v = raw === '' ? 0 : Number(raw);
+                            n[idx] = { ...n[idx], quantity: Number.isFinite(v) ? v : 0 };
                             return n;
                           })
                         }
