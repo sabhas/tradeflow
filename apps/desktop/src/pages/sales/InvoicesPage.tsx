@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData, downloadAuthenticatedFile, openAuthenticatedRoute } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
+import { LineStockInfo } from '../../components/LineStockInfo';
 import { SalesSubNav } from '../../components/SalesSubNav';
 import {
   formatAmount,
@@ -660,6 +661,13 @@ export function InvoicesPage() {
                     >
                       Remove
                     </button>
+                  </div>
+                  <div className="sm:col-span-12">
+                    <LineStockInfo
+                      productId={line.productId}
+                      warehouseId={warehouseId}
+                      requestedQuantity={line.quantity}
+                    />
                   </div>
                 </div>
               ))}

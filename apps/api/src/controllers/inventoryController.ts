@@ -127,6 +127,8 @@ export async function listBatchBalances(req: Request): Promise<ControllerResult>
   const productId = req.query.productId as string | undefined;
   const batchQuery = ((req.query.batch as string | undefined) ?? '').trim();
   const expiryBefore = (req.query.expiryBefore as string | undefined)?.trim();
+  const orderByParam = (req.query.orderBy as string | undefined)?.toLowerCase();
+  const limitParam = req.query.limit as string | undefined;
 
   const where: string[] = ['l.quantity_remaining::numeric > 0', 'p.deleted_at IS NULL'];
   const params: unknown[] = [];
@@ -148,8 +150,22 @@ export async function listBatchBalances(req: Request): Promise<ControllerResult>
     where.push(`l.expiry_date IS NOT NULL AND l.expiry_date <= $${params.length}::date`);
   }
 
-  const rows = await dataSource.query(
-    `
+  // Default order keeps the legacy (product → warehouse → expiry FEFO) behaviour
+  // for the inventory page, while `?orderBy=expiry` returns a flat FEFO list
+  // suitable for per-line widgets that only care about the next-to-expire lots.
+  const orderClause =
+    orderByParam === 'expiry'
+      ? 'l.expiry_date ASC NULLS LAST, COALESCE(NULLIF(l.batch_code, \'\'), \'Unspecified\') ASC'
+      : 'p.name ASC, w.name ASC, l.expiry_date ASC NULLS LAST, COALESCE(NULLIF(l.batch_code, \'\'), \'Unspecified\') ASC';
+
+  let limitClause = '';
+  const parsedLimit = limitParam != null ? Number(limitParam) : NaN;
+  if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+    const safeLimit = Math.min(Math.trunc(parsedLimit), 500);
+    limitClause = ` LIMIT ${safeLimit}`;
+  }
+
+  const baseQuery = `
     SELECT
       l.product_id AS "productId",
       p.sku AS "productSku",
@@ -183,12 +199,45 @@ export async function listBatchBalances(req: Request): Promise<ControllerResult>
     INNER JOIN warehouses w ON w.id = l.warehouse_id
     WHERE ${where.join(' AND ')}
     GROUP BY l.product_id, p.sku, p.name, l.warehouse_id, w.code, w.name, COALESCE(NULLIF(l.batch_code, ''), 'Unspecified'), l.expiry_date
-    ORDER BY p.name ASC, w.name ASC, l.expiry_date ASC NULLS LAST, COALESCE(NULLIF(l.batch_code, ''), 'Unspecified') ASC
-    `,
-    params
-  );
+    ORDER BY ${orderClause}${limitClause}
+  `;
 
-  return ok({ data: rows, meta: { rowCount: rows.length } });
+  const rows = await dataSource.query(baseQuery, params);
+
+  // When a limit is supplied we may have hidden rows; compute aggregate totals so
+  // the UI can show "X in stock across N batches" even though it only renders top K.
+  let totals: { totalQuantity: string; batchCount: number; warehouseCount: number } | undefined;
+  if (limitClause) {
+    const totalsRow = await dataSource.query(
+      `
+      SELECT
+        COALESCE(SUM(grouped.qty), 0)::text AS "totalQuantity",
+        COUNT(*)::int AS "batchCount",
+        COUNT(DISTINCT grouped.warehouse_id)::int AS "warehouseCount"
+      FROM (
+        SELECT
+          l.warehouse_id,
+          COALESCE(NULLIF(l.batch_code, ''), 'Unspecified') AS batch_code,
+          l.expiry_date,
+          SUM(l.quantity_remaining::numeric) AS qty
+        FROM stock_layers l
+        INNER JOIN products p ON p.id = l.product_id
+        WHERE ${where.join(' AND ')}
+        GROUP BY l.warehouse_id, COALESCE(NULLIF(l.batch_code, ''), 'Unspecified'), l.expiry_date
+      ) grouped
+      `,
+      params
+    );
+    if (totalsRow[0]) {
+      totals = {
+        totalQuantity: String(totalsRow[0].totalQuantity ?? '0'),
+        batchCount: Number(totalsRow[0].batchCount ?? 0),
+        warehouseCount: Number(totalsRow[0].warehouseCount ?? 0),
+      };
+    }
+  }
+
+  return ok({ data: rows, meta: { rowCount: rows.length, ...(totals ?? {}) } });
 }
 
 export async function listLowStock(req: Request): Promise<ControllerResult> {

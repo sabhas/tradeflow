@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
+import { LineStockInfo } from '../../components/LineStockInfo';
 import { SalesSubNav } from '../../components/SalesSubNav';
 import {
   formatAmount,
@@ -579,6 +580,13 @@ export function SalesOrdersPage() {
                       Remove
                     </button>
                   </div>
+                  <div className="sm:col-span-12">
+                    <LineStockInfo
+                      productId={line.productId}
+                      warehouseId={warehouseId}
+                      requestedQuantity={line.quantity}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -639,21 +647,33 @@ export function SalesOrdersPage() {
               {invLines.map((il, idx) => {
                 const ol = convertDetail.data.lines.find((l) => l.id === il.salesOrderLineId);
                 return (
-                  <li key={il.salesOrderLineId} className="flex items-center gap-2 rounded border border-slate-200 px-3 py-2 text-sm">
-                    <span className="flex-1 truncate">
-                      {ol?.product ? `${ol.product.sku} — ${ol.product.name}` : ol?.productId ?? il.salesOrderLineId}
-                    </span>
-                    <input
-                      className="w-28 rounded border border-slate-300 px-2 py-1 text-right"
-                      value={il.quantity}
-                      onChange={(e) =>
-                        setInvLines((prev) => {
-                          const n = [...prev];
-                          n[idx] = { ...n[idx], quantity: formatQtyInput(e.target.value) };
-                          return n;
-                        })
-                      }
-                    />
+                  <li
+                    key={il.salesOrderLineId}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900/40"
+                  >
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="flex-1 truncate text-slate-700 dark:text-slate-200">
+                        {ol?.product ? `${ol.product.sku} — ${ol.product.name}` : ol?.productId ?? il.salesOrderLineId}
+                      </span>
+                      <input
+                        className="w-24 rounded border border-slate-300 px-2 py-1 text-right tabular-nums dark:border-slate-600 dark:bg-slate-900"
+                        value={il.quantity}
+                        onChange={(e) =>
+                          setInvLines((prev) => {
+                            const n = [...prev];
+                            n[idx] = { ...n[idx], quantity: formatQtyInput(e.target.value) };
+                            return n;
+                          })
+                        }
+                      />
+                    </div>
+                    {ol?.productId && (
+                      <LineStockInfo
+                        productId={ol.productId}
+                        warehouseId={invWarehouse}
+                        requestedQuantity={il.quantity}
+                      />
+                    )}
                   </li>
                 );
               })}
