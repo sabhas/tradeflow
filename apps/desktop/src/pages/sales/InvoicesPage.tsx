@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { apiFetch, apiFetchData, downloadAuthenticatedFile, openAuthenticatedRoute } from '../../api/client';
+import {
+  apiFetch,
+  apiFetchData,
+  downloadAuthenticatedFile,
+  openAuthenticatedPrintPost,
+  openAuthenticatedRoute,
+} from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { LineStockInfo } from '../../components/LineStockInfo';
 import { SalesSubNav } from '../../components/SalesSubNav';
@@ -25,11 +31,15 @@ interface TaxOpt {
 interface InvRow {
   id: string;
   customerId: string;
+  customerName: string | null;
   invoiceDate: string;
+  dueDate: string;
   status: string;
   paymentType: string;
   total: string;
 }
+
+const PAGE_SIZE = 50;
 
 type Line = { productId: string; quantity: number; unitPrice: string; discountAmount: string; taxProfileId: string };
 
@@ -65,11 +75,68 @@ export function InvoicesPage() {
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
 
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterCustomerId, setFilterCustomerId] = useState('');
+  const [page, setPage] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const filterQueryString = useMemo(() => {
+    const p = new URLSearchParams();
+    if (filterDateFrom) p.set('dateFrom', filterDateFrom);
+    if (filterDateTo) p.set('dateTo', filterDateTo);
+    if (filterStatus) p.set('status', filterStatus);
+    if (filterCustomerId) p.set('customerId', filterCustomerId);
+    return p.toString();
+  }, [filterDateFrom, filterDateTo, filterStatus, filterCustomerId]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [filterQueryString]);
+
+  const offset = page * PAGE_SIZE;
   const list = useQuery({
-    queryKey: ['invoices'],
+    queryKey: ['invoices', filterQueryString, page],
     enabled: canRead,
-    queryFn: () => apiFetch<{ data: InvRow[] }>('/invoices').then((r) => r.data),
+    queryFn: () => {
+      const params = new URLSearchParams(filterQueryString);
+      params.set('limit', String(PAGE_SIZE));
+      params.set('offset', String(offset));
+      return apiFetch<{ data: InvRow[]; meta: { total: number; limit: number; offset: number } }>(
+        `/invoices?${params.toString()}`
+      );
+    },
   });
+
+  const rows = useMemo(() => list.data?.data ?? [], [list.data]);
+  const total = list.data?.meta.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    if (!list.data) return;
+    const ids = new Set(rows.map((r) => r.id));
+    setSelectedIds((prev) => {
+      const next = prev.filter((id) => ids.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [list.data, rows]);
+
+  const allOnPageSelected = rows.length > 0 && rows.every((r) => selectedIds.includes(r.id));
+  const someOnPageSelected = rows.some((r) => selectedIds.includes(r.id));
+
+  const filterCustomers = useQuery({
+    queryKey: ['customers', 'inv-filter'],
+    enabled: canRead,
+    queryFn: () => apiFetch<{ data: CustomerOpt[] }>('/customers?limit=500').then((r) => r.data),
+  });
+  const filterCustomerOptions = useMemo(
+    () => [
+      { value: '', label: 'All customers' },
+      ...(filterCustomers.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [filterCustomers.data]
+  );
 
   const detail = useQuery({
     queryKey: ['invoice', editingId],
@@ -289,6 +356,48 @@ export function InvoicesPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
   });
 
+  const printOne = (id: string) =>
+    openAuthenticatedRoute(`/invoices/${id}/pdf`).catch((e: Error) => setError(e.message));
+
+  const printSelected = () => {
+    if (selectedIds.length === 0) return;
+    setError(null);
+    openAuthenticatedPrintPost('/invoices/print-batch', { mode: 'ids', ids: selectedIds }).catch(
+      (e: Error) => setError(e.message)
+    );
+  };
+
+  const printFiltered = () => {
+    setError(null);
+    const body: Record<string, unknown> = { mode: 'filter', limit: 100 };
+    if (filterDateFrom) body.dateFrom = filterDateFrom;
+    if (filterDateTo) body.dateTo = filterDateTo;
+    if (filterStatus) body.status = filterStatus;
+    if (filterCustomerId) body.customerId = filterCustomerId;
+    openAuthenticatedPrintPost('/invoices/print-batch', body).catch((e: Error) =>
+      setError(e.message)
+    );
+  };
+
+  const toggleRowSelected = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+  const togglePageSelected = () => {
+    if (allOnPageSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !rows.some((r) => r.id === id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...rows.map((r) => r.id)])));
+    }
+  };
+  const clearFilters = () => {
+    setFilterDateFrom('');
+    setFilterDateTo('');
+    setFilterStatus('');
+    setFilterCustomerId('');
+  };
+  const hasFilters =
+    !!filterDateFrom || !!filterDateTo || !!filterStatus || !!filterCustomerId;
+
   if (!canRead) return <p className="text-slate-600">No permission.</p>;
 
   return (
@@ -343,11 +452,109 @@ export function InvoicesPage() {
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
       )}
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
+      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block text-sm">
+            <span className="text-xs text-slate-500 dark:text-slate-400">From</span>
+            <input
+              type="date"
+              className="mt-0.5 block rounded-md border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950"
+              value={filterDateFrom}
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-xs text-slate-500 dark:text-slate-400">To</span>
+            <input
+              type="date"
+              className="mt-0.5 block rounded-md border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950"
+              value={filterDateTo}
+              onChange={(e) => setFilterDateTo(e.target.value)}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Status</span>
+            <select
+              className="mt-0.5 block rounded-md border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="draft">Draft</option>
+              <option value="posted">Posted</option>
+            </select>
+          </label>
+          <label className="block min-w-[14rem] flex-1 text-sm">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Customer</span>
+            <Combobox
+              className="mt-0.5 w-full max-w-none"
+              inputClassName="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              value={filterCustomerId}
+              onChange={setFilterCustomerId}
+              options={filterCustomerOptions}
+              placeholder="All customers"
+              disabled={filterCustomers.isLoading}
+              aria-label="Filter by customer"
+            />
+          </label>
+          {hasFilters && (
+            <button
+              type="button"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              onClick={clearFilters}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            {selectedIds.length > 0
+              ? `${selectedIds.length} selected`
+              : `${total} invoice${total === 1 ? '' : 's'}`}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              disabled={selectedIds.length === 0}
+              onClick={printSelected}
+              title="Open one print dialog with all selected invoices"
+            >
+              Print selected ({selectedIds.length})
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              disabled={total === 0}
+              onClick={printFiltered}
+              title="Print up to 100 invoices matching the current filters"
+            >
+              Print matching{hasFilters ? '' : ' (latest 100)'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-950">
             <tr>
+              <th className="w-10 px-3 py-3 text-left font-medium">
+                <input
+                  type="checkbox"
+                  aria-label="Select all on page"
+                  className="h-4 w-4 rounded border-slate-300"
+                  checked={allOnPageSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = !allOnPageSelected && someOnPageSelected;
+                  }}
+                  onChange={togglePageSelected}
+                  disabled={rows.length === 0}
+                />
+              </th>
               <th className="px-4 py-3 text-left font-medium">Date</th>
+              <th className="px-4 py-3 text-left font-medium">Customer</th>
               <th className="px-4 py-3 text-left font-medium">Status</th>
               <th className="px-4 py-3 text-left font-medium">Pay</th>
               <th className="px-4 py-3 text-right font-medium">Total</th>
@@ -355,57 +562,117 @@ export function InvoicesPage() {
             </tr>
           </thead>
           <tbody>
-            {(list.data ?? []).map((r) => (
-              <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
-                <td className="px-4 py-3">{r.invoiceDate}</td>
-                <td className="px-4 py-3 capitalize">{r.status}</td>
-                <td className="px-4 py-3">{r.paymentType}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(r.total)}</td>
-                <td className="px-4 py-3 text-right">
-                  {canWrite && r.status === 'draft' && (
-                    <>
+            {rows.map((r) => {
+              const checked = selectedIds.includes(r.id);
+              return (
+                <tr
+                  key={r.id}
+                  className={`border-t border-slate-100 dark:border-slate-800 ${
+                    checked ? 'bg-indigo-50/60 dark:bg-indigo-500/10' : ''
+                  }`}
+                >
+                  <td className="px-3 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select invoice from ${r.invoiceDate}`}
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={checked}
+                      onChange={() => toggleRowSelected(r.id)}
+                    />
+                  </td>
+                  <td className="px-4 py-3 tabular-nums">{r.invoiceDate}</td>
+                  <td className="px-4 py-3">{r.customerName ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+                        r.status === 'posted'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200'
+                          : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                      }`}
+                    >
+                      {r.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 capitalize">{r.paymentType}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{formatMoney(r.total)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {canWrite && r.status === 'draft' && (
+                      <>
+                        <button
+                          type="button"
+                          className="text-indigo-600 hover:underline"
+                          onClick={() => {
+                            setEditingId(r.id);
+                            setError(null);
+                            setPanelOpen(true);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="ml-3 text-red-600 hover:underline"
+                          onClick={() => del.mutate(r.id)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {canPost && r.status === 'draft' && (
                       <button
                         type="button"
-                        className="text-indigo-600 hover:underline"
-                        onClick={() => {
-                          setEditingId(r.id);
-                          setError(null);
-                          setPanelOpen(true);
-                        }}
+                        className="ml-3 font-medium text-green-700 hover:underline"
+                        onClick={() => postInv.mutate(r.id)}
                       >
-                        Edit
+                        Post
                       </button>
-                      <button
-                        type="button"
-                        className="ml-3 text-red-600 hover:underline"
-                        onClick={() => del.mutate(r.id)}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                  {canPost && r.status === 'draft' && (
+                    )}
                     <button
                       type="button"
-                      className="ml-3 font-medium text-green-700 hover:underline"
-                      onClick={() => postInv.mutate(r.id)}
+                      className="ml-3 text-slate-600 hover:underline"
+                      onClick={() => printOne(r.id)}
                     >
-                      Post
+                      Print
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="ml-3 text-slate-600 hover:underline"
-                    onClick={() => openAuthenticatedRoute(`/invoices/${r.id}/pdf`).catch((e) => setError(e.message))}
-                  >
-                    PDF
-                  </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {!list.isLoading && rows.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                  {hasFilters ? 'No invoices match the current filters.' : 'No invoices yet.'}
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
         {list.isLoading && <p className="p-4 text-slate-500">Loading…</p>}
+        {pageCount > 1 && (
+          <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+            <span>
+              Page {page + 1} of {pageCount}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                disabled={page + 1 >= pageCount}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {panelOpen && (
@@ -413,9 +680,24 @@ export function InvoicesPage() {
           <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{editingId ? 'Edit invoice' : 'New invoice'}</h2>
-              <button type="button" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setPanelOpen(false)}>
-                ×
-              </button>
+              <div className="flex items-center gap-2">
+                {editingId && (
+                  <button
+                    type="button"
+                    className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    onClick={() => printOne(editingId)}
+                  >
+                    Print
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                  onClick={() => setPanelOpen(false)}
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
             <div className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 p-3">

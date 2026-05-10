@@ -2,21 +2,29 @@ import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
 import {
-  dataSource,
   CompanySettings,
   Customer,
   Invoice,
   InvoiceLine,
   InvoiceTemplate,
 } from '@tradeflow/db';
-import { createInvoiceSchema, updateInvoiceSchema } from '@tradeflow/shared';
+import {
+  createInvoiceSchema,
+  printInvoicesBatchSchema,
+  updateInvoiceSchema,
+} from '@tradeflow/shared';
 import { getPagination } from '../utils/pagination';
 import { computeSalesDocumentTotals } from '../services/salesTotals';
 import { runInTransaction } from '../services/inventoryService';
 import { postInvoice, resolveInvoiceDueDate } from '../services/invoicePosting';
 import { getCompanySettingsRow } from '../services/companySettings';
 import { resolveInvoiceLineUnitPrices } from '../services/invoicePricingService';
-import { buildInvoicePrintHtml } from '../services/invoiceHtml';
+import {
+  buildInvoicePrintHtml,
+  buildInvoicesBatchPrintHtml,
+  renderInvoiceBody,
+  type InvoicePrintData,
+} from '../services/invoiceHtml';
 import { created, htmlOk, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
 
@@ -27,6 +35,7 @@ export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
   return {
     id: inv.id,
     customerId: inv.customerId,
+    customerName: inv.customer?.name ?? null,
     invoiceDate: inv.invoiceDate,
     dueDate: inv.dueDate,
     status: inv.status,
@@ -62,33 +71,21 @@ export async function listInvoices(req: Request): Promise<ControllerResult> {
   const { limit, offset } = getPagination(req);
   const qb = Invoice
     .createQueryBuilder('i')
-    .where('i.deleted_at IS NULL')
-    .orderBy('i.invoice_date', 'DESC')
+    .leftJoinAndSelect('i.customer', 'customer')
+    .where('i.deletedAt IS NULL')
+    .orderBy('i.invoiceDate', 'DESC')
+    .addOrderBy('i.createdAt', 'DESC')
     .take(limit)
     .skip(offset);
-  if (req.query.customerId) qb.andWhere('i.customer_id = :cid', { cid: req.query.customerId });
+  if (req.query.customerId) qb.andWhere('i.customerId = :cid', { cid: req.query.customerId });
   if (req.query.status) qb.andWhere('i.status = :st', { st: req.query.status });
-  if (req.query.dateFrom) qb.andWhere('i.invoice_date >= :df', { df: req.query.dateFrom });
-  if (req.query.dateTo) qb.andWhere('i.invoice_date <= :dt', { dt: req.query.dateTo });
+  if (req.query.dateFrom) qb.andWhere('i.invoiceDate >= :df', { df: req.query.dateFrom });
+  if (req.query.dateTo) qb.andWhere('i.invoiceDate <= :dt', { dt: req.query.dateTo });
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((i) => serializeInvoice(i)), meta: { total, limit, offset } });
 }
 
-export async function getInvoicePdfHtml(req: Request): Promise<ControllerResult> {
-  const inv = await Invoice.findOne({
-    where: { id: req.params.id, deletedAt: IsNull() },
-    relations: ['lines', 'lines.product', 'customer', 'customer.paymentTerms', 'warehouse', 'invoiceTemplate'],
-  });
-  if (!inv) {
-    throw new HttpError(404, { error: 'Not found' });
-  }
-  const cust =
-    inv.customer ||
-    (await Customer.findOne({
-      where: { id: inv.customerId, deletedAt: IsNull() },
-      relations: ['paymentTerms'],
-    }));
-  const name = cust?.name ?? 'Customer';
+async function loadCompanyForPrint(): Promise<CompanySettings> {
   const company = (
     await CompanySettings.find({
       order: { id: 'ASC' },
@@ -99,6 +96,25 @@ export async function getInvoicePdfHtml(req: Request): Promise<ControllerResult>
   if (!company) {
     throw new HttpError(500, { error: 'Company settings not initialized' });
   }
+  return company;
+}
+
+async function loadInvoicePrintData(
+  id: string,
+  company: CompanySettings
+): Promise<InvoicePrintData | null> {
+  const inv = await Invoice.findOne({
+    where: { id, deletedAt: IsNull() },
+    relations: ['lines', 'lines.product', 'customer', 'customer.paymentTerms', 'warehouse', 'invoiceTemplate'],
+  });
+  if (!inv) return null;
+  const cust =
+    inv.customer ||
+    (await Customer.findOne({
+      where: { id: inv.customerId, deletedAt: IsNull() },
+      relations: ['paymentTerms'],
+    }));
+  const name = cust?.name ?? 'Customer';
   let template: InvoiceTemplate | null = inv.invoiceTemplate ?? null;
   if (!template && company.defaultInvoiceTemplateId) {
     template = await InvoiceTemplate.findOne({
@@ -109,7 +125,7 @@ export async function getInvoicePdfHtml(req: Request): Promise<ControllerResult>
   for (const l of inv.lines ?? []) {
     if (l.product?.name) productNames.set(l.productId, l.product.name);
   }
-  const html = buildInvoicePrintHtml({
+  return {
     invoice: inv,
     lines: inv.lines ?? [],
     customerName: name,
@@ -117,8 +133,54 @@ export async function getInvoicePdfHtml(req: Request): Promise<ControllerResult>
     template,
     productNames,
     paymentTermsLabel: cust?.paymentTerms?.name ?? null,
-  });
-  return htmlOk(html);
+  };
+}
+
+export async function getInvoicePdfHtml(req: Request): Promise<ControllerResult> {
+  const company = await loadCompanyForPrint();
+  const data = await loadInvoicePrintData(req.params.id, company);
+  if (!data) {
+    throw new HttpError(404, { error: 'Not found' });
+  }
+  return htmlOk(buildInvoicePrintHtml(data));
+}
+
+export async function printInvoicesBatch(
+  req: Request,
+  body: z.infer<typeof printInvoicesBatchSchema>
+): Promise<ControllerResult> {
+  let ids: string[] = [];
+  if (body.mode === 'ids') {
+    ids = body.ids;
+  } else {
+    const limit = Math.min(body.limit ?? 50, 100);
+    const qb = Invoice
+      .createQueryBuilder('i')
+      .select(['i.id'])
+      .where('i.deletedAt IS NULL')
+      .orderBy('i.invoiceDate', 'DESC')
+      .addOrderBy('i.createdAt', 'DESC')
+      .take(limit);
+    if (body.customerId) qb.andWhere('i.customerId = :cid', { cid: body.customerId });
+    if (body.status) qb.andWhere('i.status = :st', { st: body.status });
+    if (body.dateFrom) qb.andWhere('i.invoiceDate >= :df', { df: body.dateFrom });
+    if (body.dateTo) qb.andWhere('i.invoiceDate <= :dt', { dt: body.dateTo });
+    const rows = await qb.getMany();
+    ids = rows.map((r) => r.id);
+  }
+  if (ids.length === 0) {
+    throw new HttpError(404, { error: 'No invoices match the given criteria' });
+  }
+  const company = await loadCompanyForPrint();
+  const parts: string[] = [];
+  for (const id of ids) {
+    const data = await loadInvoicePrintData(id, company);
+    if (data) parts.push(renderInvoiceBody(data));
+  }
+  if (parts.length === 0) {
+    throw new HttpError(404, { error: 'No printable invoices found' });
+  }
+  return htmlOk(buildInvoicesBatchPrintHtml(parts));
 }
 
 export async function createInvoice(req: Request, body: CreateInvoiceInput): Promise<ControllerResult> {

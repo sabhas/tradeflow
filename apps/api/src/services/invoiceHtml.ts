@@ -25,7 +25,24 @@ function cfgDefaults(c: InvoiceTemplateConfig | undefined): Required<InvoiceTemp
   };
 }
 
-export function buildInvoicePrintHtml(opts: {
+const SHARED_PRINT_STYLES = `
+  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 24px auto; color: #111; }
+  h1 { font-size: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  th, td { border: 1px solid #ccc; padding: 8px; font-size: 14px; }
+  th { background: #f4f4f5; text-align: left; }
+  .totals { margin-top: 16px; text-align: right; }
+  .company { border-bottom: 1px solid #e4e4e7; padding-bottom: 16px; margin-bottom: 16px; }
+  .invoice-doc { break-inside: avoid; }
+  .invoice-doc + .invoice-doc { margin-top: 32px; }
+  @media print {
+    .invoice-doc { page-break-after: always; }
+    .invoice-doc:last-child { page-break-after: auto; }
+    table, tr, td, th { page-break-inside: avoid; }
+  }
+`;
+
+export type InvoicePrintData = {
   invoice: Invoice;
   lines: InvoiceLine[];
   customerName: string;
@@ -33,7 +50,10 @@ export function buildInvoicePrintHtml(opts: {
   template: InvoiceTemplate | null;
   productNames: Map<string, string>;
   paymentTermsLabel?: string | null;
-}): string {
+};
+
+/** Renders the inner invoice markup (no <html>/<body>/<script>), suitable for embedding in a batch document. */
+export function renderInvoiceBody(opts: InvoicePrintData): string {
   const { invoice: inv, lines, customerName, company, template, productNames, paymentTermsLabel } = opts;
   const cfg = cfgDefaults(template?.config);
   const md = Math.min(6, Math.max(0, company.moneyDecimals));
@@ -103,17 +123,7 @@ export function buildInvoicePrintHtml(opts: {
   const taxT = roundAmountString(inv.taxAmount, md, mode);
   const tot = roundAmountString(inv.total, md, mode);
 
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Invoice ${esc(inv.id.slice(0, 8))}</title>
-<style>
-  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 24px auto; color: #111; }
-  h1 { font-size: 1.5rem; }
-  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-  th, td { border: 1px solid #ccc; padding: 8px; font-size: 14px; }
-  th { background: #f4f4f5; text-align: left; }
-  .totals { margin-top: 16px; text-align: right; }
-  .company { border-bottom: 1px solid #e4e4e7; padding-bottom: 16px; margin-bottom: 16px; }
-</style></head><body>
+  return `<div class="invoice-doc">
   <div class="company">
     ${logoBlock}
     <h1 style="margin:0">${esc(company.companyName)}</h1>
@@ -143,6 +153,27 @@ export function buildInvoicePrintHtml(opts: {
     <p><strong>Total: ${esc(tot)} ${cur}</strong></p>
   </div>
   ${notesBlock}
+</div>`;
+}
+
+export function buildInvoicePrintHtml(opts: InvoicePrintData): string {
+  const body = renderInvoiceBody(opts);
+  const title = `Invoice ${opts.invoice.id.slice(0, 8)}`;
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${esc(title)}</title>
+<style>${SHARED_PRINT_STYLES}</style></head><body>
+${body}
+  <script>window.onload = function() { window.print(); }</script>
+</body></html>`;
+}
+
+/** Wraps multiple pre-rendered invoice bodies in one print document. */
+export function buildInvoicesBatchPrintHtml(parts: string[]): string {
+  const title = parts.length === 1 ? 'Invoice' : `Invoices (${parts.length})`;
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${esc(title)}</title>
+<style>${SHARED_PRINT_STYLES}</style></head><body>
+${parts.join('\n')}
   <script>window.onload = function() { window.print(); }</script>
 </body></html>`;
 }

@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { createInvoiceSchema, updateInvoiceSchema } from '@tradeflow/shared';
+import {
+  createInvoiceSchema,
+  printInvoicesBatchSchema,
+  updateInvoiceSchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -28,6 +32,19 @@ invoicesRouter.post(
       return;
     }
     sendControllerResult(res, await invoicesController.createInvoice(req, parsed.data));
+  })
+);
+
+invoicesRouter.post(
+  '/print-batch',
+  requirePermission('sales', 'read'),
+  asyncHandler(async (req, res) => {
+    const parsed = printInvoicesBatchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
+      return;
+    }
+    sendControllerResult(res, await invoicesController.printInvoicesBatch(req, parsed.data));
   })
 );
 

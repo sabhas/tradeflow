@@ -48,6 +48,22 @@ export async function openAuthenticatedRoute(path: string): Promise<void> {
   window.open(url, '_blank', 'noopener');
 }
 
+/** POST JSON to an authenticated endpoint that returns HTML, then open the response in a new tab. */
+export async function openAuthenticatedPrintPost(path: string, body: unknown): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.message || err.error || `Request failed: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener');
+}
+
 /** Download a file (e.g. Excel export) with Bearer auth. Omits Content-Type so multipart can use FormData elsewhere. */
 export async function downloadAuthenticatedFile(path: string, filename: string): Promise<void> {
   const token = localStorage.getItem('tradeflow_token');

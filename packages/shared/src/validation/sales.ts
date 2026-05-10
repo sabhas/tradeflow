@@ -88,6 +88,21 @@ export const convertOrderToInvoiceSchema = partialInvoiceFromOrderSchema.extend(
   dueDate: z.union([z.string(), z.null()]).optional(),
 });
 
+export const printInvoicesBatchSchema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('ids'),
+    ids: z.array(z.string().uuid()).min(1).max(50),
+  }),
+  z.object({
+    mode: z.literal('filter'),
+    dateFrom: z.string().optional(),
+    dateTo: z.string().optional(),
+    customerId: z.string().uuid().optional(),
+    status: z.string().optional(),
+    limit: z.number().int().positive().max(100).optional(),
+  }),
+]);
+
 export const createReceiptSchema = z.object({
   customerId: z.string().uuid(),
   receiptDate: z.string(),
