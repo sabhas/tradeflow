@@ -81,6 +81,7 @@ export function InvoicesPage() {
   const [filterCustomerId, setFilterCustomerId] = useState('');
   const [page, setPage] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkActionError, setBulkActionError] = useState<string | null>(null);
 
   const filterQueryString = useMemo(() => {
     const p = new URLSearchParams();
@@ -124,6 +125,9 @@ export function InvoicesPage() {
 
   const allOnPageSelected = rows.length > 0 && rows.every((r) => selectedIds.includes(r.id));
   const someOnPageSelected = rows.some((r) => selectedIds.includes(r.id));
+  const selectedRows = useMemo(() => rows.filter((r) => selectedIds.includes(r.id)), [rows, selectedIds]);
+  const selectedDraftRows = useMemo(() => selectedRows.filter((r) => r.status === 'draft'), [selectedRows]);
+  const selectedPostedRows = useMemo(() => selectedRows.filter((r) => r.status === 'posted'), [selectedRows]);
 
   const filterCustomers = useQuery({
     queryKey: ['customers', 'inv-filter'],
@@ -356,6 +360,40 @@ export function InvoicesPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
   });
 
+  const bulkMutate = useMutation({
+    mutationFn: async ({ action, ids }: { action: 'post' | 'delete'; ids: string[] }) => {
+      const failures: string[] = [];
+      let completed = 0;
+      for (const id of ids) {
+        try {
+          if (action === 'post') {
+            await apiFetch(`/invoices/${id}/post`, { method: 'POST', body: '{}' });
+          } else {
+            await apiFetch(`/invoices/${id}`, { method: 'DELETE' });
+          }
+          completed += 1;
+        } catch {
+          failures.push(id);
+        }
+      }
+      return { completed, failures };
+    },
+    onSuccess: ({ completed, failures }, vars) => {
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      setSelectedIds((prev) => prev.filter((id) => failures.includes(id)));
+      if (failures.length) {
+        setBulkActionError(
+          `${vars.action === 'post' ? 'Posting' : 'Deleting'} completed for ${completed}/${vars.ids.length} invoices. ${
+            failures.length
+          } failed and stayed selected.`
+        );
+      } else {
+        setBulkActionError(null);
+      }
+    },
+    onError: (e: Error) => setBulkActionError(e.message),
+  });
+
   const printOne = (id: string) =>
     openAuthenticatedRoute(`/invoices/${id}/pdf`).catch((e: Error) => setError(e.message));
 
@@ -367,17 +405,34 @@ export function InvoicesPage() {
     );
   };
 
-  const printFiltered = () => {
+  const runBulkPost = () => {
+    if (selectedDraftRows.length === 0) return;
     setError(null);
-    const body: Record<string, unknown> = { mode: 'filter', limit: 100 };
-    if (filterDateFrom) body.dateFrom = filterDateFrom;
-    if (filterDateTo) body.dateTo = filterDateTo;
-    if (filterStatus) body.status = filterStatus;
-    if (filterCustomerId) body.customerId = filterCustomerId;
-    openAuthenticatedPrintPost('/invoices/print-batch', body).catch((e: Error) =>
-      setError(e.message)
-    );
+    setBulkActionError(null);
+    bulkMutate.mutate({ action: 'post', ids: selectedDraftRows.map((r) => r.id) });
   };
+
+  const runBulkDelete = () => {
+    if (selectedDraftRows.length === 0) return;
+    const okDelete = window.confirm(
+      `Delete ${selectedDraftRows.length} selected draft invoice${
+        selectedDraftRows.length === 1 ? '' : 's'
+      }? This action cannot be undone.`
+    );
+    if (!okDelete) return;
+    setError(null);
+    setBulkActionError(null);
+    bulkMutate.mutate({ action: 'delete', ids: selectedDraftRows.map((r) => r.id) });
+  };
+
+  const bulkPrintBtnClass =
+    'rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-45 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-800';
+  const bulkPostBtnClass =
+    'rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm ring-1 ring-indigo-600/80 transition-colors hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-45 dark:bg-indigo-500 dark:ring-indigo-400/30 dark:hover:bg-indigo-400';
+  const bulkDeleteBtnClass =
+    'rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm transition-colors hover:bg-red-50 disabled:pointer-events-none disabled:opacity-45 dark:border-red-800 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/40';
+  const subtleActionBtnClass =
+    'inline-flex rounded px-2 py-1 text-sm font-medium transition-colors hover:bg-slate-100 dark:hover:bg-slate-800';
 
   const toggleRowSelected = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -405,7 +460,6 @@ export function InvoicesPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Invoices</h1>
-          <p className="mt-1 text-slate-600 dark:text-slate-400">Draft, post (stock + accounts), print</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canRead && (
@@ -450,6 +504,11 @@ export function InvoicesPage() {
 
       {error && (
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</div>
+      )}
+      {bulkActionError && (
+        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {bulkActionError}
+        </div>
       )}
 
       <div className="mt-6 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
@@ -516,22 +575,47 @@ export function InvoicesPage() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className={bulkPrintBtnClass}
               disabled={selectedIds.length === 0}
               onClick={printSelected}
               title="Open one print dialog with all selected invoices"
             >
               Print selected ({selectedIds.length})
             </button>
-            <button
-              type="button"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-              disabled={total === 0}
-              onClick={printFiltered}
-              title="Print up to 100 invoices matching the current filters"
-            >
-              Print matching{hasFilters ? '' : ' (latest 100)'}
-            </button>
+            {canPost && (
+              <button
+                type="button"
+                className={bulkPostBtnClass}
+                disabled={selectedDraftRows.length === 0 || bulkMutate.isPending}
+                onClick={runBulkPost}
+                title={
+                  selectedPostedRows.length
+                    ? `Only draft invoices can be posted. ${selectedPostedRows.length} posted invoice${
+                        selectedPostedRows.length === 1 ? ' is' : 's are'
+                      } ignored.`
+                    : 'Post all selected draft invoices'
+                }
+              >
+                Post selected drafts ({selectedDraftRows.length})
+              </button>
+            )}
+            {canWrite && (
+              <button
+                type="button"
+                className={bulkDeleteBtnClass}
+                disabled={selectedDraftRows.length === 0 || bulkMutate.isPending}
+                onClick={runBulkDelete}
+                title={
+                  selectedPostedRows.length
+                    ? `Only draft invoices can be deleted. ${selectedPostedRows.length} posted invoice${
+                        selectedPostedRows.length === 1 ? ' is' : 's are'
+                      } ignored.`
+                    : 'Delete all selected draft invoices'
+                }
+              >
+                Delete selected drafts ({selectedDraftRows.length})
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -600,7 +684,7 @@ export function InvoicesPage() {
                       <>
                         <button
                           type="button"
-                          className="text-indigo-600 hover:underline"
+                          className={`${subtleActionBtnClass} text-indigo-600`}
                           onClick={() => {
                             setEditingId(r.id);
                             setError(null);
@@ -611,7 +695,7 @@ export function InvoicesPage() {
                         </button>
                         <button
                           type="button"
-                          className="ml-3 text-red-600 hover:underline"
+                          className={`ml-1 ${subtleActionBtnClass} text-red-600`}
                           onClick={() => del.mutate(r.id)}
                         >
                           Delete
@@ -621,7 +705,7 @@ export function InvoicesPage() {
                     {canPost && r.status === 'draft' && (
                       <button
                         type="button"
-                        className="ml-3 font-medium text-green-700 hover:underline"
+                        className={`ml-1 ${subtleActionBtnClass} text-green-700`}
                         onClick={() => postInv.mutate(r.id)}
                       >
                         Post
@@ -629,7 +713,7 @@ export function InvoicesPage() {
                     )}
                     <button
                       type="button"
-                      className="ml-3 text-slate-600 hover:underline"
+                      className={`ml-1 ${subtleActionBtnClass} text-slate-600`}
                       onClick={() => printOne(r.id)}
                     >
                       Print
