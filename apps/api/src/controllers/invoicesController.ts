@@ -20,6 +20,10 @@ import { postInvoice, resolveInvoiceDueDate } from '../services/invoicePosting';
 import { getCompanySettingsRow } from '../services/companySettings';
 import { resolveInvoiceLineUnitPrices } from '../services/invoicePricingService';
 import {
+  assertNoOtherInvoiceForSalesOrder,
+  assertSalesOrderConfirmedForInvoice,
+} from '../services/salesOrderInvoiceGuard';
+import {
   buildInvoicePrintHtml,
   buildInvoicesBatchPrintHtml,
   renderInvoiceBody,
@@ -232,6 +236,8 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
         invoiceTemplateId,
         createdBy: req.auth?.userId,
       });
+      await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
+      await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId);
       await manager.save(inv);
       for (const l of totals.lines) {
         await manager.save(
@@ -383,6 +389,8 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
           );
         }
       }
+      await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
+      await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId, inv.id);
       await manager.save(inv);
       return manager.findOneOrFail(Invoice, {
         where: { id: inv.id, deletedAt: IsNull() },

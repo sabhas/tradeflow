@@ -1,7 +1,9 @@
 import type { Request } from 'express';
+import { IsNull } from 'typeorm';
 import type { z } from 'zod';
 import { Product, SalesOrder, SalesOrderLine, Invoice, InvoiceLine } from '@tradeflow/db';
 import {
+  bulkSalesOrdersSchema,
   createSalesOrderSchema,
   convertOrderToInvoiceSchema,
   updateSalesOrderSchema,
@@ -12,18 +14,35 @@ import { runInTransaction } from '../services/inventoryService';
 import { resolveInvoiceDueDate } from '../services/invoicePosting';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
+import {
+  assertNoOtherInvoiceForSalesOrder,
+  assertSalesOrderConfirmedForInvoice,
+} from '../services/salesOrderInvoiceGuard';
+import { assertSalesOrderLinesInStock } from '../services/salesOrderStockValidation';
 
 type CreateSalesOrderInput = z.infer<typeof createSalesOrderSchema>;
 type UpdateSalesOrderInput = z.infer<typeof updateSalesOrderSchema>;
 type ConvertOrderToInvoiceInput = z.infer<typeof convertOrderToInvoiceSchema>;
+type BulkSalesOrdersInput = z.infer<typeof bulkSalesOrdersSchema>;
 
-export function serializeSalesOrder(o: SalesOrder, lines?: Array<SalesOrderLine & { product?: Product }>) {
+export function serializeSalesOrder(
+  o: SalesOrder,
+  lines?: Array<SalesOrderLine & { product?: Product }>,
+  opts?: { hasInvoice?: boolean; lineCount?: number }
+) {
+  const lineCount =
+    opts?.lineCount !== undefined ? opts.lineCount : (lines?.length ?? 0);
   return {
     id: o.id,
     customerId: o.customerId,
+    customerName: o.customer?.name ?? null,
     orderDate: o.orderDate,
     status: o.status,
+    hasInvoice: opts?.hasInvoice ?? false,
     warehouseId: o.warehouseId,
+    warehouseName: o.warehouse?.name ?? null,
+    salespersonName: o.salesperson?.name ?? null,
+    lineCount,
     subtotal: o.subtotal,
     taxAmount: o.taxAmount,
     discountAmount: o.discountAmount,
@@ -50,31 +69,153 @@ export function serializeSalesOrder(o: SalesOrder, lines?: Array<SalesOrderLine 
 
 export async function listSalesOrders(req: Request): Promise<ControllerResult> {
   const { limit, offset } = getPagination(req);
-  const qb = SalesOrder
-    .createQueryBuilder('o')
-    .orderBy('o.order_date', 'DESC')
+  const qb = SalesOrder.createQueryBuilder('o')
+    .leftJoinAndSelect('o.customer', 'customer')
+    .leftJoinAndSelect('o.warehouse', 'warehouse')
+    .leftJoinAndSelect('o.salesperson', 'salesperson')
+    .orderBy('o.orderDate', 'DESC')
+    .addOrderBy('o.createdAt', 'DESC')
     .take(limit)
     .skip(offset);
-  if (req.query.customerId) qb.andWhere('o.customer_id = :cid', { cid: req.query.customerId });
+
+  if (req.query.customerId) {
+    qb.andWhere('o.customerId = :cid', { cid: req.query.customerId });
+  }
+  if (req.query.status) {
+    qb.andWhere('o.status = :st', { st: req.query.status });
+  }
+  if (req.query.dateFrom) {
+    qb.andWhere('o.orderDate >= :df', { df: req.query.dateFrom });
+  }
+  if (req.query.dateTo) {
+    qb.andWhere('o.orderDate <= :dt', { dt: req.query.dateTo });
+  }
+  if (req.query.warehouseId) {
+    qb.andWhere('o.warehouseId = :wid', { wid: req.query.warehouseId });
+  }
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  if (q) {
+    qb.andWhere('(customer.name ILIKE :search OR customer.longName ILIKE :search)', {
+      search: `%${q}%`,
+    });
+  }
+  if (req.query.hasInvoice === 'true') {
+    qb.andWhere(
+      `EXISTS (SELECT 1 FROM invoices i WHERE i.sales_order_id = o.id AND i.deleted_at IS NULL)`
+    );
+  } else if (req.query.hasInvoice === 'false') {
+    qb.andWhere(
+      `NOT EXISTS (SELECT 1 FROM invoices i WHERE i.sales_order_id = o.id AND i.deleted_at IS NULL)`
+    );
+  }
+
   const [rows, total] = await qb.getManyAndCount();
-  return ok({ data: rows.map((o) => serializeSalesOrder(o)), meta: { total, limit, offset } });
+
+  let invoicedOrderIds = new Set<string>();
+  let lineCountById = new Map<string, number>();
+  if (rows.length > 0) {
+    const ids = rows.map((o) => o.id);
+    const links = await Invoice.createQueryBuilder('i')
+      .select('i.salesOrderId', 'soId')
+      .where('i.salesOrderId IN (:...ids)', { ids })
+      .andWhere('i.deletedAt IS NULL')
+      .getRawMany<{ soId: string | null }>();
+    invoicedOrderIds = new Set(links.map((l) => l.soId).filter((id): id is string => !!id));
+
+    const cntRows = await SalesOrderLine.createQueryBuilder('sol')
+      .select('sol.salesOrderId', 'oid')
+      .addSelect('COUNT(sol.id)', 'cnt')
+      .where('sol.salesOrderId IN (:...ids)', { ids })
+      .groupBy('sol.salesOrderId')
+      .getRawMany<{ oid: string; cnt: string }>();
+    for (const r of cntRows) {
+      lineCountById.set(r.oid, parseInt(r.cnt, 10));
+    }
+  }
+
+  return ok({
+    data: rows.map((o) =>
+      serializeSalesOrder(o, undefined, {
+        hasInvoice: invoicedOrderIds.has(o.id),
+        lineCount: lineCountById.get(o.id) ?? 0,
+      })
+    ),
+    meta: { total, limit, offset },
+  });
 }
 
 export async function getSalesOrder(req: Request): Promise<ControllerResult> {
   const row = await SalesOrder.findOne({
     where: { id: req.params.id },
-    relations: ['lines', 'lines.product'],
+    relations: ['lines', 'lines.product', 'customer', 'warehouse', 'salesperson'],
   });
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  return ok({ data: serializeSalesOrder(row, row.lines) });
+  const invCount = await Invoice.count({
+    where: { salesOrderId: row.id, deletedAt: IsNull() },
+  });
+  return ok({
+    data: serializeSalesOrder(row, row.lines, {
+      hasInvoice: invCount > 0,
+      lineCount: row.lines?.length ?? 0,
+    }),
+  });
+}
+
+export async function bulkSalesOrders(req: Request, body: BulkSalesOrdersInput): Promise<ControllerResult> {
+  const uniqueIds = [...new Set(body.ids)];
+  const results: Array<{ id: string; ok: boolean; error?: string }> = [];
+
+  for (const id of uniqueIds) {
+    try {
+      if (body.action === 'confirm') {
+        const o = await SalesOrder.findOne({ where: { id } });
+        if (!o) {
+          results.push({ id, ok: false, error: 'Not found' });
+          continue;
+        }
+        if (o.status === 'void') {
+          results.push({ id, ok: false, error: 'Order is void' });
+          continue;
+        }
+        if (o.status === 'confirmed') {
+          results.push({ id, ok: true });
+          continue;
+        }
+        o.status = 'confirmed';
+        await SalesOrder.save(o);
+        results.push({ id, ok: true });
+      } else {
+        const o = await SalesOrder.findOne({ where: { id } });
+        if (!o) {
+          results.push({ id, ok: false, error: 'Not found' });
+          continue;
+        }
+        if (o.status !== 'draft') {
+          results.push({ id, ok: false, error: 'Only draft orders can be deleted' });
+          continue;
+        }
+        await SalesOrder.delete({ id: o.id });
+        results.push({ id, ok: true });
+      }
+    } catch (e) {
+      results.push({ id, ok: false, error: (e as Error).message });
+    }
+  }
+
+  return ok({ data: { results } });
 }
 
 export async function createSalesOrder(req: Request, body: CreateSalesOrderInput): Promise<ControllerResult> {
   const b = body;
   try {
     const saved = await runInTransaction(async (manager) => {
+      await assertSalesOrderLinesInStock(
+        manager,
+        b.warehouseId ?? undefined,
+        b.lines.map((l) => ({ productId: l.productId, quantity: l.quantity }))
+      );
       const totals = await computeSalesDocumentTotals(
         manager,
         b.customerId,
@@ -115,10 +256,19 @@ export async function createSalesOrder(req: Request, body: CreateSalesOrderInput
           })
         );
       }
-      return manager.findOneOrFail(SalesOrder, { where: { id: o.id }, relations: ['lines'] });
+      return manager.findOneOrFail(SalesOrder, {
+        where: { id: o.id },
+        relations: ['lines', 'lines.product', 'customer', 'warehouse', 'salesperson'],
+      });
     });
-    return created({ data: serializeSalesOrder(saved, saved.lines) });
+    return created({
+      data: serializeSalesOrder(saved, saved.lines, {
+        hasInvoice: false,
+        lineCount: saved.lines?.length ?? 0,
+      }),
+    });
   } catch (e) {
+    if (e instanceof HttpError) throw e;
     throw new HttpError(400, { error: (e as Error).message });
   }
 }
@@ -139,8 +289,19 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
       if (b.warehouseId !== undefined) o.warehouseId = b.warehouseId ?? undefined;
       if (b.salespersonId !== undefined) o.salespersonId = b.salespersonId ?? undefined;
       if (b.notes !== undefined) o.notes = b.notes ?? undefined;
-      
+
+      const lineRowsForStock = (): Array<{ productId: string; quantity: number }> =>
+        (o.lines || []).map((l) => ({
+          productId: l.productId,
+          quantity: parseFloat(l.quantity),
+        }));
+
       if (b.lines) {
+        await assertSalesOrderLinesInStock(
+          manager,
+          o.warehouseId,
+          b.lines.map((l) => ({ productId: l.productId, quantity: l.quantity }))
+        );
         await manager.delete(SalesOrderLine, { salesOrderId: o.id });
         const totals = await computeSalesDocumentTotals(
           manager,
@@ -173,6 +334,7 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
           );
         }
       } else if (b.discountAmount !== undefined) {
+        await assertSalesOrderLinesInStock(manager, o.warehouseId, lineRowsForStock());
         const lines = (o.lines || []).map((l) => ({
           productId: l.productId,
           quantity: parseFloat(l.quantity),
@@ -200,11 +362,24 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
             })
           );
         }
+      } else if (b.warehouseId !== undefined && (o.lines?.length ?? 0) > 0) {
+        await assertSalesOrderLinesInStock(manager, o.warehouseId, lineRowsForStock());
       }
       await manager.save(o);
-      return manager.findOneOrFail(SalesOrder, { where: { id: o.id }, relations: ['lines'] });
+      return manager.findOneOrFail(SalesOrder, {
+        where: { id: o.id },
+        relations: ['lines', 'lines.product', 'customer', 'warehouse', 'salesperson'],
+      });
     });
-    return ok({ data: serializeSalesOrder(saved, saved.lines) });
+    const invCountSaved = await Invoice.count({
+      where: { salesOrderId: saved.id, deletedAt: IsNull() },
+    });
+    return ok({
+      data: serializeSalesOrder(saved, saved.lines, {
+        hasInvoice: invCountSaved > 0,
+        lineCount: saved.lines?.length ?? 0,
+      }),
+    });
   } catch (e) {
     if (e instanceof HttpError) throw e;
     throw new HttpError(400, { error: (e as Error).message });
@@ -221,7 +396,19 @@ export async function confirmSalesOrder(req: Request): Promise<ControllerResult>
   }
   o.status = 'confirmed';
   await SalesOrder.save(o);
-  return ok({ data: serializeSalesOrder(o) });
+  const row = await SalesOrder.findOne({
+    where: { id: o.id },
+    relations: ['lines', 'lines.product', 'customer', 'warehouse', 'salesperson'],
+  });
+  const invCount = await Invoice.count({
+    where: { salesOrderId: o.id, deletedAt: IsNull() },
+  });
+  return ok({
+    data: serializeSalesOrder(row!, row!.lines, {
+      hasInvoice: invCount > 0,
+      lineCount: row!.lines?.length ?? 0,
+    }),
+  });
 }
 
 export async function deleteSalesOrder(req: Request): Promise<ControllerResult> {
@@ -254,6 +441,8 @@ export async function convertSalesOrderToInvoice(
       });
       if (!o) throw new HttpError(404, { error: 'Not found' });
       if (o.status === 'void') throw new HttpError(400, { error: 'Void order cannot invoice' });
+      await assertSalesOrderConfirmedForInvoice(manager, o.id);
+      await assertNoOtherInvoiceForSalesOrder(manager, o.id);
 
       const lineInputs: Array<{
         productId: string;

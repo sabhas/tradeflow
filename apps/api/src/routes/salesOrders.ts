@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  bulkSalesOrdersSchema,
   createSalesOrderSchema,
   convertOrderToInvoiceSchema,
   updateSalesOrderSchema,
@@ -40,6 +41,20 @@ salesOrdersRouter.post(
       return;
     }
     sendControllerResult(res, await salesOrdersController.createSalesOrder(req, parsed.data));
+  })
+);
+
+salesOrdersRouter.post(
+  '/bulk',
+  requirePermission('sales', 'update'),
+  auditMiddleware({ entity: 'SalesOrder', getNewValue: (req) => req.body }),
+  asyncHandler(async (req, res) => {
+    const parsed = bulkSalesOrdersSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
+      return;
+    }
+    sendControllerResult(res, await salesOrdersController.bulkSalesOrders(req, parsed.data));
   })
 );
 

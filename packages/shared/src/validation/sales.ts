@@ -41,6 +41,12 @@ export const updateSalesOrderSchema = createSalesOrderSchema.partial().extend({
   lines: z.array(documentLineInputSchema).optional(),
 });
 
+/** Bulk confirm (draft→confirmed) or bulk delete (draft only). */
+export const bulkSalesOrdersSchema = z.object({
+  action: z.enum(['confirm', 'delete']),
+  ids: z.array(z.string().uuid()).min(1).max(100),
+});
+
 export const paymentTypeSchema = z.enum(['cash', 'credit']);
 
 export const createInvoiceSchema = z.object({
