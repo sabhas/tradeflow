@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, apiFetchData } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
+import { DatePickerInput } from '../../components/DatePickerInput';
 import { LineStockInfo } from '../../components/LineStockInfo';
 import { SalesSubNav } from '../../components/SalesSubNav';
 import { hasPermission } from '../../lib/permissions';
@@ -567,8 +568,7 @@ export function SalesOrdersPage() {
         <div className="flex flex-wrap items-end gap-3">
           <label className="block text-sm">
             <span className="text-xs text-slate-500 dark:text-slate-400">From</span>
-            <input
-              type="date"
+            <DatePickerInput
               className="mt-0.5 block rounded-md border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950"
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
@@ -576,8 +576,7 @@ export function SalesOrdersPage() {
           </label>
           <label className="block text-sm">
             <span className="text-xs text-slate-500 dark:text-slate-400">To</span>
-            <input
-              type="date"
+            <DatePickerInput
               className="mt-0.5 block rounded-md border border-slate-300 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950"
               value={filterDateTo}
               onChange={(e) => setFilterDateTo(e.target.value)}
@@ -921,8 +920,7 @@ export function SalesOrdersPage() {
               </label>
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Order date</span>
-                <input
-                  type="date"
+                <DatePickerInput
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={orderDate}
                   onChange={(e) => setOrderDate(e.target.value)}
