@@ -68,6 +68,9 @@ function serializeBalance(sb: StockBalance) {
           costPrice: sb.product.costPrice,
           tradePrice: sb.product.sellingPrice,
           retailPrice: sb.product.retailPrice,
+          supplier: sb.product.supplier
+            ? { id: sb.product.supplier.id, name: sb.product.supplier.name }
+            : undefined,
         }
       : undefined,
     warehouse: sb.warehouse ? { id: sb.warehouse.id, name: sb.warehouse.name, code: sb.warehouse.code } : undefined,
@@ -78,18 +81,24 @@ function serializeBalance(sb: StockBalance) {
 export async function listBalances(req: Request): Promise<ControllerResult> {
   const warehouseId = req.query.warehouseId as string | undefined;
   const productId = req.query.productId as string | undefined;
+  const supplierId = req.query.supplierId as string | undefined;
 
   const qb = StockBalance
     .createQueryBuilder('sb')
     .leftJoinAndSelect('sb.product', 'p')
+    .leftJoinAndSelect('p.supplier', 'supplier')
     .leftJoinAndSelect('sb.warehouse', 'w')
-    .where('p.deleted_at IS NULL');
+    .where('p.deleted_at IS NULL')
+    .andWhere('(supplier.id IS NULL OR supplier.deleted_at IS NULL)');
 
   if (warehouseId) {
     qb.andWhere('sb.warehouse_id = :wid', { wid: warehouseId });
   }
   if (productId) {
     qb.andWhere('sb.product_id = :pid', { pid: productId });
+  }
+  if (supplierId) {
+    qb.andWhere('p.supplier_id = :sid', { sid: supplierId });
   }
 
   qb.orderBy('p.name', 'ASC').addOrderBy('w.name', 'ASC');
@@ -125,6 +134,7 @@ export async function listBalances(req: Request): Promise<ControllerResult> {
 export async function listBatchBalances(req: Request): Promise<ControllerResult> {
   const warehouseId = req.query.warehouseId as string | undefined;
   const productId = req.query.productId as string | undefined;
+  const supplierId = req.query.supplierId as string | undefined;
   const batchQuery = ((req.query.batch as string | undefined) ?? '').trim();
   const expiryBefore = (req.query.expiryBefore as string | undefined)?.trim();
   const orderByParam = (req.query.orderBy as string | undefined)?.toLowerCase();
@@ -140,6 +150,10 @@ export async function listBatchBalances(req: Request): Promise<ControllerResult>
   if (productId) {
     params.push(productId);
     where.push(`l.product_id = $${params.length}::uuid`);
+  }
+  if (supplierId) {
+    params.push(supplierId);
+    where.push(`p.supplier_id = $${params.length}::uuid`);
   }
   if (batchQuery) {
     params.push(`%${batchQuery}%`);
@@ -177,6 +191,13 @@ export async function listBatchBalances(req: Request): Promise<ControllerResult>
       l.expiry_date::text AS "expiryDate",
       SUM(l.quantity_remaining::numeric)::text AS "quantity",
       SUM(l.quantity_remaining::numeric * l.unit_cost::numeric)::text AS "valueAtLayers",
+      COALESCE(
+        (
+          SUM(l.unit_cost::numeric * l.quantity_remaining::numeric)
+          / NULLIF(SUM(l.quantity_remaining::numeric), 0)
+        )::text,
+        MAX(l.unit_cost)::text
+      ) AS "unitCost",
       COALESCE(
         (
           SUM(COALESCE(l.trade_price::numeric, p.selling_price::numeric) * l.quantity_remaining::numeric)

@@ -1,6 +1,13 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../api/client';
+import {
+  expiryAgeLabel,
+  expiryDotClass,
+  expiryStatus,
+  expiryTextClass,
+  formatExpiry,
+} from '../lib/expiryDisplay';
 import { formatAmount } from '../lib/numberFormat';
 
 interface BatchBalanceRow {
@@ -36,59 +43,8 @@ interface Props {
   compact?: boolean;
 }
 
-type ExpiryStatus = 'none' | 'ok' | 'warning' | 'critical' | 'expired';
-
-const DAY_MS = 86_400_000;
 const PREVIEW_LIMIT = 8;
 const EXPANDED_LIMIT = 50;
-
-const dotClass: Record<ExpiryStatus, string> = {
-  none: 'bg-slate-300 dark:bg-slate-600',
-  ok: 'bg-emerald-500',
-  warning: 'bg-yellow-400',
-  critical: 'bg-amber-500',
-  expired: 'bg-rose-500',
-};
-
-const expiryTextClass: Record<ExpiryStatus, string> = {
-  none: 'text-slate-500 dark:text-slate-400',
-  ok: 'text-slate-600 dark:text-slate-300',
-  warning: 'text-yellow-700 dark:text-yellow-300',
-  critical: 'text-amber-700 dark:text-amber-300',
-  expired: 'text-rose-700 dark:text-rose-300',
-};
-
-function expiryStatus(date?: string | null): { status: ExpiryStatus; days: number | null } {
-  if (!date) return { status: 'none', days: null };
-  const exp = new Date(date);
-  if (Number.isNaN(exp.getTime())) return { status: 'none', days: null };
-  const days = Math.round((exp.getTime() - Date.now()) / DAY_MS);
-  if (days < 0) return { status: 'expired', days };
-  if (days <= 30) return { status: 'critical', days };
-  if (days <= 90) return { status: 'warning', days };
-  return { status: 'ok', days };
-}
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-});
-
-function formatExpiry(date?: string | null) {
-  if (!date) return 'no expiry';
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return date;
-  return dateFormatter.format(d);
-}
-
-function ageLabel(days: number | null) {
-  if (days == null) return '';
-  if (days < 0) return `${Math.abs(days)}d overdue`;
-  if (days === 0) return 'today';
-  if (days < 60) return `in ${days}d`;
-  return `in ${Math.round(days / 30)}mo`;
-}
 
 function ChevronIcon({ open }: { open: boolean }) {
   return (
@@ -228,7 +184,7 @@ export function LineStockInfo({ productId, warehouseId, requestedQuantity, compa
         className="group flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60"
         aria-expanded={expanded}
       >
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass[summaryDot]}`} aria-hidden />
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${expiryDotClass[summaryDot]}`} aria-hidden />
         <span className="font-medium tabular-nums text-slate-700 dark:text-slate-200">
           {formatAmount(totalQty, 0)}
         </span>
@@ -243,7 +199,7 @@ export function LineStockInfo({ productId, warehouseId, requestedQuantity, compa
             <span className={`truncate ${expiryTextClass[earliestStatus.status]}`}>
               earliest exp {formatExpiry(earliest.expiryDate)}
               {earliestStatus.status !== 'ok' && earliestStatus.days != null && (
-                <span className="ml-1 opacity-80">({ageLabel(earliestStatus.days)})</span>
+                <span className="ml-1 opacity-80">({expiryAgeLabel(earliestStatus.days)})</span>
               )}
             </span>
           </>
@@ -308,10 +264,10 @@ export function LineStockInfo({ productId, warehouseId, requestedQuantity, compa
                         </td>
                         <td className="px-2 py-1.5">
                           <span className={`inline-flex items-center gap-1.5 ${expiryTextClass[st.status]}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${dotClass[st.status]}`} aria-hidden />
+                            <span className={`h-1.5 w-1.5 rounded-full ${expiryDotClass[st.status]}`} aria-hidden />
                             {formatExpiry(b.expiryDate)}
                             {st.days != null && st.status !== 'ok' && st.status !== 'none' && (
-                              <span className="opacity-80">({ageLabel(st.days)})</span>
+                              <span className="opacity-80">({expiryAgeLabel(st.days)})</span>
                             )}
                           </span>
                         </td>
