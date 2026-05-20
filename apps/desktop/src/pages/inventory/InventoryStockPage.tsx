@@ -1,5 +1,6 @@
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { InventorySubNav } from '../../components/InventorySubNav';
@@ -48,6 +49,9 @@ interface SupplierOpt {
   name: string;
 }
 
+const STOCK_ROW_HEIGHT = 40;
+const PRODUCT_SEARCH_DEBOUNCE_MS = 300;
+
 export function InventoryStockPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
   const canRead = hasPermission(permissions, 'inventory:read');
@@ -57,7 +61,16 @@ export function InventoryStockPage() {
   const [productId, setProductId] = useState('');
   const [supplierId, setSupplierId] = useState('');
   const [search, setSearch] = useState('');
+  const [productSearch, setProductSearch] = useState('');
+  const [debouncedProductSearch, setDebouncedProductSearch] = useState('');
   const [detailRow, setDetailRow] = useState<BalanceRow | null>(null);
+
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedProductSearch(productSearch), PRODUCT_SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [productSearch]);
 
   const warehouses = useQuery({
     queryKey: ['warehouses'],
@@ -68,11 +81,23 @@ export function InventoryStockPage() {
     },
   });
 
-  const products = useQuery({
-    queryKey: ['products', 'inventory-dd'],
+  const productSearchResults = useQuery({
+    queryKey: ['products', 'inventory-search', debouncedProductSearch],
     enabled: canRead,
     queryFn: async () => {
-      const res = await apiFetch<{ data: ProductOpt[] }>('/products?limit=500&activeOnly=true');
+      const q = new URLSearchParams({ limit: '50', activeOnly: 'true' });
+      const term = debouncedProductSearch.trim();
+      if (term) q.set('search', term);
+      const res = await apiFetch<{ data: ProductOpt[] }>(`/products?${q.toString()}`);
+      return res.data;
+    },
+  });
+
+  const selectedProduct = useQuery({
+    queryKey: ['products', 'inventory-selected', productId],
+    enabled: canRead && !!productId,
+    queryFn: async () => {
+      const res = await apiFetch<{ data: ProductOpt }>(`/products/${productId}`);
       return res.data;
     },
   });
@@ -111,13 +136,22 @@ export function InventoryStockPage() {
     ],
     [warehouses.data]
   );
-  const productOptions = useMemo(
-    () => [
-      { value: '', label: 'All' },
-      ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
-    ],
-    [products.data]
-  );
+
+  const productOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [{ value: '', label: 'All' }];
+    const seen = new Set<string>();
+    for (const p of productSearchResults.data ?? []) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      opts.push({ value: p.id, label: `${p.sku} — ${p.name}` });
+    }
+    if (productId && selectedProduct.data && !seen.has(productId)) {
+      const p = selectedProduct.data;
+      opts.push({ value: p.id, label: `${p.sku} — ${p.name}` });
+    }
+    return opts;
+  }, [productSearchResults.data, productId, selectedProduct.data]);
+
   const supplierOptions = useMemo(
     () => [
       { value: '', label: 'All' },
@@ -136,6 +170,13 @@ export function InventoryStockPage() {
       return sku.includes(q) || name.includes(q);
     });
   }, [balances.data, search]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: filteredRows.length,
+    getScrollElement: () => tableScrollRef.current,
+    estimateSize: () => STOCK_ROW_HEIGHT,
+    overscan: 12,
+  });
 
   const hasFilters = !!(warehouseId || productId || supplierId || search.trim());
 
@@ -159,6 +200,41 @@ export function InventoryStockPage() {
         summaryValueAtLayers: detailRow.valueAtLayers,
       }
     : null;
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const paddingBottom =
+    virtualRows.length > 0 ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end : 0;
+
+  const renderStockRow = (row: BalanceRow) => (
+    <tr
+      key={row.id}
+      role="button"
+      tabIndex={0}
+      style={{ height: STOCK_ROW_HEIGHT }}
+      className="cursor-pointer border-t border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40"
+      onClick={() => setDetailRow(row)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setDetailRow(row);
+        }
+      }}
+    >
+      <td className="px-4 py-2 font-mono text-xs text-slate-600 dark:text-slate-400">{row.product?.sku ?? '—'}</td>
+      <td className="px-4 py-2 font-medium text-slate-900 dark:text-slate-100">
+        {row.product?.name ?? row.productId}
+      </td>
+      <td className="px-4 py-2 text-slate-700 dark:text-slate-300">{row.product?.supplier?.name ?? '—'}</td>
+      <td className="px-4 py-2">
+        {row.warehouse ? `${row.warehouse.code} — ${row.warehouse.name}` : row.warehouseId}
+      </td>
+      <td className="px-4 py-2 text-right tabular-nums">{renderMoney(row.product?.tradePrice)}</td>
+      <td className="px-4 py-2 text-right tabular-nums">{renderMoney(row.product?.retailPrice)}</td>
+      <td className="px-4 py-2 text-right tabular-nums">{renderQuantity(row.quantity)}</td>
+      <td className="px-4 py-2 text-right tabular-nums">{renderMoney(row.valueAtLayers)}</td>
+    </tr>
+  );
 
   if (!canRead) return <p className="text-slate-600">No permission.</p>;
 
@@ -204,8 +280,9 @@ export function InventoryStockPage() {
             value={productId}
             onChange={setProductId}
             options={productOptions}
+            onQueryChange={setProductSearch}
             placeholder="All products…"
-            disabled={products.isLoading}
+            disabled={productSearchResults.isLoading && productSearchResults.isFetching}
             aria-label="Product filter"
           />
         </label>
@@ -228,6 +305,7 @@ export function InventoryStockPage() {
               setProductId('');
               setSupplierId('');
               setSearch('');
+              setProductSearch('');
             }}
           >
             Clear filters
@@ -253,70 +331,57 @@ export function InventoryStockPage() {
       </div>
 
       <div className="overflow-hidden rounded-lg bg-white shadow ring-1 ring-slate-200 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 dark:bg-slate-950">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">SKU</th>
-              <th className="px-4 py-3 text-left font-medium">Product</th>
-              <th className="px-4 py-3 text-left font-medium">Supplier</th>
-              <th className="px-4 py-3 text-left font-medium">Warehouse</th>
-              <th className="px-4 py-3 text-right font-medium">Trade price</th>
-              <th className="px-4 py-3 text-right font-medium">Retail price</th>
-              <th className="px-4 py-3 text-right font-medium">Quantity</th>
-              <th className="px-4 py-3 text-right font-medium">Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {balances.isLoading ? (
+        <div ref={tableScrollRef} className="max-h-[calc(100vh-20rem)] overflow-auto">
+          <table className="min-w-full table-fixed text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-950">
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                  Loading…
-                </td>
+                <th className="px-4 py-3 text-left font-medium">SKU</th>
+                <th className="px-4 py-3 text-left font-medium">Product</th>
+                <th className="px-4 py-3 text-left font-medium">Supplier</th>
+                <th className="px-4 py-3 text-left font-medium">Warehouse</th>
+                <th className="px-4 py-3 text-right font-medium">Trade price</th>
+                <th className="px-4 py-3 text-right font-medium">Retail price</th>
+                <th className="px-4 py-3 text-right font-medium">Quantity</th>
+                <th className="px-4 py-3 text-right font-medium">Value</th>
               </tr>
-            ) : filteredRows.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                  {hasFilters
-                    ? 'No stock rows match your filters.'
-                    : 'No stock rows yet. Post an opening balance or receive stock.'}
-                </td>
-              </tr>
-            ) : (
-              filteredRows.map((row) => (
-                <tr
-                  key={row.id}
-                  role="button"
-                  tabIndex={0}
-                  className="cursor-pointer border-t border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40"
-                  onClick={() => setDetailRow(row)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setDetailRow(row);
-                    }
-                  }}
-                >
-                  <td className="px-4 py-2 font-mono text-xs text-slate-600 dark:text-slate-400">
-                    {row.product?.sku ?? '—'}
+            </thead>
+            <tbody>
+              {balances.isLoading ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                    Loading…
                   </td>
-                  <td className="px-4 py-2 font-medium text-slate-900 dark:text-slate-100">
-                    {row.product?.name ?? row.productId}
-                  </td>
-                  <td className="px-4 py-2 text-slate-700 dark:text-slate-300">
-                    {row.product?.supplier?.name ?? '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    {row.warehouse ? `${row.warehouse.code} — ${row.warehouse.name}` : row.warehouseId}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{renderMoney(row.product?.tradePrice)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{renderMoney(row.product?.retailPrice)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{renderQuantity(row.quantity)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{renderMoney(row.valueAtLayers)}</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                    {hasFilters
+                      ? 'No stock rows match your filters.'
+                      : 'No stock rows yet. Post an opening balance or receive stock.'}
+                  </td>
+                </tr>
+              ) : (
+                <>
+                  {paddingTop > 0 && (
+                    <tr aria-hidden>
+                      <td colSpan={8} className="border-0 p-0" style={{ height: paddingTop, lineHeight: 0 }} />
+                    </tr>
+                  )}
+                  {virtualRows.map((vi) => {
+                    const row = filteredRows[vi.index];
+                    if (!row) return null;
+                    return renderStockRow(row);
+                  })}
+                  {paddingBottom > 0 && (
+                    <tr aria-hidden>
+                      <td colSpan={8} className="border-0 p-0" style={{ height: paddingBottom, lineHeight: 0 }} />
+                    </tr>
+                  )}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <StockProductDetailModal

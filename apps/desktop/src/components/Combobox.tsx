@@ -1,3 +1,4 @@
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   type KeyboardEvent,
   useCallback,
@@ -39,6 +40,8 @@ export type ComboboxProps = {
   'aria-label'?: string;
   /** Return true if the option should appear for this query. Default: case-insensitive substring on `label`. */
   filter?: (query: string, option: ComboboxOption) => boolean;
+  /** When true, empty-value options (e.g. "All") stay visible while searching. Default: true. */
+  pinEmptyOptions?: boolean;
 };
 
 function defaultFilter(query: string, option: ComboboxOption) {
@@ -47,7 +50,22 @@ function defaultFilter(query: string, option: ComboboxOption) {
   return option.label.toLowerCase().includes(t);
 }
 
+function buildFilteredOptions(
+  options: ComboboxOption[],
+  listQuery: string,
+  filter: (query: string, option: ComboboxOption) => boolean,
+  pinEmptyOptions: boolean
+): ComboboxOption[] {
+  if (!listQuery.trim()) return options;
+  const sentinels = pinEmptyOptions ? options.filter((o) => o.value === '') : [];
+  const rest = options.filter((o) => o.value !== '' && filter(listQuery, o));
+  return [...sentinels, ...rest];
+}
+
 type ComboboxPortalPosition = { top: number; left: number; width: number; maxHeight: number };
+
+const VIRTUAL_THRESHOLD = 40;
+const ROW_HEIGHT = 36;
 
 function computePosition(trigger: HTMLElement): ComboboxPortalPosition {
   const rect = trigger.getBoundingClientRect();
@@ -98,6 +116,13 @@ function getScrollableAncestors(node: HTMLElement | null): HTMLElement[] {
 const inputBase =
   'w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 pr-8 text-left text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500';
 
+const optionRowClass = (active: boolean) =>
+  `cursor-pointer px-3 py-1.5 text-sm ${
+    active
+      ? 'bg-indigo-600 text-white dark:bg-indigo-600'
+      : 'text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
+  }`;
+
 export function Combobox({
   value,
   onChange,
@@ -113,40 +138,61 @@ export function Combobox({
   name,
   'aria-label': ariaLabel,
   filter = defaultFilter,
+  pinEmptyOptions = true,
 }: ComboboxProps) {
   const reactId = useId();
   const listboxId = `${reactId}-listbox`;
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLUListElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   const selected = useMemo(() => options.find((o) => o.value === value), [options, value]);
   const selectedLabel = selected?.label ?? '';
 
   const [open, setOpen] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const [inputValue, setInputValue] = useState(selectedLabel);
-  const inputValueRef = useRef(inputValue);
-  inputValueRef.current = inputValue;
+  /** Search text while the dropdown is open; empty on open shows the full list. */
+  const [listQuery, setListQuery] = useState('');
+  const listQueryRef = useRef(listQuery);
+  listQueryRef.current = listQuery;
   const [highlighted, setHighlighted] = useState(0);
-  /** Bumped on scroll/resize so we re-measure `getBoundingClientRect` for the fixed portal. */
+  /** Optional override for closed input text after pick (see getInputValueAfterPick). */
+  const [closedDisplayOverride, setClosedDisplayOverride] = useState<string | null>(null);
   const [, setLayoutNonce] = useState(0);
   const bumpLayout = useCallback(() => setLayoutNonce((n) => n + 1), []);
 
+  useEffect(() => {
+    setClosedDisplayOverride(null);
+  }, [value]);
+
   const filtered = useMemo(
-    () => options.filter((o) => filter(inputValue, o)),
-    [options, inputValue, filter]
+    () => buildFilteredOptions(options, listQuery, filter, pinEmptyOptions),
+    [options, listQuery, filter, pinEmptyOptions]
   );
 
-  useEffect(() => {
-    if (!focused) {
-      setInputValue(selectedLabel);
-    }
-  }, [focused, selectedLabel]);
+  const useVirtualList = filtered.length > VIRTUAL_THRESHOLD;
+
+  const virtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 8,
+  });
+
+  const inputDisplay = open ? listQuery : (closedDisplayOverride ?? selectedLabel);
+
+  const resetListQuery = useCallback(() => {
+    setListQuery('');
+    onQueryChange?.('');
+  }, [onQueryChange]);
+
+  const openPanel = useCallback(() => {
+    resetListQuery();
+    setOpen(true);
+  }, [resetListQuery]);
 
   useEffect(() => {
     setHighlighted(0);
-  }, [inputValue]);
+  }, [listQuery]);
 
   useEffect(() => {
     setHighlighted((h) => {
@@ -175,16 +221,20 @@ export function Combobox({
   }, [open, bumpLayout]);
 
   useEffect(() => {
-    if (!open || !listRef.current) return;
-    const row = listRef.current.querySelector(`[data-combobox-index="${highlighted}"]`);
+    if (!open) return;
+    if (useVirtualList) {
+      virtualizer.scrollToIndex(highlighted, { align: 'auto' });
+      return;
+    }
+    const row = listRef.current?.querySelector(`[data-combobox-index="${highlighted}"]`);
     row?.scrollIntoView({ block: 'nearest' });
-  }, [highlighted, open]);
+  }, [highlighted, open, useVirtualList, virtualizer]);
 
   const closeAndRevert = useCallback(() => {
     setOpen(false);
-    setInputValue(selectedLabel);
-    onQueryChange?.(selectedLabel);
-  }, [onQueryChange, selectedLabel]);
+    setListQuery('');
+    onQueryChange?.('');
+  }, [onQueryChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -192,46 +242,47 @@ export function Combobox({
       const t = e.target as Node;
       if (containerRef.current?.contains(t) || listRef.current?.contains(t)) return;
       setOpen(false);
-      setFocused(false);
-      setInputValue(selectedLabel);
-      onQueryChange?.(selectedLabel);
+      setListQuery('');
+      onQueryChange?.('');
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [open, selectedLabel, onQueryChange]);
+  }, [open, onQueryChange]);
 
   const pick = useCallback(
     (nextValue: string) => {
       onChange(nextValue);
       const next = options.find((o) => o.value === nextValue);
-      const snapshot = inputValueRef.current;
+      const snapshot = listQueryRef.current;
       const override = getInputValueAfterPick?.(nextValue, next, snapshot);
-      const nextInput = override !== undefined && override !== null ? override : (next?.label ?? '');
-      setInputValue(nextInput);
-      onQueryChange?.(nextInput);
+      if (override !== undefined && override !== null) {
+        setClosedDisplayOverride(override);
+      } else {
+        setClosedDisplayOverride(null);
+      }
+      setListQuery('');
+      onQueryChange?.('');
       setOpen(false);
     },
     [getInputValueAfterPick, onChange, onQueryChange, options]
   );
 
   const onInputChange = (q: string) => {
-    setInputValue(q);
+    setListQuery(q);
     onQueryChange?.(q);
     setOpen(true);
   };
 
   const onInputFocus = () => {
-    setFocused(true);
-    setOpen(true);
+    openPanel();
   };
 
   const onInputBlur = () => {
     requestAnimationFrame(() => {
       if (!containerRef.current?.contains(document.activeElement)) {
-        setFocused(false);
         setOpen(false);
-        setInputValue(selectedLabel);
-        onQueryChange?.(selectedLabel);
+        setListQuery('');
+        onQueryChange?.('');
       }
     });
   };
@@ -250,14 +301,14 @@ export function Combobox({
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      if (!open) setOpen(true);
+      if (!open) openPanel();
       setHighlighted((h) => (filtered.length === 0 ? 0 : (h + 1) % filtered.length));
       return;
     }
 
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-      if (!open) setOpen(true);
+      if (!open) openPanel();
       setHighlighted((h) => {
         if (filtered.length === 0) return 0;
         return (h - 1 + filtered.length) % filtered.length;
@@ -266,7 +317,7 @@ export function Combobox({
     }
 
     if (e.key === 'Enter') {
-      const intercepted = selectOnEnter?.(inputValue);
+      const intercepted = selectOnEnter?.(listQuery);
       if (intercepted !== undefined) {
         e.preventDefault();
         pick(intercepted);
@@ -286,15 +337,42 @@ export function Combobox({
 
   const toggleOpen = () => {
     if (disabled) return;
-    setOpen((o) => !o);
+    if (open) {
+      setOpen(false);
+      setListQuery('');
+      onQueryChange?.('');
+    } else {
+      openPanel();
+    }
   };
 
   const portalPos: ComboboxPortalPosition | null =
     open && !disabled && triggerRef.current ? computePosition(triggerRef.current) : null;
 
+  const renderOption = (opt: ComboboxOption, i: number) => {
+    const active = i === highlighted;
+    return (
+      <div
+        key={opt.value === '' ? '__empty__' : opt.value}
+        id={`${listboxId}-opt-${i}`}
+        role="option"
+        aria-selected={active}
+        data-combobox-index={i}
+        className={optionRowClass(active)}
+        onMouseEnter={() => setHighlighted(i)}
+        onMouseDown={(e) => {
+          e.preventDefault();
+        }}
+        onClick={() => pick(opt.value)}
+      >
+        {opt.label || '—'}
+      </div>
+    );
+  };
+
   const listContent =
     open && !disabled && portalPos != null ? (
-      <ul
+      <div
         ref={(node) => {
           listRef.current = node;
         }}
@@ -310,34 +388,50 @@ export function Combobox({
         className="z-[100] min-w-[12rem] box-border overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
       >
         {filtered.length === 0 ? (
-          <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No matches</li>
+          <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">No matches</div>
+        ) : useVirtualList ? (
+          <div
+            style={{
+              height: virtualizer.getTotalSize(),
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((vi) => {
+              const opt = filtered[vi.index];
+              if (!opt) return null;
+              const active = vi.index === highlighted;
+              return (
+                <div
+                  key={opt.value === '' ? '__empty__' : opt.value}
+                  id={`${listboxId}-opt-${vi.index}`}
+                  role="option"
+                  aria-selected={active}
+                  data-combobox-index={vi.index}
+                  className={optionRowClass(active)}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${vi.size}px`,
+                    transform: `translateY(${vi.start}px)`,
+                  }}
+                  onMouseEnter={() => setHighlighted(vi.index)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                  }}
+                  onClick={() => pick(opt.value)}
+                >
+                  {opt.label || '—'}
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          filtered.map((opt, i) => {
-            const active = i === highlighted;
-            return (
-              <li
-                key={opt.value === '' ? '__empty__' : opt.value}
-                id={`${listboxId}-opt-${i}`}
-                role="option"
-                aria-selected={active}
-                data-combobox-index={i}
-                className={`cursor-pointer px-3 py-1.5 text-sm ${
-                  active
-                    ? 'bg-indigo-600 text-white dark:bg-indigo-600'
-                    : 'text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
-                }`}
-                onMouseEnter={() => setHighlighted(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                }}
-                onClick={() => pick(opt.value)}
-              >
-                {opt.label || '—'}
-              </li>
-            );
-          })
+          filtered.map((opt, i) => renderOption(opt, i))
         )}
-      </ul>
+      </div>
     ) : null;
 
   return (
@@ -361,7 +455,7 @@ export function Combobox({
           spellCheck={false}
           placeholder={placeholder}
           className={`${inputBase} disabled:cursor-not-allowed disabled:opacity-50 ${inputClassName}`}
-          value={inputValue}
+          value={inputDisplay}
           onChange={(e) => onInputChange(e.target.value)}
           onFocus={onInputFocus}
           onBlur={onInputBlur}
@@ -379,9 +473,6 @@ export function Combobox({
           }}
           onClick={() => {
             toggleOpen();
-            if (!open) {
-              setFocused(true);
-            }
           }}
         >
           <span className="pointer-events-none text-xs" aria-hidden>
