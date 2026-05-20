@@ -24,12 +24,14 @@ function validateDeltaForRefType(refType: InventoryRefType, deltaNum: number): v
     case 'opening_balance':
     case 'purchase':
     case 'transfer_in':
+    case 'sale_return':
       if (deltaNum <= 0) {
         throw new Error(`refType ${refType} requires a positive quantity delta`);
       }
       break;
     case 'sale':
     case 'transfer_out':
+    case 'purchase_return':
       if (deltaNum >= 0) {
         throw new Error(`refType ${refType} requires a negative quantity delta`);
       }
@@ -104,6 +106,7 @@ export async function applyMovement(
   const isOutbound =
     params.refType === 'sale' ||
     params.refType === 'transfer_out' ||
+    params.refType === 'purchase_return' ||
     (params.refType === 'adjustment' && deltaNum < 0);
 
   if (isOutbound) {

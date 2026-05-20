@@ -81,3 +81,28 @@ export const createSupplierPaymentSchema = z.object({
     )
     .min(1),
 });
+
+export const createPurchaseReturnSchema = z.object({
+  supplierId: z.string().uuid(),
+  warehouseId: z.string().uuid(),
+  returnDate: z.string(),
+  grnId: optionalUuid,
+  notes: z.string().optional().nullable(),
+  discountAmount: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
+  lines: z
+    .array(
+      z.object({
+        productId: z.string().uuid(),
+        quantity: z.number().finite().positive(),
+        unitPrice: z.union([z.number(), z.string()]).transform((v) => String(v)),
+        discountAmount: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
+        taxProfileId: optionalUuid,
+        grnLineId: optionalUuid,
+      })
+    )
+    .min(1),
+});
+
+export const updatePurchaseReturnSchema = createPurchaseReturnSchema.partial().extend({
+  lines: createPurchaseReturnSchema.shape.lines.optional(),
+});

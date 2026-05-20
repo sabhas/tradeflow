@@ -27,6 +27,7 @@ import { InvoicesPage } from './pages/sales/InvoicesPage';
 import { ReceiptsPage } from './pages/sales/ReceiptsPage';
 import { SalesReportsPage } from './pages/sales/SalesReportsPage';
 import { PurchaseOrdersPage } from './pages/purchases/PurchaseOrdersPage';
+import { PurchaseReturnsPage } from './pages/purchases/PurchaseReturnsPage';
 import { GrnsPage } from './pages/purchases/GrnsPage';
 import { SupplierInvoicesPage } from './pages/purchases/SupplierInvoicesPage';
 import { SupplierPaymentsPage } from './pages/purchases/SupplierPaymentsPage';
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="purchases" element={<Navigate to="/purchases/orders" replace />} />
           <Route path="purchases/orders" element={<PurchaseOrdersPage />} />
           <Route path="purchases/grns" element={<GrnsPage />} />
+          <Route path="purchases/returns" element={<PurchaseReturnsPage />} />
           <Route path="purchases/invoices" element={<SupplierInvoicesPage />} />
           <Route path="purchases/payments" element={<SupplierPaymentsPage />} />
           <Route path="purchases/reports" element={<PurchaseReportsPage />} />

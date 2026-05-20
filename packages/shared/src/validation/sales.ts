@@ -49,7 +49,12 @@ export const bulkSalesOrdersSchema = z.object({
 
 export const paymentTypeSchema = z.enum(['cash', 'credit']);
 
-export const createInvoiceSchema = z.object({
+const invoiceLineInputSchema = documentLineInputSchema.extend({
+  unitPrice: decimal.optional(),
+  originalInvoiceLineId: z.union([z.string().uuid(), z.null()]).optional(),
+});
+
+const invoiceFormFieldsSchema = z.object({
   customerId: z.string().uuid(),
   invoiceDate: z.string(),
   dueDate: z.union([z.string(), z.null()]).optional(),
@@ -60,17 +65,42 @@ export const createInvoiceSchema = z.object({
   invoiceTemplateId: optionalUuid,
   notes: z.string().optional().nullable(),
   discountAmount: decimal.optional(),
-  lines: z
-    .array(
-      documentLineInputSchema.extend({
-        unitPrice: decimal.optional(),
-      })
-    )
-    .min(1),
+  documentKind: z.enum(['invoice', 'credit_note']).optional(),
+  originalInvoiceId: z.union([z.string().uuid(), z.null()]).optional(),
+  lines: z.array(invoiceLineInputSchema).min(1),
 });
 
-export const updateInvoiceSchema = createInvoiceSchema.partial().extend({
-  lines: z.array(documentLineInputSchema).optional(),
+export const createInvoiceSchema = invoiceFormFieldsSchema.superRefine((data, ctx) => {
+  const dk = data.documentKind ?? 'invoice';
+  if (dk === 'credit_note') {
+    if (!data.originalInvoiceId) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'originalInvoiceId is required for credit notes',
+        path: ['originalInvoiceId'],
+      });
+    }
+    if (data.salesOrderId) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Credit notes cannot reference a sales order',
+        path: ['salesOrderId'],
+      });
+    }
+    data.lines.forEach((line, i) => {
+      if (!line.originalInvoiceLineId) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'originalInvoiceLineId is required for each credit note line',
+          path: ['lines', i, 'originalInvoiceLineId'],
+        });
+      }
+    });
+  }
+});
+
+export const updateInvoiceSchema = invoiceFormFieldsSchema.partial().extend({
+  lines: z.array(invoiceLineInputSchema).optional(),
 });
 
 export const convertToOrderSchema = z.object({}).strict();

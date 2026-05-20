@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 const links = [
   { to: '/purchases/orders', label: 'Purchase orders' },
   { to: '/purchases/grns', label: 'Goods receipt (GRN)' },
+  { to: '/purchases/returns', label: 'Purchase returns' },
   { to: '/purchases/invoices', label: 'Supplier invoices' },
   { to: '/purchases/payments', label: 'Payments' },
   { to: '/purchases/reports', label: 'Statement & aging' },

@@ -42,6 +42,8 @@ export * from './entities/Grn';
 export * from './entities/GrnLine';
 export * from './entities/SupplierInvoice';
 export * from './entities/SupplierInvoiceLine';
+export * from './entities/PurchaseReturn';
+export * from './entities/PurchaseReturnLine';
 export * from './entities/SupplierPayment';
 export * from './entities/SupplierPaymentAllocation';
 export * from './entities/CompanySettings';

@@ -1,20 +1,20 @@
 import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { GrnLine } from './GrnLine';
 import { Product } from './Product';
-import { Invoice } from './Invoice';
-import { SalesOrderLine } from './SalesOrderLine';
+import { PurchaseReturn } from './PurchaseReturn';
 import { TaxProfile } from './TaxProfile';
 
-@Entity('invoice_lines')
-export class InvoiceLine extends BaseEntity {
+@Entity('purchase_return_lines')
+export class PurchaseReturnLine extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ name: 'invoice_id' })
-  invoiceId!: string;
+  @Column({ name: 'purchase_return_id' })
+  purchaseReturnId!: string;
 
-  @ManyToOne(() => Invoice, (inv) => inv.lines, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'invoice_id' })
-  invoice!: Invoice;
+  @ManyToOne(() => PurchaseReturn, (r) => r.lines, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'purchase_return_id' })
+  purchaseReturn!: PurchaseReturn;
 
   @Column({ name: 'product_id' })
   productId!: string;
@@ -22,20 +22,6 @@ export class InvoiceLine extends BaseEntity {
   @ManyToOne(() => Product)
   @JoinColumn({ name: 'product_id' })
   product!: Product;
-
-  @Column({ name: 'sales_order_line_id', nullable: true })
-  salesOrderLineId?: string;
-
-  @ManyToOne(() => SalesOrderLine, { nullable: true })
-  @JoinColumn({ name: 'sales_order_line_id' })
-  salesOrderLine?: SalesOrderLine;
-
-  @Column({ name: 'original_invoice_line_id', type: 'uuid', nullable: true })
-  originalInvoiceLineId?: string;
-
-  @ManyToOne(() => InvoiceLine, { nullable: true })
-  @JoinColumn({ name: 'original_invoice_line_id' })
-  originalInvoiceLine?: InvoiceLine;
 
   @Column({ type: 'decimal', precision: 14, scale: 4 })
   quantity!: string;
@@ -55,4 +41,11 @@ export class InvoiceLine extends BaseEntity {
   @ManyToOne(() => TaxProfile, { nullable: true })
   @JoinColumn({ name: 'tax_profile_id' })
   taxProfile?: TaxProfile;
+
+  @Column({ name: 'grn_line_id', type: 'uuid', nullable: true })
+  grnLineId?: string;
+
+  @ManyToOne(() => GrnLine, { nullable: true })
+  @JoinColumn({ name: 'grn_line_id' })
+  grnLine?: GrnLine;
 }

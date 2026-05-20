@@ -9,6 +9,7 @@ export interface InvoiceLinePricingInput {
   unitPrice?: string;
   discountAmount?: string;
   taxProfileId?: string | null;
+  originalInvoiceLineId?: string | null;
 }
 
 export interface InvoiceLinePricingResolved extends InvoiceLinePricingInput {

@@ -41,6 +41,17 @@ export class Invoice extends BaseEntity {
   @Column({ default: 'draft' })
   status!: string;
 
+  /** invoice | credit_note (sales return) */
+  @Column({ name: 'document_kind', default: 'invoice' })
+  documentKind!: string;
+
+  @Column({ name: 'original_invoice_id', type: 'uuid', nullable: true })
+  originalInvoiceId?: string;
+
+  @ManyToOne(() => Invoice, { nullable: true })
+  @JoinColumn({ name: 'original_invoice_id' })
+  originalInvoice?: Invoice;
+
   /** cash | credit */
   @Column({ name: 'payment_type', default: 'credit' })
   paymentType!: string;

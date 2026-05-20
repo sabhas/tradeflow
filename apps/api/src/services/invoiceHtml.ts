@@ -122,6 +122,8 @@ export function renderInvoiceBody(opts: InvoicePrintData): string {
   const discH = roundAmountString(inv.discountAmount, md, mode);
   const taxT = roundAmountString(inv.taxAmount, md, mode);
   const tot = roundAmountString(inv.total, md, mode);
+  const docLabel = inv.documentKind === 'credit_note' ? 'Credit note' : 'Tax invoice';
+  const h2 = `<h2 style="font-size:1.15rem;margin:0">${esc(docLabel)}</h2>`;
 
   return `<div class="invoice-doc">
   <div class="company">
@@ -137,7 +139,7 @@ export function renderInvoiceBody(opts: InvoicePrintData): string {
       : ''}
     ${taxBlock}
   </div>
-  <h2 style="font-size:1.15rem;margin:0">Tax invoice</h2>
+  ${h2}
   <p><strong>${esc(customerName)}</strong><br/>
   Date: ${esc(inv.invoiceDate)} · Due: ${esc(inv.dueDate)} · Status: ${esc(inv.status)}</p>
   <p>Warehouse: ${esc(inv.warehouse?.name ?? inv.warehouseId)} · Payment: ${esc(inv.paymentType)}</p>
@@ -158,7 +160,8 @@ export function renderInvoiceBody(opts: InvoicePrintData): string {
 
 export function buildInvoicePrintHtml(opts: InvoicePrintData): string {
   const body = renderInvoiceBody(opts);
-  const title = `Invoice ${opts.invoice.id.slice(0, 8)}`;
+  const kind = opts.invoice.documentKind === 'credit_note' ? 'Credit note' : 'Invoice';
+  const title = `${kind} ${opts.invoice.id.slice(0, 8)}`;
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>${SHARED_PRINT_STYLES}</style></head><body>

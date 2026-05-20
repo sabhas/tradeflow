@@ -37,12 +37,20 @@ interface InvRow {
   dueDate: string;
   status: string;
   paymentType: string;
+  documentKind?: string;
   total: string;
 }
 
 const PAGE_SIZE = 50;
 
-type Line = { productId: string; quantity: number; unitPrice: string; discountAmount: string; taxProfileId: string };
+type Line = {
+  productId: string;
+  quantity: number;
+  unitPrice: string;
+  discountAmount: string;
+  taxProfileId: string;
+  originalInvoiceLineId: string;
+};
 
 const emptyLine = (): Line => ({
   productId: '',
@@ -50,6 +58,7 @@ const emptyLine = (): Line => ({
   unitPrice: '0',
   discountAmount: '0',
   taxProfileId: '',
+  originalInvoiceLineId: '',
 });
 
 export function InvoicesPage() {
@@ -73,6 +82,8 @@ export function InvoicesPage() {
   const [notes, setNotes] = useState('');
   const [headerDiscount, setHeaderDiscount] = useState('0');
   const [invoiceTemplateId, setInvoiceTemplateId] = useState('');
+  const [documentKind, setDocumentKind] = useState<'invoice' | 'credit_note'>('invoice');
+  const [originalInvoiceId, setOriginalInvoiceId] = useState('');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,12 +162,16 @@ export function InvoicesPage() {
         data: InvRow & {
           dueDate: string;
           warehouseId: string;
+          documentKind?: string;
+          originalInvoiceId?: string | null;
           lines: Array<{
+            id: string;
             productId: string;
             quantity: string;
             unitPrice: string;
             discountAmount: string;
             taxProfileId?: string | null;
+            originalInvoiceLineId?: string | null;
           }>;
           notes?: string;
           discountAmount: string;
@@ -178,6 +193,8 @@ export function InvoicesPage() {
     setNotes(d.notes ?? '');
     setHeaderDiscount(d.discountAmount);
     setInvoiceTemplateId(d.invoiceTemplateId ?? '');
+    setDocumentKind((d.documentKind as 'invoice' | 'credit_note') ?? 'invoice');
+    setOriginalInvoiceId(d.originalInvoiceId ?? '');
     setLines(
       (d.lines || []).length
         ? d.lines.map((l) => ({
@@ -186,10 +203,59 @@ export function InvoicesPage() {
             unitPrice: l.unitPrice,
             discountAmount: l.discountAmount,
             taxProfileId: l.taxProfileId ?? '',
+            originalInvoiceLineId:
+              (d.documentKind ?? 'invoice') === 'credit_note' ? l.originalInvoiceLineId ?? '' : '',
           }))
         : [emptyLine()]
     );
   }, [detail.data, editingId]);
+
+  const postedForCredit = useQuery({
+    queryKey: ['invoices', 'credit-source', customerId],
+    enabled: !!customerId && panelOpen && !editingId && documentKind === 'credit_note',
+    queryFn: () => {
+      const q = new URLSearchParams({
+        customerId,
+        status: 'posted',
+        documentKind: 'invoice',
+        limit: '100',
+      });
+      return apiFetch<{ data: InvRow[] }>(`/invoices?${q}`).then((r) => r.data);
+    },
+  });
+
+  const applyCreditSourceInvoice = async (invoiceId: string) => {
+    if (!invoiceId) {
+      setOriginalInvoiceId('');
+      setLines([emptyLine()]);
+      return;
+    }
+    const { data } = await apiFetch<{
+      data: {
+        warehouseId: string;
+        lines: Array<{
+          id: string;
+          productId: string;
+          quantity: string;
+          unitPrice: string;
+          discountAmount: string;
+          taxProfileId?: string | null;
+        }>;
+      };
+    }>(`/invoices/${invoiceId}`);
+    setOriginalInvoiceId(invoiceId);
+    setWarehouseId(data.warehouseId);
+    setLines(
+      data.lines.map((l) => ({
+        productId: l.productId,
+        quantity: parseFloat(l.quantity),
+        unitPrice: l.unitPrice,
+        discountAmount: l.discountAmount,
+        taxProfileId: l.taxProfileId ?? '',
+        originalInvoiceLineId: l.id,
+      }))
+    );
+  };
 
   const customers = useQuery({
     queryKey: ['customers', 'sales-dd'],
@@ -289,6 +355,7 @@ export function InvoicesPage() {
             unitPrice: data.sellingPrice,
             discountAmount: '0',
             taxProfileId: '',
+            originalInvoiceLineId: '',
           };
           return next;
         }
@@ -300,6 +367,7 @@ export function InvoicesPage() {
             unitPrice: data.sellingPrice,
             discountAmount: '0',
             taxProfileId: '',
+            originalInvoiceLineId: '',
           },
         ];
       });
@@ -316,6 +384,12 @@ export function InvoicesPage() {
       if (!warehouseId) throw new Error('Select a warehouse');
       if (!paymentType) throw new Error('Select a payment type');
       if (cleaned.length === 0) throw new Error('Add at least one line');
+      if (documentKind === 'credit_note') {
+        if (!originalInvoiceId) throw new Error('Select the posted invoice you are crediting');
+        if (cleaned.some((l) => !l.originalInvoiceLineId)) {
+          throw new Error('Each line must be linked to an original invoice line');
+        }
+      }
       const payload: Record<string, unknown> = {
         customerId,
         invoiceDate,
@@ -331,10 +405,16 @@ export function InvoicesPage() {
           unitPrice: l.unitPrice.trim() ? l.unitPrice : undefined,
           discountAmount: l.discountAmount || '0',
           taxProfileId: l.taxProfileId || null,
+          originalInvoiceLineId:
+            documentKind === 'credit_note' && l.originalInvoiceLineId ? l.originalInvoiceLineId : null,
         })),
       };
       if (canPickTemplate) {
         payload.invoiceTemplateId = invoiceTemplateId || null;
+      }
+      if (documentKind === 'credit_note') {
+        payload.documentKind = 'credit_note';
+        payload.originalInvoiceId = originalInvoiceId;
       }
       if (editingId) {
         await apiFetch(`/invoices/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
@@ -482,6 +562,8 @@ export function InvoicesPage() {
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
               onClick={() => {
                 setEditingId(null);
+                setDocumentKind('invoice');
+                setOriginalInvoiceId('');
                 setCustomerId('');
                 setInvoiceDate(new Date().toISOString().slice(0, 10));
                 setDueDate('');
@@ -497,6 +579,31 @@ export function InvoicesPage() {
               }}
             >
               New invoice
+            </button>
+          )}
+          {canWrite && (
+            <button
+              type="button"
+              className="rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-50 dark:border-indigo-700 dark:bg-slate-900 dark:text-indigo-200 dark:hover:bg-indigo-950/40"
+              onClick={() => {
+                setEditingId(null);
+                setDocumentKind('credit_note');
+                setOriginalInvoiceId('');
+                setCustomerId('');
+                setInvoiceDate(new Date().toISOString().slice(0, 10));
+                setDueDate('');
+                setPaymentType('credit');
+                setWarehouseId('');
+                setNotes('');
+                setHeaderDiscount('0');
+                setSalespersonId('');
+                setInvoiceTemplateId('');
+                setLines([emptyLine()]);
+                setError(null);
+                setPanelOpen(true);
+              }}
+            >
+              New credit note
             </button>
           )}
         </div>
@@ -638,6 +745,7 @@ export function InvoicesPage() {
               </th>
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Customer</th>
+              <th className="px-4 py-3 text-left font-medium">Type</th>
               <th className="px-4 py-3 text-left font-medium">Status</th>
               <th className="px-4 py-3 text-left font-medium">Pay</th>
               <th className="px-4 py-3 text-right font-medium">Total</th>
@@ -665,6 +773,9 @@ export function InvoicesPage() {
                   </td>
                   <td className="px-4 py-3 tabular-nums">{r.invoiceDate}</td>
                   <td className="px-4 py-3">{r.customerName ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                    {r.documentKind === 'credit_note' ? 'Credit note' : 'Invoice'}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
@@ -723,7 +834,7 @@ export function InvoicesPage() {
             })}
             {!list.isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
                   {hasFilters ? 'No invoices match the current filters.' : 'No invoices yet.'}
                 </td>
               </tr>
@@ -762,7 +873,15 @@ export function InvoicesPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{editingId ? 'Edit invoice' : 'New invoice'}</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {editingId
+                  ? documentKind === 'credit_note'
+                    ? 'Edit credit note'
+                    : 'Edit invoice'
+                  : documentKind === 'credit_note'
+                    ? 'New credit note'
+                    : 'New invoice'}
+              </h2>
               <div className="flex items-center gap-2">
                 {editingId && (
                   <button
@@ -783,6 +902,7 @@ export function InvoicesPage() {
               </div>
             </div>
 
+            {documentKind === 'invoice' && (
             <div className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/50 p-3">
               <label className="text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Barcode / scan</span>
@@ -808,6 +928,7 @@ export function InvoicesPage() {
                 Add product
               </button>
             </div>
+            )}
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
@@ -816,7 +937,14 @@ export function InvoicesPage() {
                   className="mt-1 w-full max-w-none"
                   inputClassName="rounded-md border border-slate-300 px-3 py-2"
                   value={customerId}
-                  onChange={setCustomerId}
+                  onChange={(v) => {
+                    setCustomerId(v);
+                    if (documentKind === 'credit_note' && !editingId) {
+                      setOriginalInvoiceId('');
+                      setLines([emptyLine()]);
+                      setWarehouseId('');
+                    }
+                  }}
                   options={customerOptions}
                   placeholder="Search customer…"
                   disabled={customers.isLoading}
@@ -832,10 +960,32 @@ export function InvoicesPage() {
                   onChange={setWarehouseId}
                   options={warehouseOptions}
                   placeholder="Search warehouse…"
-                  disabled={warehouses.isLoading}
+                  disabled={warehouses.isLoading || (documentKind === 'credit_note' && !!originalInvoiceId)}
                   aria-label="Warehouse"
                 />
               </label>
+              {!editingId && documentKind === 'credit_note' && (
+                <label className="block text-sm sm:col-span-2">
+                  <span className="text-slate-600 dark:text-slate-400">Posted invoice to credit</span>
+                  <Combobox
+                    className="mt-1 w-full max-w-none"
+                    inputClassName="rounded-md border border-slate-300 px-3 py-2"
+                    value={originalInvoiceId}
+                    onChange={(v) => {
+                      void applyCreditSourceInvoice(v).catch((e: Error) => setError(e.message));
+                    }}
+                    options={[
+                      ...(postedForCredit.data ?? []).map((inv) => ({
+                        value: inv.id,
+                        label: `${inv.invoiceDate} · ${formatMoney(inv.total)}`,
+                      })),
+                    ]}
+                    placeholder="Pick invoice…"
+                    disabled={!customerId || postedForCredit.isLoading}
+                    aria-label="Source invoice for credit note"
+                  />
+                </label>
+              )}
               <label className="block text-sm">
                 <span className="text-slate-600 dark:text-slate-400">Salesperson</span>
                 <Combobox
@@ -915,7 +1065,8 @@ export function InvoicesPage() {
               <span className="text-sm font-medium text-slate-700">Lines</span>
               <button
                 type="button"
-                className="text-sm font-medium text-indigo-600 hover:underline"
+                className="text-sm font-medium text-indigo-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={documentKind === 'credit_note'}
                 onClick={() => setLines((prev) => [...prev, emptyLine()])}
               >
                 + Add line
@@ -944,7 +1095,7 @@ export function InvoicesPage() {
                       }}
                       options={productLineOptions}
                       placeholder="Search product…"
-                      disabled={products.isLoading}
+                      disabled={products.isLoading || documentKind === 'credit_note'}
                       aria-label="Product"
                     />
                   </label>

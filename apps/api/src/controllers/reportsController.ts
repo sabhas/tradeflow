@@ -21,7 +21,9 @@ export async function dailySales(req: Request): Promise<ControllerResult> {
     SELECT
       i.invoice_date::text AS date,
       COUNT(*)::int AS count,
-      SUM(i.total::numeric)::text AS "totalAmount"
+      SUM(
+        CASE WHEN i.document_kind = 'credit_note' THEN -i.total::numeric ELSE i.total::numeric END
+      )::text AS "totalAmount"
     FROM invoices i
     WHERE i.status = 'posted'
       AND i.deleted_at IS NULL
@@ -94,7 +96,7 @@ export async function fastMoving(req: Request): Promise<ControllerResult> {
 
   const orderSql =
     sortBy === 'value'
-      ? 'SUM((il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric)) DESC NULLS LAST'
+      ? 'SUM(CASE WHEN i.document_kind = \'credit_note\' THEN -(il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric) ELSE (il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric) END) DESC NULLS LAST'
       : 'SUM(il.quantity::numeric) DESC NULLS LAST';
 
   const rows = await dataSource.query(
@@ -103,8 +105,16 @@ export async function fastMoving(req: Request): Promise<ControllerResult> {
       il.product_id AS "productId",
       p.sku AS "productSku",
       p.name AS "productName",
-      SUM(il.quantity::numeric)::text AS "quantitySold",
-      SUM((il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric))::text AS "lineValue"
+      SUM(
+        CASE WHEN i.document_kind = 'credit_note' THEN -il.quantity::numeric ELSE il.quantity::numeric END
+      )::text AS "quantitySold",
+      SUM(
+        CASE
+          WHEN i.document_kind = 'credit_note' THEN
+            -(il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric)
+          ELSE (il.quantity::numeric * il.unit_price::numeric - il.discount_amount::numeric)
+        END
+      )::text AS "lineValue"
     FROM invoice_lines il
     INNER JOIN invoices i ON i.id = il.invoice_id AND i.deleted_at IS NULL
     INNER JOIN products p ON p.id = il.product_id AND p.deleted_at IS NULL
@@ -177,7 +187,7 @@ export async function receivablesAging(req: Request): Promise<ControllerResult> 
         FROM receipt_allocations ra
         WHERE ra.invoice_id = i.id
       ), '0') AS "allocated",
-      (i.total::numeric - COALESCE((
+      (CASE WHEN i.document_kind = 'credit_note' THEN -i.total::numeric ELSE i.total::numeric END - COALESCE((
         SELECT SUM(ra.amount)
         FROM receipt_allocations ra
         WHERE ra.invoice_id = i.id

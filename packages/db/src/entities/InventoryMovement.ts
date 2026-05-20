@@ -19,6 +19,8 @@ export type InventoryRefType =
   | 'opening_balance'
   | 'purchase'
   | 'sale'
+  | 'sale_return'
+  | 'purchase_return'
   | 'adjustment'
   | 'transfer_in'
   | 'transfer_out';

@@ -44,6 +44,8 @@ export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
     dueDate: inv.dueDate,
     status: inv.status,
     paymentType: inv.paymentType,
+    documentKind: inv.documentKind ?? 'invoice',
+    originalInvoiceId: inv.originalInvoiceId ?? null,
     warehouseId: inv.warehouseId,
     salesOrderId: inv.salesOrderId,
     salespersonId: inv.salespersonId,
@@ -62,6 +64,7 @@ export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
         id: l.id,
         productId: l.productId,
         salesOrderLineId: l.salesOrderLineId,
+        originalInvoiceLineId: l.originalInvoiceLineId ?? null,
         quantity: l.quantity,
         unitPrice: l.unitPrice,
         taxAmount: l.taxAmount,
@@ -83,6 +86,7 @@ export async function listInvoices(req: Request): Promise<ControllerResult> {
     .skip(offset);
   if (req.query.customerId) qb.andWhere('i.customerId = :cid', { cid: req.query.customerId });
   if (req.query.status) qb.andWhere('i.status = :st', { st: req.query.status });
+  if (req.query.documentKind) qb.andWhere('i.documentKind = :dk', { dk: req.query.documentKind });
   if (req.query.dateFrom) qb.andWhere('i.invoiceDate >= :df', { df: req.query.dateFrom });
   if (req.query.dateTo) qb.andWhere('i.invoiceDate <= :dt', { dt: req.query.dateTo });
   const [rows, total] = await qb.getManyAndCount();
@@ -191,6 +195,7 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
   const b = body;
   try {
     const saved = await runInTransaction(async (manager) => {
+      const documentKind = b.documentKind ?? 'invoice';
       const due = await resolveInvoiceDueDate(
         manager,
         b.customerId,
@@ -219,6 +224,16 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
         const cs = await getCompanySettingsRow(manager);
         invoiceTemplateId = cs.defaultInvoiceTemplateId ?? undefined;
       }
+      if (documentKind === 'credit_note') {
+        if (!b.originalInvoiceId) throw new Error('Credit note requires original invoice');
+        const orig = await manager.findOne(Invoice, {
+          where: { id: b.originalInvoiceId, deletedAt: IsNull() },
+        });
+        if (!orig) throw new Error('Original invoice not found');
+        if (orig.status !== 'posted') throw new Error('Original invoice must be posted');
+        if (orig.customerId !== b.customerId) throw new Error('Customer must match original invoice');
+        if (orig.warehouseId !== b.warehouseId) throw new Error('Warehouse must match original invoice');
+      }
       const inv = manager.create(Invoice, {
         customerId: b.customerId,
         invoiceDate: b.invoiceDate.slice(0, 10),
@@ -226,20 +241,26 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
         status: 'draft',
         paymentType: b.paymentType ?? 'credit',
         warehouseId: b.warehouseId,
+        documentKind,
+        originalInvoiceId: documentKind === 'credit_note' ? b.originalInvoiceId ?? undefined : undefined,
         subtotal: totals.subtotal,
         taxAmount: totals.taxAmount,
         discountAmount: totals.discountAmount,
         total: totals.total,
         notes: b.notes ?? undefined,
-        salesOrderId: b.salesOrderId ?? undefined,
+        salesOrderId: documentKind === 'credit_note' ? undefined : b.salesOrderId ?? undefined,
         salespersonId: b.salespersonId ?? undefined,
         invoiceTemplateId,
         createdBy: req.auth?.userId,
       });
-      await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
-      await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId);
+      if (documentKind !== 'credit_note') {
+        await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
+        await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId);
+      }
       await manager.save(inv);
-      for (const l of totals.lines) {
+      for (let i = 0; i < totals.lines.length; i++) {
+        const l = totals.lines[i];
+        const pl = pricedLines[i];
         await manager.save(
           manager.create(InvoiceLine, {
             invoiceId: inv.id,
@@ -249,6 +270,7 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
             taxAmount: l.taxAmount,
             discountAmount: l.discountAmount,
             taxProfileId: l.taxProfileId ?? undefined,
+            originalInvoiceLineId: pl.originalInvoiceLineId ?? undefined,
           })
         );
       }
@@ -301,7 +323,9 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
       if (b.warehouseId !== undefined) inv.warehouseId = b.warehouseId;
       if (b.paymentType !== undefined) inv.paymentType = b.paymentType;
       if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
-      if (b.salesOrderId !== undefined) inv.salesOrderId = b.salesOrderId ?? undefined;
+      if (b.salesOrderId !== undefined && inv.documentKind !== 'credit_note') {
+        inv.salesOrderId = b.salesOrderId ?? undefined;
+      }
       if (b.salespersonId !== undefined) inv.salespersonId = b.salespersonId ?? undefined;
             if (b.invoiceTemplateId !== undefined) {
         if (b.invoiceTemplateId) {
@@ -348,7 +372,9 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
         inv.taxAmount = totals.taxAmount;
         inv.discountAmount = totals.discountAmount;
         inv.total = totals.total;
-        for (const l of totals.lines) {
+        for (let i = 0; i < totals.lines.length; i++) {
+          const l = totals.lines[i];
+          const pl = pricedLines[i];
           await manager.save(
             manager.create(InvoiceLine, {
               invoiceId: inv.id,
@@ -358,6 +384,7 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
               taxAmount: l.taxAmount,
               discountAmount: l.discountAmount,
               taxProfileId: l.taxProfileId ?? undefined,
+              originalInvoiceLineId: pl.originalInvoiceLineId ?? undefined,
             })
           );
         }
@@ -368,6 +395,7 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
+          originalInvoiceLineId: l.originalInvoiceLineId,
         }));
         const totals = await computeSalesDocumentTotals(manager, inv.customerId, lines, b.discountAmount);
         inv.subtotal = totals.subtotal;
@@ -375,7 +403,9 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
         inv.discountAmount = totals.discountAmount;
         inv.total = totals.total;
         await manager.delete(InvoiceLine, { invoiceId: inv.id });
-        for (const l of totals.lines) {
+        for (let i = 0; i < totals.lines.length; i++) {
+          const l = totals.lines[i];
+          const src = lines[i];
           await manager.save(
             manager.create(InvoiceLine, {
               invoiceId: inv.id,
@@ -385,12 +415,15 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
               taxAmount: l.taxAmount,
               discountAmount: l.discountAmount,
               taxProfileId: l.taxProfileId ?? undefined,
+              originalInvoiceLineId: src?.originalInvoiceLineId ?? undefined,
             })
           );
         }
       }
-      await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
-      await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId, inv.id);
+      if (inv.documentKind !== 'credit_note') {
+        await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
+        await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId, inv.id);
+      }
       await manager.save(inv);
       return manager.findOneOrFail(Invoice, {
         where: { id: inv.id, deletedAt: IsNull() },

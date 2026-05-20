@@ -11,6 +11,7 @@ import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
 const ACC = {
   AR: GL_ACCOUNT_CODES.AR_TRADE,
   SALES: GL_ACCOUNT_CODES.SALES,
+  SALES_RETURNS: GL_ACCOUNT_CODES.SALES_RETURNS,
   TAX: GL_ACCOUNT_CODES.TAX_PAYABLE,
   INVENTORY: GL_ACCOUNT_CODES.INVENTORY,
   AP: GL_ACCOUNT_CODES.AP_TRADE,
@@ -319,6 +320,142 @@ export async function postSupplierPaymentJournal(
   await manager.save(entry);
 
   for (const l of payLines) {
+    await manager.save(
+      manager.create(JournalLine, {
+        journalEntryId: entry.id,
+        accountId: l.accountId,
+        debit: l.debit,
+        credit: l.credit,
+      })
+    );
+  }
+
+  return entry;
+}
+
+/** Posted sales credit note: Dr Sales returns + Dr VAT payable, Cr AR/cash; Dr Inventory, Cr COGS. */
+export async function postSalesCreditNoteJournal(
+  manager: EntityManager,
+  params: {
+    entryDate: string;
+    reference: string;
+    description?: string;
+    userId?: string;
+    creditNoteInvoiceId: string;
+    paymentType: string;
+    total: string;
+    revenueExTax: string;
+    taxAmount: string;
+    cogsAmount?: string;
+  }
+): Promise<JournalEntry> {
+  const existing = await manager.findOne(JournalEntry, {
+    where: { sourceType: 'sales_credit_note', sourceId: params.creditNoteInvoiceId },
+  });
+  if (existing) throw new Error('Credit note already has accounting entry');
+
+  const [salesReturnsId, taxId, arId] = await Promise.all([
+    accountIdByCode(manager, ACC.SALES_RETURNS),
+    accountIdByCode(manager, ACC.TAX),
+    accountIdByCode(manager, ACC.AR),
+  ]);
+
+  const creditAccountId =
+    params.paymentType === 'cash' ? await resolveLiquidAccountId(manager, 'cash') : arId;
+  const lines: Array<{ accountId: string; debit: string; credit: string }> = [
+    { accountId: salesReturnsId, debit: params.revenueExTax, credit: '0.0000' },
+    { accountId: creditAccountId, debit: '0.0000', credit: params.total },
+  ];
+  if (parseFloat(params.taxAmount) > 0.00005) {
+    lines.splice(1, 0, { accountId: taxId, debit: params.taxAmount, credit: '0.0000' });
+  }
+
+  const cogsStr =
+    params.cogsAmount && parseFloat(params.cogsAmount) > 0.00005
+      ? parseDecimalStrict(params.cogsAmount)
+      : null;
+  if (cogsStr) {
+    const [cogsId, invId] = await Promise.all([
+      accountIdByCode(manager, ACC.COGS),
+      accountIdByCode(manager, ACC.INVENTORY),
+    ]);
+    lines.push({ accountId: invId, debit: cogsStr, credit: '0.0000' });
+    lines.push({ accountId: cogsId, debit: '0.0000', credit: cogsStr });
+  }
+
+  assertBalanced(lines);
+
+  const entry = manager.create(JournalEntry, {
+    entryDate: params.entryDate,
+    reference: params.reference,
+    description: params.description,
+    status: 'posted',
+    sourceType: 'sales_credit_note',
+    sourceId: params.creditNoteInvoiceId,
+    createdBy: params.userId,
+  });
+  await manager.save(entry);
+
+  for (const l of lines) {
+    await manager.save(
+      manager.create(JournalLine, {
+        journalEntryId: entry.id,
+        accountId: l.accountId,
+        debit: l.debit,
+        credit: l.credit,
+      })
+    );
+  }
+
+  return entry;
+}
+
+/** Posted purchase return: Dr AP, Cr Inventory (net), Cr input VAT. */
+export async function postPurchaseReturnJournal(
+  manager: EntityManager,
+  params: {
+    entryDate: string;
+    reference: string;
+    description?: string;
+    userId?: string;
+    purchaseReturnId: string;
+    inventoryCredit: string;
+    taxAmount: string;
+    total: string;
+  }
+): Promise<JournalEntry> {
+  const existing = await manager.findOne(JournalEntry, {
+    where: { sourceType: 'purchase_return', sourceId: params.purchaseReturnId },
+  });
+  if (existing) throw new Error('Purchase return already has accounting entry');
+
+  const [apId, invId, vatId] = await Promise.all([
+    accountIdByCode(manager, ACC.AP),
+    accountIdByCode(manager, ACC.INVENTORY),
+    accountIdByCode(manager, ACC.INPUT_VAT),
+  ]);
+
+  const lines: Array<{ accountId: string; debit: string; credit: string }> = [
+    { accountId: apId, debit: params.total, credit: '0.0000' },
+    { accountId: invId, debit: '0.0000', credit: params.inventoryCredit },
+  ];
+  if (parseFloat(params.taxAmount) > 0.00005) {
+    lines.push({ accountId: vatId, debit: '0.0000', credit: params.taxAmount });
+  }
+  assertBalanced(lines);
+
+  const entry = manager.create(JournalEntry, {
+    entryDate: params.entryDate,
+    reference: params.reference,
+    description: params.description,
+    status: 'posted',
+    sourceType: 'purchase_return',
+    sourceId: params.purchaseReturnId,
+    createdBy: params.userId,
+  });
+  await manager.save(entry);
+
+  for (const l of lines) {
     await manager.save(
       manager.create(JournalLine, {
         journalEntryId: entry.id,

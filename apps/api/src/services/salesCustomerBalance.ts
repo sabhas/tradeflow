@@ -4,7 +4,9 @@ import { moneySub } from '../utils/money';
 /** Posted credit invoices total minus allocations applied to those invoices (same customer). */
 export async function getCustomerCreditExposure(manager: EntityManager, customerId: string): Promise<string> {
   const inv = await manager.query(
-    `SELECT COALESCE(SUM(i.total), 0)::text as s FROM invoices i
+    `SELECT COALESCE(SUM(
+      CASE WHEN i.document_kind = 'credit_note' THEN -i.total::numeric ELSE i.total::numeric END
+    ), 0)::text as s FROM invoices i
      WHERE i.customer_id = $1 AND i.status = $2 AND i.payment_type = $3
        AND i.deleted_at IS NULL`,
     [customerId, 'posted', 'credit']
