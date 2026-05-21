@@ -55,4 +55,10 @@ export class InvoiceLine extends BaseEntity {
   @ManyToOne(() => TaxProfile, { nullable: true })
   @JoinColumn({ name: 'tax_profile_id' })
   taxProfile?: TaxProfile;
+
+  @Column({ name: 'batch_code', type: 'varchar', length: 128, nullable: true })
+  batchCode?: string;
+
+  @Column({ name: 'expiry_date', type: 'date', nullable: true })
+  expiryDate?: string;
 }

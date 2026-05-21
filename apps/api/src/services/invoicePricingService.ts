@@ -16,7 +16,7 @@ export interface InvoiceLinePricingResolved extends InvoiceLinePricingInput {
   unitPrice: string;
 }
 
-function pickLayerPrice(product: Product, lineUsesRetail: boolean, trade?: string, retail?: string): string {
+export function pickLayerPrice(product: Product, lineUsesRetail: boolean, trade?: string, retail?: string): string {
   if (lineUsesRetail) {
     return parseDecimalStrict(retail ?? product.retailPrice ?? product.sellingPrice ?? '0');
   }

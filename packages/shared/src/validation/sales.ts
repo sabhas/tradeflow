@@ -52,6 +52,10 @@ export const paymentTypeSchema = z.enum(['cash', 'credit']);
 const invoiceLineInputSchema = documentLineInputSchema.extend({
   unitPrice: decimal.optional(),
   originalInvoiceLineId: z.union([z.string().uuid(), z.null()]).optional(),
+  batchCode: z.string().max(128).optional().nullable(),
+  expiryDate: z
+    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()])
+    .optional(),
 });
 
 const invoiceFormFieldsSchema = z.object({

@@ -104,6 +104,51 @@ export async function consumeFromLayers(
   return { avgUnitCost: parseDecimalStrict(avg), consumptions };
 }
 
+/** Consume exact planned layer quantities (used after invoice batch split). */
+export async function consumeFromPlannedLayers(
+  manager: EntityManager,
+  consumptions: LayerConsumption[]
+): Promise<{ avgUnitCost: string; consumptions: LayerConsumption[] }> {
+  if (consumptions.length === 0) {
+    throw new Error('Planned consumptions required');
+  }
+
+  let totalCogs = 0;
+  let totalQty = 0;
+  const applied: LayerConsumption[] = [];
+
+  for (const c of consumptions) {
+    const take = parseFloat(parseDecimalStrict(c.quantity));
+    if (take <= 0) throw new Error('Planned consumption quantity must be positive');
+
+    const rows = await manager.query(
+      `SELECT quantity_remaining::text AS rem, unit_cost::text AS uc
+       FROM stock_layers WHERE id = $1 FOR UPDATE`,
+      [c.stockLayerId]
+    );
+    if (!rows.length) throw new Error('Stock layer not found');
+    const layerRem = parseFloat(parseDecimalStrict(String(rows[0].rem)));
+    if (take > layerRem + 1e-6) {
+      throw new Error('Insufficient stock in batch layer');
+    }
+
+    const newRem = decimalSub(String(rows[0].rem), c.quantity);
+    await manager.query(`UPDATE stock_layers SET quantity_remaining = $1::numeric WHERE id = $2`, [
+      newRem,
+      c.stockLayerId,
+    ]);
+
+    const uc = parseDecimalStrict(String(rows[0].uc));
+    totalCogs += take * parseFloat(uc);
+    totalQty += take;
+    applied.push(c);
+  }
+
+  const avg =
+    totalQty > 1e-9 ? parseDecimalStrict((totalCogs / totalQty).toFixed(4)) : parseDecimalStrict('0');
+  return { avgUnitCost: avg, consumptions: applied };
+}
+
 export async function insertLayerConsumptions(
   manager: EntityManager,
   inventoryMovementId: string,

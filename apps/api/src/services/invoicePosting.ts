@@ -1,4 +1,4 @@
-import { EntityManager, IsNull } from 'typeorm';
+import { EntityManager, In, IsNull } from 'typeorm';
 import { Customer, InventoryMovement, Invoice, InvoiceLine, Product, SalesOrderLine } from '@tradeflow/db';
 import { applyMovement, assertProductInScope, assertWarehouseInScope, runInTransaction } from './inventoryService';
 import { decimalAdd, decimalSub, parseDecimalStrict } from '../utils/decimal';
@@ -7,6 +7,12 @@ import { getCustomerCreditExposure, getInvoiceAmountAllocated } from './salesCus
 import { postSalesCreditNoteJournal, postSalesInvoiceJournal } from './accountingPosting';
 import { addDaysIso } from './salesTotals';
 import { assertDateNotPeriodLocked } from './periodLock';
+import { assertCreditNoteLinesMatchOriginal } from './productBatchControls';
+import {
+  expandBatchTrackedInvoiceLinesForPost,
+  planConsumptionForInvoiceLine,
+} from './invoiceBatchExpansion';
+import { buildOriginalLineMap } from './invoiceCreditNoteLines';
 
 async function getQtyReturnedAgainstOriginalLine(
   manager: EntityManager,
@@ -46,13 +52,16 @@ async function assertCreditNoteReadyToPost(manager: EntityManager, inv: Invoice)
 
   const origLinesById = new Map((orig.lines ?? []).map((l) => [l.id, l]));
 
-  for (const line of inv.lines ?? []) {
+  const activeLines = (inv.lines ?? []).filter((line) => parseFloat(line.quantity) > 0);
+  const origLineMap = buildOriginalLineMap(orig.lines ?? []);
+  await assertCreditNoteLinesMatchOriginal(manager, activeLines, origLineMap);
+
+  for (const line of activeLines) {
     if (!line.originalInvoiceLineId) throw new Error('Each credit note line must reference an original invoice line');
     const ol = origLinesById.get(line.originalInvoiceLineId);
     if (!ol) throw new Error('Original invoice line not on referenced invoice');
     if (ol.productId !== line.productId) throw new Error('Product must match original invoice line');
     const ret = parseFloat(line.quantity);
-    if (ret <= 0) continue;
     const already = await getQtyReturnedAgainstOriginalLine(manager, line.originalInvoiceLineId, inv.id);
     const maxRet = parseFloat(ol.quantity);
     if (already + ret > maxRet + 1e-6) {
@@ -121,9 +130,22 @@ export async function postInvoice(invoiceId: string, userId: string | undefined)
     const movementDate = inv.invoiceDate;
 
     if (!isCredit) {
-      for (const line of inv.lines) {
+      const { plans, salesOrderDelivered } = await expandBatchTrackedInvoiceLinesForPost(manager, inv);
+      const productIds = [...new Set(plans.map((p) => p.line.productId))];
+      const products = await manager.find(Product, { where: { id: In(productIds) } });
+      const productById = new Map(products.map((p) => [p.id, p]));
+
+      for (const { line, plannedConsumptions } of plans) {
         const q = parseFloat(line.quantity);
         if (q <= 0) continue;
+        const product = productById.get(line.productId);
+        if (!product) throw new Error('Product not found');
+
+        let planned = plannedConsumptions;
+        if (!planned?.length && (product.batchTracked || product.expiryTracked)) {
+          planned = await planConsumptionForInvoiceLine(manager, product, inv.warehouseId, line);
+        }
+
         const delta = (-q).toFixed(4);
         await applyMovement(manager, {
           productId: line.productId,
@@ -135,23 +157,25 @@ export async function postInvoice(invoiceId: string, userId: string | undefined)
           notes: `Invoice ${inv.id}`,
           userId,
           invoiceLineId: line.id,
+          plannedConsumptions: planned,
         });
       }
 
-      for (const line of inv.lines) {
-        if (!line.salesOrderLineId) continue;
+      for (const [solId, qty] of salesOrderDelivered) {
         const sol = await manager.findOne(SalesOrderLine, {
-          where: { id: line.salesOrderLineId },
+          where: { id: solId },
           lock: { mode: 'pessimistic_write' },
         });
         if (!sol) throw new Error('Sales order line not found');
-        const newDelivered = decimalAdd(sol.deliveredQuantity, line.quantity);
+        const newDelivered = decimalAdd(sol.deliveredQuantity, qty);
         if (parseFloat(newDelivered) > parseFloat(sol.quantity) + 1e-9) {
           throw new Error('Invoice quantity exceeds remaining on sales order line');
         }
         sol.deliveredQuantity = newDelivered;
         await manager.save(sol);
       }
+
+      inv.lines = plans.map((p) => p.line);
     } else {
       for (const line of inv.lines) {
         const q = parseFloat(line.quantity);
@@ -168,6 +192,8 @@ export async function postInvoice(invoiceId: string, userId: string | undefined)
           notes: `Credit note ${inv.id}`,
           userId,
           invoiceLineId: line.id,
+          batchCode: line.batchCode?.trim() || undefined,
+          expiryDate: line.expiryDate ? String(line.expiryDate).slice(0, 10) : undefined,
         });
       }
 

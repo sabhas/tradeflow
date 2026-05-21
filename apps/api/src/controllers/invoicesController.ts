@@ -17,6 +17,7 @@ import { getPagination } from '../utils/pagination';
 import { computeSalesDocumentTotals } from '../services/salesTotals';
 import { runInTransaction } from '../services/inventoryService';
 import { postInvoice, resolveInvoiceDueDate } from '../services/invoicePosting';
+import { syncCreditNoteLinesWithOriginal } from '../services/invoiceCreditNoteLines';
 import { getCompanySettingsRow } from '../services/companySettings';
 import { resolveInvoiceLineUnitPrices } from '../services/invoicePricingService';
 import {
@@ -34,6 +35,18 @@ import { HttpError } from '../utils/httpError';
 
 type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;
+
+function lineBatchExpiryFields(line: {
+  batchCode?: string | null;
+  expiryDate?: string | null;
+}): { batchCode?: string; expiryDate?: string } {
+  const batchCode = line.batchCode?.trim();
+  const expiryDate = line.expiryDate?.trim();
+  return {
+    batchCode: batchCode ? batchCode : undefined,
+    expiryDate: expiryDate ? expiryDate.slice(0, 10) : undefined,
+  };
+}
 
 export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
   return {
@@ -70,6 +83,8 @@ export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
         taxAmount: l.taxAmount,
         discountAmount: l.discountAmount,
         taxProfileId: l.taxProfileId,
+        batchCode: l.batchCode ?? null,
+        expiryDate: l.expiryDate ? String(l.expiryDate).slice(0, 10) : null,
       })) ?? undefined,
   };
 }
@@ -203,7 +218,19 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
         b.paymentType ?? 'credit',
         b.dueDate ?? null
       );
-      const pricedLines = await resolveInvoiceLineUnitPrices(manager, b.warehouseId, b.lines);
+      let lineInputs = b.lines;
+      if (documentKind === 'credit_note') {
+        if (!b.originalInvoiceId) throw new Error('Credit note requires original invoice');
+        const orig = await manager.findOne(Invoice, {
+          where: { id: b.originalInvoiceId, deletedAt: IsNull() },
+        });
+        if (!orig) throw new Error('Original invoice not found');
+        if (orig.status !== 'posted') throw new Error('Original invoice must be posted');
+        if (orig.customerId !== b.customerId) throw new Error('Customer must match original invoice');
+        if (orig.warehouseId !== b.warehouseId) throw new Error('Warehouse must match original invoice');
+        lineInputs = await syncCreditNoteLinesWithOriginal(manager, b.originalInvoiceId, b.lines);
+      }
+      const pricedLines = await resolveInvoiceLineUnitPrices(manager, b.warehouseId, lineInputs);
       const totals = await computeSalesDocumentTotals(
         manager,
         b.customerId,
@@ -223,16 +250,6 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
       } else {
         const cs = await getCompanySettingsRow(manager);
         invoiceTemplateId = cs.defaultInvoiceTemplateId ?? undefined;
-      }
-      if (documentKind === 'credit_note') {
-        if (!b.originalInvoiceId) throw new Error('Credit note requires original invoice');
-        const orig = await manager.findOne(Invoice, {
-          where: { id: b.originalInvoiceId, deletedAt: IsNull() },
-        });
-        if (!orig) throw new Error('Original invoice not found');
-        if (orig.status !== 'posted') throw new Error('Original invoice must be posted');
-        if (orig.customerId !== b.customerId) throw new Error('Customer must match original invoice');
-        if (orig.warehouseId !== b.warehouseId) throw new Error('Warehouse must match original invoice');
       }
       const inv = manager.create(Invoice, {
         customerId: b.customerId,
@@ -261,6 +278,7 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
       for (let i = 0; i < totals.lines.length; i++) {
         const l = totals.lines[i];
         const pl = pricedLines[i];
+        const inputLine = lineInputs[i];
         await manager.save(
           manager.create(InvoiceLine, {
             invoiceId: inv.id,
@@ -271,6 +289,7 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
             discountAmount: l.discountAmount,
             taxProfileId: l.taxProfileId ?? undefined,
             originalInvoiceLineId: pl.originalInvoiceLineId ?? undefined,
+            ...(documentKind === 'credit_note' ? lineBatchExpiryFields(inputLine) : {}),
           })
         );
       }
@@ -350,11 +369,16 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
       }
 
       if (b.lines) {
+        let lineInputs = b.lines;
+        if (inv.documentKind === 'credit_note') {
+          if (!inv.originalInvoiceId) throw new Error('Credit note requires original invoice');
+          lineInputs = await syncCreditNoteLinesWithOriginal(manager, inv.originalInvoiceId, b.lines);
+        }
         await manager.delete(InvoiceLine, { invoiceId: inv.id });
         const pricedLines = await resolveInvoiceLineUnitPrices(
           manager,
           b.warehouseId ?? inv.warehouseId,
-          b.lines
+          lineInputs
         );
         const totals = await computeSalesDocumentTotals(
           manager,
@@ -375,6 +399,7 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
         for (let i = 0; i < totals.lines.length; i++) {
           const l = totals.lines[i];
           const pl = pricedLines[i];
+          const inputLine = lineInputs[i];
           await manager.save(
             manager.create(InvoiceLine, {
               invoiceId: inv.id,
@@ -385,6 +410,7 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
               discountAmount: l.discountAmount,
               taxProfileId: l.taxProfileId ?? undefined,
               originalInvoiceLineId: pl.originalInvoiceLineId ?? undefined,
+              ...(inv.documentKind === 'credit_note' ? lineBatchExpiryFields(inputLine) : {}),
             })
           );
         }
@@ -396,6 +422,8 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
           originalInvoiceLineId: l.originalInvoiceLineId,
+          batchCode: l.batchCode,
+          expiryDate: l.expiryDate,
         }));
         const totals = await computeSalesDocumentTotals(manager, inv.customerId, lines, b.discountAmount);
         inv.subtotal = totals.subtotal;
@@ -416,6 +444,8 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
               discountAmount: l.discountAmount,
               taxProfileId: l.taxProfileId ?? undefined,
               originalInvoiceLineId: src?.originalInvoiceLineId ?? undefined,
+              batchCode: src?.batchCode,
+              expiryDate: src?.expiryDate,
             })
           );
         }

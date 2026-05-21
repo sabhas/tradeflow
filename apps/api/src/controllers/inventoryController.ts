@@ -140,7 +140,13 @@ export async function listBatchBalances(req: Request): Promise<ControllerResult>
   const orderByParam = (req.query.orderBy as string | undefined)?.toLowerCase();
   const limitParam = req.query.limit as string | undefined;
 
-  const where: string[] = ['l.quantity_remaining::numeric > 0', 'p.deleted_at IS NULL'];
+  const includeDepleted =
+    (req.query.includeDepleted as string | undefined)?.toLowerCase() === 'true' ||
+    (req.query.includeDepleted as string | undefined) === '1';
+  const where: string[] = ['p.deleted_at IS NULL'];
+  if (!includeDepleted) {
+    where.push('l.quantity_remaining::numeric > 0');
+  }
   const params: unknown[] = [];
 
   if (warehouseId) {

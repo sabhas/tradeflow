@@ -12,8 +12,10 @@ import { decimalAdd, decimalIsNegative, parseDecimalStrict } from '../utils/deci
 import {
   addInboundLayer,
   consumeFromLayers,
+  consumeFromPlannedLayers,
   insertLayerConsumptions,
   loadCompanyForInventory,
+  type LayerConsumption,
 } from './stockLayerService';
 
 function validateDeltaForRefType(refType: InventoryRefType, deltaNum: number): void {
@@ -86,6 +88,8 @@ export interface ApplyMovementParams {
   batchCode?: string;
   expiryDate?: string;
   receivedAt?: Date;
+  /** When set, outbound sale consumes these exact layers (one batch line per call). */
+  plannedConsumptions?: LayerConsumption[];
 }
 
 export async function applyMovement(
@@ -111,13 +115,9 @@ export async function applyMovement(
 
   if (isOutbound) {
     const qtyAbs = Math.abs(deltaNum).toFixed(4);
-    const { avgUnitCost, consumptions } = await consumeFromLayers(
-      manager,
-      product,
-      company,
-      params.warehouseId,
-      qtyAbs
-    );
+    const { avgUnitCost, consumptions } = params.plannedConsumptions?.length
+      ? await consumeFromPlannedLayers(manager, params.plannedConsumptions)
+      : await consumeFromLayers(manager, product, company, params.warehouseId, qtyAbs);
 
     const balance = await getOrCreateBalanceLocked(manager, params.productId, params.warehouseId);
     const newQty = decimalAdd(balance.quantity, deltaStr);

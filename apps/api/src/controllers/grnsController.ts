@@ -2,7 +2,6 @@ import type { Request } from 'express';
 import type { z } from 'zod';
 import { Grn, GrnLine, Product, PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
 import { createGrnSchema } from '@tradeflow/shared';
-import { In, type EntityManager } from 'typeorm';
 import { getPagination } from '../utils/pagination';
 import {
   applyMovement,
@@ -13,41 +12,12 @@ import {
 import { parseDecimalStrict } from '../utils/decimal';
 import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { postGrnJournal } from '../services/accountingPosting';
+import { enforceProductBatchControls } from '../services/productBatchControls';
 import { moneyAdd } from '../utils/money';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
 
 type CreateGrnInput = z.infer<typeof createGrnSchema>;
-
-async function enforceProductBatchControls(
-  manager: EntityManager,
-  lines: Array<{ productId: string; batchCode?: string | null; expiryDate?: string | null }>
-) {
-  const productIds = [...new Set(lines.map((line) => line.productId))];
-  if (productIds.length === 0) return;
-
-  const products = await manager.find(Product, {
-    where: { id: In(productIds) },
-  });
-  const productsById = new Map(products.map((product) => [product.id, product]));
-
-  for (const line of lines) {
-    const product = productsById.get(line.productId);
-    if (!product) {
-      throw new Error(`Product not found: ${line.productId}`);
-    }
-
-    const batchCode = line.batchCode?.trim() ?? '';
-    if (product.batchTracked && !batchCode) {
-      throw new Error(`Batch code is required for batch-tracked product "${product.name}"`);
-    }
-
-    const expiryDate = line.expiryDate?.trim() ?? '';
-    if (product.expiryTracked && !expiryDate) {
-      throw new Error(`Expiry date is required for expiry-tracked product "${product.name}"`);
-    }
-  }
-}
 
 function serializeGrn(g: Grn, lines?: GrnLine[]) {
   return {

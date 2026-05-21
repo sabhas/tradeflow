@@ -24,6 +24,8 @@ interface ProductOpt {
   sku: string;
   name: string;
   sellingPrice: string;
+  batchTracked?: boolean;
+  expiryTracked?: boolean;
 }
 interface TaxOpt {
   id: string;
@@ -50,6 +52,9 @@ type Line = {
   discountAmount: string;
   taxProfileId: string;
   originalInvoiceLineId: string;
+  batchCode: string;
+  expiryDate: string;
+  maxReturnQty?: number;
 };
 
 const emptyLine = (): Line => ({
@@ -59,6 +64,8 @@ const emptyLine = (): Line => ({
   discountAmount: '0',
   taxProfileId: '',
   originalInvoiceLineId: '',
+  batchCode: '',
+  expiryDate: '',
 });
 
 export function InvoicesPage() {
@@ -172,6 +179,8 @@ export function InvoicesPage() {
             discountAmount: string;
             taxProfileId?: string | null;
             originalInvoiceLineId?: string | null;
+            batchCode?: string | null;
+            expiryDate?: string | null;
           }>;
           notes?: string;
           discountAmount: string;
@@ -205,6 +214,10 @@ export function InvoicesPage() {
             taxProfileId: l.taxProfileId ?? '',
             originalInvoiceLineId:
               (d.documentKind ?? 'invoice') === 'credit_note' ? l.originalInvoiceLineId ?? '' : '',
+            batchCode: l.batchCode ?? '',
+            expiryDate: l.expiryDate ? String(l.expiryDate).slice(0, 10) : '',
+            maxReturnQty:
+              (d.documentKind ?? 'invoice') === 'credit_note' ? parseFloat(l.quantity) : undefined,
           }))
         : [emptyLine()]
     );
@@ -240,6 +253,8 @@ export function InvoicesPage() {
           unitPrice: string;
           discountAmount: string;
           taxProfileId?: string | null;
+          batchCode?: string | null;
+          expiryDate?: string | null;
         }>;
       };
     }>(`/invoices/${invoiceId}`);
@@ -253,6 +268,9 @@ export function InvoicesPage() {
         discountAmount: l.discountAmount,
         taxProfileId: l.taxProfileId ?? '',
         originalInvoiceLineId: l.id,
+        batchCode: l.batchCode ?? '',
+        expiryDate: l.expiryDate ? String(l.expiryDate).slice(0, 10) : '',
+        maxReturnQty: parseFloat(l.quantity),
       }))
     );
   };
@@ -324,6 +342,7 @@ export function InvoicesPage() {
     ],
     [invoiceTemplates.data]
   );
+  const productById = useMemo(() => new Map((products.data ?? []).map((p) => [p.id, p])), [products.data]);
   const productLineOptions = useMemo(
     () => [
       ...(products.data ?? []).map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
@@ -356,6 +375,8 @@ export function InvoicesPage() {
             discountAmount: '0',
             taxProfileId: '',
             originalInvoiceLineId: '',
+            batchCode: '',
+            expiryDate: '',
           };
           return next;
         }
@@ -368,6 +389,8 @@ export function InvoicesPage() {
             discountAmount: '0',
             taxProfileId: '',
             originalInvoiceLineId: '',
+            batchCode: '',
+            expiryDate: '',
           },
         ];
       });
@@ -389,6 +412,12 @@ export function InvoicesPage() {
         if (cleaned.some((l) => !l.originalInvoiceLineId)) {
           throw new Error('Each line must be linked to an original invoice line');
         }
+        for (const l of cleaned.filter((line) => line.quantity > 0)) {
+          if (l.maxReturnQty != null && l.quantity > l.maxReturnQty + 1e-6) {
+            const name = productById.get(l.productId)?.name ?? 'Product';
+            throw new Error(`Return quantity for "${name}" cannot exceed ${l.maxReturnQty} sold on the invoice`);
+          }
+        }
       }
       const payload: Record<string, unknown> = {
         customerId,
@@ -407,6 +436,10 @@ export function InvoicesPage() {
           taxProfileId: l.taxProfileId || null,
           originalInvoiceLineId:
             documentKind === 'credit_note' && l.originalInvoiceLineId ? l.originalInvoiceLineId : null,
+          batchCode:
+            documentKind === 'credit_note' && l.batchCode.trim() ? l.batchCode.trim() : null,
+          expiryDate:
+            documentKind === 'credit_note' && l.expiryDate.trim() ? l.expiryDate.trim() : null,
         })),
       };
       if (canPickTemplate) {
@@ -1061,20 +1094,34 @@ export function InvoicesPage() {
               />
             </label>
 
-            <div className="mt-4 flex justify-between">
-              <span className="text-sm font-medium text-slate-700">Lines</span>
-              <button
-                type="button"
-                className="text-sm font-medium text-indigo-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={documentKind === 'credit_note'}
-                onClick={() => setLines((prev) => [...prev, emptyLine()])}
-              >
-                + Add line
-              </button>
+            <div className="mt-4">
+              <div className="flex justify-between gap-2">
+                <span className="text-sm font-medium text-slate-700">Lines</span>
+                <button
+                  type="button"
+                  className="text-sm font-medium text-indigo-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={documentKind === 'credit_note'}
+                  onClick={() => setLines((prev) => [...prev, emptyLine()])}
+                >
+                  + Add line
+                </button>
+              </div>
+              {documentKind === 'invoice' && (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Batch-tracked products are split by batch when you post (FEFO/FIFO).
+                </p>
+              )}
             </div>
             <div className="mt-2 space-y-2">
-              {lines.map((line, idx) => (
-                <div key={idx} className="grid gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:grid-cols-12 sm:items-end">
+              {lines.map((line, idx) => {
+                const product = line.productId ? productById.get(line.productId) : undefined;
+                const showBatchInfo =
+                  documentKind === 'credit_note' &&
+                  (line.batchCode || line.expiryDate || product?.batchTracked || product?.expiryTracked);
+
+                return (
+                <div key={idx} className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                  <div className="grid gap-2 sm:grid-cols-12 sm:items-end">
                   <label className="sm:col-span-4">
                     <span className="text-xs text-slate-500">Product</span>
                     <Combobox
@@ -1100,12 +1147,18 @@ export function InvoicesPage() {
                     />
                   </label>
                   <label className="sm:col-span-2">
-                    <span className="text-xs text-slate-500">Qty</span>
+                    <span className="text-xs text-slate-500">
+                      {documentKind === 'credit_note' ? 'Return qty' : 'Qty'}
+                      {line.maxReturnQty != null ? (
+                        <span className="text-slate-400"> (max {line.maxReturnQty})</span>
+                      ) : null}
+                    </span>
                     <input
                       type="number"
                       inputMode="decimal"
                       step="any"
                       min={0}
+                      max={line.maxReturnQty}
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm tabular-nums"
                       value={line.quantity}
                       onChange={(e) =>
@@ -1178,15 +1231,28 @@ export function InvoicesPage() {
                       Remove
                     </button>
                   </div>
-                  <div className="sm:col-span-12">
-                    <LineStockInfo
-                      productId={line.productId}
-                      warehouseId={warehouseId}
-                      requestedQuantity={line.quantity}
-                    />
                   </div>
+                  {showBatchInfo && (
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Sold on invoice:{' '}
+                      <span className="font-medium text-slate-800 dark:text-slate-200">
+                        {line.batchCode.trim() ? line.batchCode : 'Unspecified'}
+                        {line.expiryDate ? ` · exp ${line.expiryDate}` : ''}
+                      </span>
+                    </p>
+                  )}
+                  {documentKind !== 'credit_note' && (
+                    <div>
+                      <LineStockInfo
+                        productId={line.productId}
+                        warehouseId={warehouseId}
+                        requestedQuantity={line.quantity}
+                      />
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
