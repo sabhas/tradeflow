@@ -793,11 +793,94 @@ export async function slowMoving(req: Request): Promise<ControllerResult> {
   return ok({ data: rows, meta: { dateFrom, dateTo, limit } });
 }
 
+/** Posted GRNs without a posted supplier invoice, or with invoice total mismatch (audit / follow-up). */
+export async function grnInvoiceReconciliation(req: Request): Promise<ControllerResult> {
+  if (!hasPerm(req, 'purchases.reports:read') && !hasPerm(req, 'purchases.grn:read')) {
+    throw new HttpError(403, {
+      error: 'Forbidden',
+      message: 'purchases.reports:read or purchases.grn:read required',
+    });
+  }
+  const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+
+  const rows = await dataSource.query(
+    `
+    SELECT
+      g.id AS "grnId",
+      g.grn_date::text AS "grnDate",
+      g.supplier_id AS "supplierId",
+      s.name AS "supplierName",
+      (
+        SELECT COALESCE(SUM(gl.quantity::numeric * gl.unit_price::numeric), 0)::text
+        FROM grn_lines gl
+        WHERE gl.grn_id = g.id
+      ) AS "grnTotal",
+      COALESCE((
+        SELECT SUM(jl.credit::numeric)::text
+        FROM journal_entries je
+        JOIN journal_lines jl ON jl.journal_entry_id = je.id
+        JOIN accounts a ON a.id = jl.account_id
+        WHERE je.source_type = 'grn_posting'
+          AND je.source_id = g.id
+          AND je.status = 'posted'
+          AND a.code = '2050'
+      ), '0.0000') AS "accruedAmount",
+      si.id AS "supplierInvoiceId",
+      si.invoice_number AS "supplierInvoiceNumber",
+      si.status AS "supplierInvoiceStatus",
+      si.total::text AS "invoiceTotal",
+      CASE
+        WHEN si.id IS NULL THEN 'awaiting_invoice'
+        WHEN si.status = 'draft' THEN 'invoice_draft'
+        WHEN si.status = 'posted' THEN 'invoice_posted'
+        ELSE 'unknown'
+      END AS "invoiceSettlement",
+      CASE
+        WHEN si.id IS NULL THEN NULL
+        ELSE (
+          si.total::numeric - (
+            SELECT COALESCE(SUM(gl.quantity::numeric * gl.unit_price::numeric), 0)
+            FROM grn_lines gl
+            WHERE gl.grn_id = g.id
+          )
+        )::text
+      END AS "variance"
+    FROM grns g
+    JOIN suppliers s ON s.id = g.supplier_id
+    LEFT JOIN LATERAL (
+      SELECT si2.*
+      FROM supplier_invoices si2
+      WHERE si2.grn_id = g.id
+      ORDER BY si2.created_at DESC
+      LIMIT 1
+    ) si ON true
+    WHERE g.status = 'posted'
+      AND g.grn_date <= $1::date
+      AND (
+        si.id IS NULL
+        OR si.status != 'posted'
+        OR ABS(
+          si.total::numeric - (
+            SELECT COALESCE(SUM(gl.quantity::numeric * gl.unit_price::numeric), 0)
+            FROM grn_lines gl
+            WHERE gl.grn_id = g.id
+          )
+        ) > 0.01
+      )
+    ORDER BY g.grn_date DESC, g.created_at DESC
+    `,
+    [asOf]
+  );
+
+  return ok({ data: rows, meta: { asOf } });
+}
+
 /** Today / MTD sales & purchases, AR/AP open, quick aging totals (branch-scoped). */
 export async function dashboardKpis(req: Request): Promise<ControllerResult> {
     const canSales = hasPerm(req, 'sales:read');
     const canPurch = hasPerm(req, 'purchases.reports:read');
-    if (!canSales && !canPurch) {
+    const canGrn = hasPerm(req, 'purchases.grn:read');
+    if (!canSales && !canPurch && !canGrn) {
       throw new HttpError(403, { error: 'Forbidden', message: 'sales:read or purchases.reports:read required' });
     }
     const today = new Date().toISOString().slice(0, 10);
@@ -915,6 +998,23 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
       };
     }
 
+    let grnsPendingSupplierInvoice = 0;
+    if (canPurch || canGrn) {
+      const grnPending = await dataSource.query(
+        `
+        SELECT COUNT(*)::int AS c
+        FROM grns g
+        WHERE g.status = 'posted'
+          AND (
+            NOT EXISTS (SELECT 1 FROM supplier_invoices si WHERE si.grn_id = g.id)
+            OR EXISTS (SELECT 1 FROM supplier_invoices si WHERE si.grn_id = g.id AND si.status = 'draft')
+          )
+        `,
+        []
+      );
+      grnsPendingSupplierInvoice = Number(grnPending[0]?.c ?? 0);
+    }
+
     if (canPurch) {
       const ap = await dataSource.query(
         `
@@ -941,9 +1041,10 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
         arOpen,
         apOpen,
         agingReceivables: agingQuick,
+        grnsPendingSupplierInvoice,
       },
       meta: {
-        partial: { sales: !canSales, purchases: !canPurch },
+        partial: { sales: !canSales, purchases: !canPurch && !canGrn },
       },
     });
 }

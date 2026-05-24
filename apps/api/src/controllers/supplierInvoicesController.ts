@@ -21,6 +21,7 @@ import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
 import { addDaysIso } from '../services/salesTotals';
 import { parseDecimalStrict } from '../utils/decimal';
 import { moneySub } from '../utils/money';
+import { assertGrnLinkableToInvoice } from '../services/grnInvoiceSettlement';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
 
@@ -179,9 +180,7 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
   try {
     const row = await runInTransaction(async (manager) => {
       if (b.grnId) {
-        const grn = await manager.findOne(Grn, { where: { id: b.grnId } });
-        if (!grn) throw new Error('GRN not found');
-        if (grn.supplierId !== b.supplierId) throw new Error('GRN supplier mismatch');
+        await assertGrnLinkableToInvoice(manager, b.grnId, b.supplierId);
         for (const ln of b.lines) {
           if (!ln.grnLineId) continue;
           const gl = await manager.findOne(GrnLine, { where: { id: ln.grnLineId } });
@@ -255,6 +254,9 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
     if (msg.includes('UQ_supplier_invoice_number')) {
       throw new HttpError(400, { error: 'Invoice number already exists for this supplier' });
     }
+    if (msg.includes('UQ_supplier_invoices_grn_id') || msg.includes('UQ_supplier_invoice')) {
+      throw new HttpError(400, { error: 'A supplier invoice is already linked to this GRN' });
+    }
     throw new HttpError(400, { error: msg });
   }
 }
@@ -278,7 +280,9 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
       if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
             const nextSupplier = b.supplierId ?? inv.supplierId;
 
-      if (b.grnId !== undefined && inv.grnId) {
+      if (b.grnId !== undefined && b.grnId) {
+        await assertGrnLinkableToInvoice(manager, b.grnId, nextSupplier, inv.id);
+      } else if (b.grnId === undefined && inv.grnId && b.supplierId !== undefined && b.supplierId !== inv.supplierId) {
         const grn = await manager.findOne(Grn, { where: { id: inv.grnId } });
         if (grn && grn.supplierId !== nextSupplier) throw new Error('GRN supplier mismatch');
       }
@@ -368,6 +372,9 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
     if (e instanceof HttpError) throw e;
     const msg = e instanceof Error ? e.message : 'Update failed';
     if (msg === 'Not found') throw new HttpError(404, { error: msg });
+    if (msg.includes('UQ_supplier_invoices_grn_id') || msg.includes('already linked to this GRN')) {
+      throw new HttpError(400, { error: 'A supplier invoice is already linked to this GRN' });
+    }
     throw new HttpError(400, { error: msg });
   }
 }

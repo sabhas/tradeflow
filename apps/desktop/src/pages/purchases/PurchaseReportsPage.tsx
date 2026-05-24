@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { GrnInvoiceSettlementBadge, type InvoiceSettlement } from '../../components/GrnInvoiceSettlementBadge';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiFetch } from '../../api/client';
 import { ChartCard } from '../../components/charts/ChartCard';
@@ -18,7 +20,7 @@ interface SupplierOpt {
 export function PurchaseReportsPage() {
   const permissions = useAppSelector((s) => s.auth.permissions);
   const canRead = hasPermission(permissions, 'purchases.reports:read');
-  const [tab, setTab] = useState<'statement' | 'aging' | 'pricing'>('statement');
+  const [tab, setTab] = useState<'statement' | 'aging' | 'pricing' | 'reconciliation'>('statement');
   const [supplierId, setSupplierId] = useState('');
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
@@ -64,6 +66,28 @@ export function PurchaseReportsPage() {
         }>;
         meta: { asOf: string };
       }>(`/reports/payables-aging?asOf=${encodeURIComponent(asOf)}`).then((r) => r),
+  });
+
+  const reconciliation = useQuery({
+    queryKey: ['grn-invoice-reconciliation', asOf],
+    enabled: canRead && tab === 'reconciliation',
+    queryFn: () =>
+      apiFetch<{
+        data: Array<{
+          grnId: string;
+          grnDate: string;
+          supplierName: string;
+          grnTotal: string;
+          accruedAmount: string;
+          supplierInvoiceId: string | null;
+          supplierInvoiceNumber: string | null;
+          supplierInvoiceStatus: string | null;
+          invoiceTotal: string | null;
+          invoiceSettlement: InvoiceSettlement;
+          variance: string | null;
+        }>;
+        meta: { asOf: string };
+      }>(`/reports/grn-invoice-reconciliation?asOf=${encodeURIComponent(asOf)}`),
   });
 
   const pricing = useQuery({
@@ -116,7 +140,7 @@ export function PurchaseReportsPage() {
     <div>
       <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Purchase reports</h1>
       <p className="mt-1 text-slate-600 dark:text-slate-400">
-        Supplier statement, payables aging, and pricing history
+        Supplier statement, payables aging, GRN–invoice reconciliation, and pricing history
       </p>
       <PurchaseSubNav />
 
@@ -154,7 +178,89 @@ export function PurchaseReportsPage() {
         >
           Pricing history
         </button>
+        <button
+          type="button"
+          className={`rounded-lg px-4 py-2 text-sm font-medium ${
+            tab === 'reconciliation'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
+          }`}
+          onClick={() => setTab('reconciliation')}
+        >
+          GRN reconciliation
+        </button>
       </div>
+
+      {tab === 'reconciliation' && (
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="block text-sm">
+              <span className="text-slate-600 dark:text-slate-400">As of date</span>
+              <input
+                type="date"
+                className="mt-1 rounded-md border border-slate-300 px-3 py-2"
+                value={asOf}
+                onChange={(e) => setAsOf(e.target.value)}
+              />
+            </label>
+          </div>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+            Posted GRNs without a posted supplier invoice, or where invoice total does not match GRN value.
+          </p>
+          {reconciliation.isLoading && <p className="mt-4 text-slate-500">Loading…</p>}
+          {reconciliation.isError && (
+            <p className="mt-4 text-sm text-red-600">{(reconciliation.error as Error).message}</p>
+          )}
+          <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-950">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">GRN date</th>
+                  <th className="px-3 py-2 text-left font-medium">Supplier</th>
+                  <th className="px-3 py-2 text-right font-medium">GRN total</th>
+                  <th className="px-3 py-2 text-right font-medium">Accrued</th>
+                  <th className="px-3 py-2 text-left font-medium">Invoice</th>
+                  <th className="px-3 py-2 text-right font-medium">Variance</th>
+                  <th className="px-3 py-2 text-right font-medium">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(reconciliation.data?.data ?? []).map((r) => (
+                  <tr key={r.grnId} className="border-t border-slate-100 dark:border-slate-800">
+                    <td className="px-3 py-2">{r.grnDate}</td>
+                    <td className="px-3 py-2">{r.supplierName}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.grnTotal)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(r.accruedAmount)}</td>
+                    <td className="px-3 py-2">
+                      <GrnInvoiceSettlementBadge settlement={r.invoiceSettlement} />
+                      {r.supplierInvoiceNumber && (
+                        <span className="ml-1 text-xs text-slate-500">{r.supplierInvoiceNumber}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {r.variance != null ? formatMoney(r.variance) : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {r.invoiceSettlement === 'invoice_draft' && r.supplierInvoiceId ? (
+                        <Link to={`/purchases/invoices?edit=${r.supplierInvoiceId}`} className="text-indigo-600 hover:underline">
+                          Edit draft
+                        </Link>
+                      ) : (
+                        <Link to={`/purchases/invoices?grnId=${r.grnId}`} className="text-indigo-600 hover:underline">
+                          Match invoice
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(reconciliation.data?.data ?? []).length === 0 && !reconciliation.isLoading && (
+              <p className="px-3 py-6 text-center text-slate-500">No exceptions for this date.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {tab === 'statement' && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">

@@ -8,6 +8,7 @@ import {
   patchGeneralSettingsSchema,
 } from '@tradeflow/shared';
 import { computeFinancialYearLabel } from '../utils/financialYear';
+import { getUnsettledGrnsForPeriodLock } from '../services/grnInvoiceSettlement';
 import { ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
 
@@ -179,6 +180,15 @@ export async function patchCompanyProfile(_req: Request, b: PatchCompanyProfileI
       logoUrl: row.logoUrl ?? null,
     },
   });
+}
+
+export async function getPeriodLockWarnings(req: Request): Promise<ControllerResult> {
+  const lockedThrough = (req.query.lockedThrough as string | undefined)?.trim();
+  if (!lockedThrough || lockedThrough.length !== 10) {
+    throw new HttpError(400, { error: 'lockedThrough query param required (YYYY-MM-DD)' });
+  }
+  const warnings = await getUnsettledGrnsForPeriodLock(lockedThrough);
+  return ok({ data: warnings });
 }
 
 export async function getAccounting(_req: Request): Promise<ControllerResult> {

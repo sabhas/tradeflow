@@ -58,6 +58,14 @@ companySettingsRouter.patch(
 );
 
 companySettingsRouter.get(
+  '/accounting/period-lock-warnings',
+  requirePermission('accounting', 'read'),
+  asyncHandler(async (req, res) => {
+    sendControllerResult(res, await companySettingsController.getPeriodLockWarnings(req));
+  })
+);
+
+companySettingsRouter.get(
   '/accounting',
   requirePermission('accounting', 'read'),
   asyncHandler(async (req, res) => {

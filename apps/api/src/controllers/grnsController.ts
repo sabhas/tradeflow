@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { Grn, GrnLine, Product, PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
+import { Grn, GrnLine, Product, PurchaseOrder, PurchaseOrderLine, SupplierInvoice, SupplierInvoiceLine } from '@tradeflow/db';
 import { createGrnSchema } from '@tradeflow/shared';
 import { getPagination } from '../utils/pagination';
 import {
@@ -13,13 +13,21 @@ import { parseDecimalStrict } from '../utils/decimal';
 import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { postGrnJournal } from '../services/accountingPosting';
 import { enforceProductBatchControls } from '../services/productBatchControls';
+import { computePurchaseDocumentTotals } from '../services/purchaseTotals';
+import { addDaysIso } from '../services/salesTotals';
+import {
+  loadLinkedInvoicesByGrnIds,
+  settlementFields,
+  type LinkedSupplierInvoice,
+  assertGrnLinkableToInvoice,
+} from '../services/grnInvoiceSettlement';
 import { moneyAdd } from '../utils/money';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
 
 type CreateGrnInput = z.infer<typeof createGrnSchema>;
 
-function serializeGrn(g: Grn, lines?: GrnLine[]) {
+function serializeGrn(g: Grn, lines?: GrnLine[], linked?: LinkedSupplierInvoice | null) {
   return {
     id: g.id,
     purchaseOrderId: g.purchaseOrderId ?? null,
@@ -29,6 +37,7 @@ function serializeGrn(g: Grn, lines?: GrnLine[]) {
     status: g.status,
     createdBy: g.createdBy ?? null,
     createdAt: g.createdAt,
+    ...settlementFields(g.status, linked),
     supplier: g.supplier ? { id: g.supplier.id, name: g.supplier.name } : undefined,
     warehouse: g.warehouse ? { id: g.warehouse.id, name: g.warehouse.name } : undefined,
     lines:
@@ -46,18 +55,53 @@ function serializeGrn(g: Grn, lines?: GrnLine[]) {
   };
 }
 
+function applyInvoiceSettlementFilter(qb: ReturnType<typeof Grn.createQueryBuilder>, settlement: string): void {
+  if (settlement === 'awaiting_invoice') {
+    qb.andWhere(`g.status = 'posted'`).andWhere(
+      `NOT EXISTS (SELECT 1 FROM supplier_invoices si WHERE si.grn_id = g.id)`
+    );
+  } else if (settlement === 'invoice_draft') {
+    qb.andWhere(`g.status = 'posted'`).andWhere(
+      `EXISTS (SELECT 1 FROM supplier_invoices si WHERE si.grn_id = g.id AND si.status = 'draft')`
+    );
+  } else if (settlement === 'invoice_posted') {
+    qb.andWhere(`g.status = 'posted'`).andWhere(
+      `EXISTS (SELECT 1 FROM supplier_invoices si WHERE si.grn_id = g.id AND si.status = 'posted')`
+    );
+  }
+}
+
 export async function listGrns(req: Request): Promise<ControllerResult> {
   const { limit, offset } = getPagination(req);
-  const qb = Grn
-    .createQueryBuilder('g')
+  const qb = Grn.createQueryBuilder('g')
     .leftJoinAndSelect('g.supplier', 's')
     .leftJoinAndSelect('g.warehouse', 'w')
     .where('1=1');
   if (req.query.supplierId) qb.andWhere('g.supplierId = :sid', { sid: req.query.supplierId });
   if (req.query.status) qb.andWhere('g.status = :st', { st: req.query.status });
+  const invoiceSettlement = (req.query.invoiceSettlement as string | undefined)?.trim();
+  if (invoiceSettlement) applyInvoiceSettlementFilter(qb, invoiceSettlement);
   qb.orderBy('g.grnDate', 'DESC').addOrderBy('g.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
-  return ok({ data: rows.map((r) => serializeGrn(r)), meta: { total, limit, offset } });
+  const linkedMap = await loadLinkedInvoicesByGrnIds(rows.map((r) => r.id));
+  return ok({
+    data: rows.map((r) => serializeGrn(r, undefined, linkedMap.get(r.id))),
+    meta: { total, limit, offset },
+  });
+}
+
+export async function pendingInvoiceCount(_req: Request): Promise<ControllerResult> {
+  const row = await Grn.createQueryBuilder('g')
+    .select('COUNT(*)', 'count')
+    .where(`g.status = 'posted'`)
+    .andWhere(
+      `(
+        NOT EXISTS (SELECT 1 FROM supplier_invoices si WHERE si.grn_id = g.id)
+        OR EXISTS (SELECT 1 FROM supplier_invoices si WHERE si.grn_id = g.id AND si.status = 'draft')
+      )`
+    )
+    .getRawOne<{ count: string }>();
+  return ok({ data: { count: Number(row?.count ?? 0) } });
 }
 
 export async function getGrn(req: Request): Promise<ControllerResult> {
@@ -68,7 +112,85 @@ export async function getGrn(req: Request): Promise<ControllerResult> {
   if (!g) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  return ok({ data: serializeGrn(g, g.lines) });
+  const linkedMap = await loadLinkedInvoicesByGrnIds([g.id]);
+  return ok({ data: serializeGrn(g, g.lines, linkedMap.get(g.id)) });
+}
+
+export async function createSupplierInvoiceDraftFromGrn(req: Request): Promise<ControllerResult> {
+  const userId = req.auth?.userId;
+  try {
+    const result = await runInTransaction(async (manager) => {
+      const grn = await manager.findOne(Grn, {
+        where: { id: req.params.id },
+        relations: ['lines'],
+      });
+      if (!grn) throw new Error('Not found');
+      await assertGrnLinkableToInvoice(manager, grn.id, grn.supplierId);
+
+      const grnLines = grn.lines ?? [];
+      if (grnLines.length === 0) throw new Error('GRN has no lines');
+
+      const invoiceDate = new Date().toISOString().slice(0, 10);
+      const dueDate = addDaysIso(invoiceDate, 30);
+      const placeholderNumber = `PENDING-${grn.id.slice(0, 8).toUpperCase()}`;
+
+      const totals = await computePurchaseDocumentTotals(
+        manager,
+        grn.supplierId,
+        grnLines.map((l) => ({
+          productId: l.productId,
+          quantity: parseFloat(l.quantity),
+          unitPrice: l.unitPrice,
+          discountAmount: '0',
+          taxProfileId: undefined,
+        })),
+        '0'
+      );
+
+      const inv = manager.create(SupplierInvoice, {
+        supplierId: grn.supplierId,
+        invoiceNumber: placeholderNumber,
+        invoiceDate,
+        dueDate,
+        purchaseOrderId: grn.purchaseOrderId ?? undefined,
+        grnId: grn.id,
+        status: 'draft',
+        subtotal: totals.subtotal,
+        taxAmount: totals.taxAmount,
+        discountAmount: totals.discountAmount,
+        total: totals.total,
+        notes: `Draft from GRN ${grn.id.slice(0, 8)} — replace invoice number before posting`,
+        createdBy: userId,
+      });
+      await manager.save(inv);
+
+      for (let i = 0; i < totals.lines.length; i++) {
+        const cmp = totals.lines[i];
+        const gl = grnLines[i];
+        await manager.save(
+          manager.create(SupplierInvoiceLine, {
+            supplierInvoiceId: inv.id,
+            productId: cmp.productId,
+            quantity: parseDecimalStrict(String(gl.quantity)),
+            unitPrice: parseDecimalStrict(String(gl.unitPrice)),
+            taxAmount: cmp.taxAmount,
+            discountAmount: cmp.discountAmount,
+            grnLineId: gl.id,
+          })
+        );
+      }
+
+      return { supplierInvoiceId: inv.id };
+    });
+    return created({ data: result });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Create draft failed';
+    if (msg === 'Not found') throw new HttpError(404, { error: msg });
+    if (msg.includes('UQ_supplier_invoice') || msg.includes('UQ_supplier_invoices_grn_id')) {
+      throw new HttpError(400, { error: 'A supplier invoice is already linked to this GRN' });
+    }
+    throw new HttpError(400, { error: msg });
+  }
 }
 
 export async function createGrn(req: Request, body: CreateGrnInput): Promise<ControllerResult> {
@@ -145,7 +267,8 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
         relations: ['lines', 'supplier', 'warehouse'],
       });
     });
-    return created({ data: serializeGrn(row, row.lines) });
+    const linkedMap = await loadLinkedInvoicesByGrnIds([row.id]);
+    return created({ data: serializeGrn(row, row.lines, linkedMap.get(row.id)) });
   } catch (e) {
     throw new HttpError(400, { error: e instanceof Error ? e.message : 'Failed to create GRN' });
   }
@@ -247,7 +370,8 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
         relations: ['lines', 'supplier', 'warehouse'],
       });
     });
-    return ok({ data: serializeGrn(row, row.lines) });
+    const linkedMap = await loadLinkedInvoicesByGrnIds([row.id]);
+    return ok({ data: serializeGrn(row, row.lines, linkedMap.get(row.id)) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Post failed';
     if (msg === 'Not found') {

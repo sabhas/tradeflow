@@ -18,6 +18,14 @@ grnsRouter.get(
 );
 
 grnsRouter.get(
+  '/pending-invoice-count',
+  requirePermission('purchases.grn', 'read'),
+  asyncHandler(async (req, res) => {
+    sendControllerResult(res, await grnsController.pendingInvoiceCount(req));
+  })
+);
+
+grnsRouter.get(
   '/:id',
   requirePermission('purchases.grn', 'read'),
   asyncHandler(async (req, res) => {
@@ -49,5 +57,18 @@ grnsRouter.post(
   }),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await grnsController.postGrn(req));
+  })
+);
+
+grnsRouter.post(
+  '/:id/create-supplier-invoice-draft',
+  requirePermission('purchases.supplier_invoices', 'write'),
+  auditMiddleware({
+    entity: 'SupplierInvoice',
+    getEntityId: (req) => req.params.id,
+    getNewValue: () => ({ source: 'grn_draft' }),
+  }),
+  asyncHandler(async (req, res) => {
+    sendControllerResult(res, await grnsController.createSupplierInvoiceDraftFromGrn(req));
   })
 );

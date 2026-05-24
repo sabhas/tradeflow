@@ -28,7 +28,9 @@ export function DashboardPage() {
   const { formatMoney } = useMoneyFormat();
 
   const canKpi =
-    hasPermission(permissions, 'sales:read') || hasPermission(permissions, 'purchases.reports:read');
+    hasPermission(permissions, 'sales:read') ||
+    hasPermission(permissions, 'purchases.reports:read') ||
+    hasPermission(permissions, 'purchases.grn:read');
 
   const { data: me, isError, error } = useQuery({
     queryKey: ['auth', 'me'],
@@ -73,6 +75,7 @@ export function DashboardPage() {
           invoicesPostedToday: number;
           arOpen: string;
           apOpen: string;
+          grnsPendingSupplierInvoice?: number;
           agingReceivables: {
             arCurrent: string;
             ar1_30: string;
@@ -196,6 +199,20 @@ export function DashboardPage() {
                   </p>
                 </div>
               </>
+            ) : null}
+            {(d?.grnsPendingSupplierInvoice ?? 0) > 0 ? (
+              <Link
+                to="/purchases/grns?invoiceSettlement=awaiting_invoice"
+                className="rounded-lg border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50/50 p-4 shadow-sm hover:bg-amber-50 dark:border-amber-900/60 dark:border-l-amber-400 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+              >
+                <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                  GRNs awaiting supplier invoice
+                </p>
+                <p className="mt-1 text-xl font-semibold text-amber-950 dark:text-amber-100">
+                  {d?.grnsPendingSupplierInvoice}
+                </p>
+                <p className="mt-1 text-xs text-amber-800/90 dark:text-amber-200/80">View and match supplier bills</p>
+              </Link>
             ) : null}
           </div>
 

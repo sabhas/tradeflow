@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
@@ -82,6 +83,9 @@ export function SupplierInvoicesPage() {
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
   const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const grnDeepLinkHandled = useRef(false);
+  const grnAutoFillDone = useRef(false);
 
   const list = useQuery({
     queryKey: ['supplier-invoices'],
@@ -180,10 +184,79 @@ export function SupplierInvoicesPage() {
         data: {
           supplierId: string;
           status: string;
+          invoiceSettlement?: string;
+          supplierInvoiceId?: string | null;
           lines?: Array<{ id: string; productId: string; quantity: string; unitPrice: string }>;
         };
       }>(`/grns/${grnIdTrimmed}`).then((r) => r.data),
   });
+
+  useEffect(() => {
+    if (!canRead || grnDeepLinkHandled.current) return;
+    const editId = searchParams.get('edit')?.trim();
+    const deepGrnId = searchParams.get('grnId')?.trim();
+    if (editId && isUuid(editId)) {
+      grnDeepLinkHandled.current = true;
+      setEditingId(editId);
+      setPanelOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('edit');
+      setSearchParams(next, { replace: true });
+      return;
+    }
+    if (!deepGrnId || !isUuid(deepGrnId)) return;
+    grnDeepLinkHandled.current = true;
+    (async () => {
+      try {
+        const grn = await apiFetch<{
+          data: {
+            supplierId: string;
+            status: string;
+            invoiceSettlement?: string;
+            supplierInvoiceId?: string | null;
+          };
+        }>(`/grns/${deepGrnId}`).then((r) => r.data);
+        if (grn.invoiceSettlement === 'invoice_draft' && grn.supplierInvoiceId) {
+          setEditingId(grn.supplierInvoiceId);
+          setPanelOpen(true);
+        } else {
+          setEditingId(null);
+          setGrnId(deepGrnId);
+          setPanelOpen(true);
+        }
+      } catch {
+        setGrnId(deepGrnId);
+        setPanelOpen(true);
+      }
+      const next = new URLSearchParams(searchParams);
+      next.delete('grnId');
+      setSearchParams(next, { replace: true });
+    })();
+  }, [canRead, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!panelOpen) grnAutoFillDone.current = false;
+  }, [panelOpen]);
+
+  useEffect(() => {
+    if (!linkedGrn.data || !panelOpen || editingId) return;
+    if (linkedGrn.data.status !== 'posted') return;
+    if (linkedGrn.data.invoiceSettlement === 'invoice_posted') return;
+    const gl = linkedGrn.data.lines ?? [];
+    if (gl.length === 0 || grnAutoFillDone.current) return;
+    grnAutoFillDone.current = true;
+    setLines(
+      gl.map((l) => ({
+        productId: l.productId,
+        quantity: parseFloat(l.quantity),
+        unitPrice: formatMoney(l.unitPrice),
+        discountAmount: formatMoney('0'),
+        taxProfileId: '',
+        grnLineId: l.id,
+      }))
+    );
+    if (!supplierId) setSupplierId(linkedGrn.data.supplierId);
+  }, [linkedGrn.data, panelOpen, editingId, supplierId, formatMoney]);
 
   useEffect(() => {
     if (!detail.data || !editingId) return;

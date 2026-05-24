@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { GrnInvoiceSettlementBadge, type InvoiceSettlement } from '../../components/GrnInvoiceSettlementBadge';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
@@ -17,6 +18,10 @@ interface GrnRow {
   supplierId: string;
   supplier?: { name: string };
   purchaseOrderId?: string | null;
+  invoiceSettlement?: InvoiceSettlement;
+  supplierInvoiceId?: string | null;
+  supplierInvoiceNumber?: string | null;
+  supplierInvoiceStatus?: string | null;
 }
 
 interface GrnDetailLine {
@@ -38,6 +43,9 @@ interface GrnDetail {
   supplierId: string;
   purchaseOrderId?: string | null;
   warehouseId: string;
+  invoiceSettlement?: InvoiceSettlement;
+  supplierInvoiceId?: string | null;
+  supplierInvoiceNumber?: string | null;
   supplier?: { id: string; name: string };
   warehouse?: { id: string; name: string };
   lines?: GrnDetailLine[];
@@ -85,10 +93,13 @@ export function GrnsPage() {
   const canRead = hasPermission(permissions, 'purchases.grn:read');
   const canWrite = hasPermission(permissions, 'purchases.grn:write');
   const canPost = hasPermission(permissions, 'purchases.grn:post');
+  const canInvoiceWrite = hasPermission(permissions, 'purchases.supplier_invoices:write');
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { formatMoney, formatMoneyInput, normalizeMoneyInput } = useMoneyFormat();
   const [searchParams, setSearchParams] = useSearchParams();
   const fromPo = searchParams.get('fromPo') || '';
+  const invoiceSettlementFilter = searchParams.get('invoiceSettlement') || '';
 
   const [panelOpen, setPanelOpen] = useState(!!fromPo);
   const [purchaseOrderId, setPurchaseOrderId] = useState<string | null>(fromPo || null);
@@ -111,11 +122,15 @@ export function GrnsPage() {
   const [error, setError] = useState<string | null>(null);
   const [copiedGrnId, setCopiedGrnId] = useState<string | null>(null);
   const [viewGrnId, setViewGrnId] = useState<string | null>(null);
+  const [postSuccessGrnId, setPostSuccessGrnId] = useState<string | null>(null);
 
+  const listQuery = invoiceSettlementFilter
+    ? `?invoiceSettlement=${encodeURIComponent(invoiceSettlementFilter)}`
+    : '';
   const list = useQuery({
-    queryKey: ['grns'],
+    queryKey: ['grns', invoiceSettlementFilter],
     enabled: canRead,
-    queryFn: () => apiFetch<{ data: GrnRow[] }>('/grns').then((r) => r.data),
+    queryFn: () => apiFetch<{ data: GrnRow[] }>(`/grns${listQuery}`).then((r) => r.data),
   });
 
   const grnDetail = useQuery({
@@ -352,10 +367,29 @@ export function GrnsPage() {
 
   const postGrn = useMutation({
     mutationFn: (id: string) => apiFetch(`/grns/${id}/post`, { method: 'POST', body: '{}' }),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       qc.invalidateQueries({ queryKey: ['grns'] });
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
       qc.invalidateQueries({ queryKey: ['inventory'] });
+      qc.invalidateQueries({ queryKey: ['grns', 'pending-invoice-count'] });
+      setPostSuccessGrnId(id);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const createInvoiceDraft = useMutation({
+    mutationFn: (grnId: string) =>
+      apiFetch<{ data: { supplierInvoiceId: string } }>(`/grns/${grnId}/create-supplier-invoice-draft`, {
+        method: 'POST',
+        body: '{}',
+      }).then((r) => r.data),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['grns'] });
+      qc.invalidateQueries({ queryKey: ['supplier-invoices'] });
+      qc.invalidateQueries({ queryKey: ['grns', 'pending-invoice-count'] });
+      setPostSuccessGrnId(null);
+      setViewGrnId(null);
+      navigate(`/purchases/invoices?edit=${data.supplierInvoiceId}`);
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -368,8 +402,8 @@ export function GrnsPage() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Goods receipt (GRN)</h1>
           <p className="mt-1 text-slate-600 dark:text-slate-400">
-            Record stock in from suppliers; posting updates inventory and PO receipts. Copy <span className="font-medium">GRN id</span> to link on the
-            supplier invoice screen.
+            Two-step purchase receipt: post the GRN to bring stock in, then create and post a supplier invoice to record payable and clear accrued
+            purchases.
           </p>
         </div>
         {canWrite && (
@@ -404,6 +438,67 @@ export function GrnsPage() {
       </div>
       <PurchaseSubNav />
 
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="text-sm text-slate-600 dark:text-slate-400">Supplier invoice:</span>
+        {[
+          { value: '', label: 'All' },
+          { value: 'awaiting_invoice', label: 'Awaiting invoice' },
+          { value: 'invoice_draft', label: 'Draft invoice' },
+        ].map((f) => (
+          <button
+            key={f.value || 'all'}
+            type="button"
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              invoiceSettlementFilter === f.value
+                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-200'
+                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+            }`}
+            onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              if (f.value) next.set('invoiceSettlement', f.value);
+              else next.delete('invoiceSettlement');
+              setSearchParams(next);
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {postSuccessGrnId && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+          <p className="font-medium">Stock posted successfully</p>
+          <p className="mt-1">
+            Create a supplier invoice to record the supplier bill, move the amount to accounts payable, and clear accrued purchases.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {canInvoiceWrite && (
+              <button
+                type="button"
+                className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                disabled={createInvoiceDraft.isPending}
+                onClick={() => createInvoiceDraft.mutate(postSuccessGrnId)}
+              >
+                Create draft supplier invoice
+              </button>
+            )}
+            <Link
+              to={`/purchases/invoices?grnId=${postSuccessGrnId}`}
+              className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100/80 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100 dark:hover:bg-slate-800"
+            >
+              Open supplier invoices
+            </Link>
+            <button
+              type="button"
+              className="px-2 py-1.5 text-xs text-amber-800 hover:underline dark:text-amber-200"
+              onClick={() => setPostSuccessGrnId(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {fromPo && (
         <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
           Prefilled from purchase order — adjust received quantities, then save draft and post.
@@ -421,6 +516,7 @@ export function GrnsPage() {
               <th className="px-4 py-3 text-left font-medium">Date</th>
               <th className="px-4 py-3 text-left font-medium">Supplier</th>
               <th className="px-4 py-3 text-left font-medium">Status</th>
+              <th className="px-4 py-3 text-left font-medium">Supplier invoice</th>
               <th className="px-4 py-3 text-right font-medium">GRN id</th>
               <th className="px-4 py-3 text-right font-medium">Actions</th>
             </tr>
@@ -431,6 +527,9 @@ export function GrnsPage() {
                 <td className="px-4 py-3">{r.grnDate}</td>
                 <td className="px-4 py-3">{r.supplier?.name ?? '—'}</td>
                 <td className="px-4 py-3 capitalize">{r.status}</td>
+                <td className="px-4 py-3">
+                  <GrnInvoiceSettlementBadge settlement={r.invoiceSettlement ?? 'not_applicable'} />
+                </td>
                 <td className="px-4 py-3 text-right">
                   <button
                     type="button"
@@ -514,6 +613,19 @@ export function GrnsPage() {
                     <dt className="text-slate-500 dark:text-slate-400">Status</dt>
                     <dd className="capitalize font-medium text-slate-900 dark:text-slate-100">{grnDetail.data.status}</dd>
                   </div>
+                  <div>
+                    <dt className="text-slate-500 dark:text-slate-400">Supplier invoice</dt>
+                    <dd className="mt-0.5">
+                      <GrnInvoiceSettlementBadge
+                        settlement={grnDetail.data.invoiceSettlement ?? 'not_applicable'}
+                      />
+                      {grnDetail.data.supplierInvoiceNumber && (
+                        <span className="ml-2 text-xs text-slate-600 dark:text-slate-400">
+                          {grnDetail.data.supplierInvoiceNumber}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
                   {grnDetail.data.purchaseOrderId && (
                     <div className="sm:col-span-2">
                       <dt className="text-slate-500 dark:text-slate-400">Purchase order</dt>
@@ -563,6 +675,41 @@ export function GrnsPage() {
                     )}
                   </div>
                 </div>
+                {grnDetail.data.status === 'posted' &&
+                  grnDetail.data.invoiceSettlement !== 'invoice_posted' && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                      <p className="font-medium">Supplier invoice required</p>
+                      <p className="mt-1 text-amber-900/90 dark:text-amber-200/90">
+                        Post a supplier invoice linked to this GRN to clear accrued purchases and record accounts payable.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {canInvoiceWrite &&
+                          (grnDetail.data.invoiceSettlement === 'awaiting_invoice' ? (
+                            <button
+                              type="button"
+                              className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                              disabled={createInvoiceDraft.isPending}
+                              onClick={() => createInvoiceDraft.mutate(grnDetail.data!.id)}
+                            >
+                              Create draft supplier invoice
+                            </button>
+                          ) : grnDetail.data.supplierInvoiceId ? (
+                            <Link
+                              to={`/purchases/invoices?edit=${grnDetail.data.supplierInvoiceId}`}
+                              className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500"
+                            >
+                              Edit draft invoice
+                            </Link>
+                          ) : null)}
+                        <Link
+                          to={`/purchases/invoices?grnId=${grnDetail.data.id}`}
+                          className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100/80 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100"
+                        >
+                          Open supplier invoices
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"

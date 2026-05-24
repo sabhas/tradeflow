@@ -129,6 +129,13 @@ reportsRouter.get(
 );
 
 reportsRouter.get(
+  '/grn-invoice-reconciliation',
+  asyncHandler(async (req, res) => {
+    sendControllerResult(res, await reportsController.grnInvoiceReconciliation(req));
+  })
+);
+
+reportsRouter.get(
   '/dashboard/kpis',
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await reportsController.dashboardKpis(req));

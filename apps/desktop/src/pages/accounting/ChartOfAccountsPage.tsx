@@ -25,8 +25,21 @@ type CoaTreeNode =
 type SettingsData = {
   defaultCashAccountId: string;
   defaultBankAccountId: string;
+  periodLockedThrough?: string | null;
   defaultCashAccount: { id: string; code: string; name: string };
   defaultBankAccount: { id: string; code: string; name: string };
+};
+
+type PeriodLockWarnings = {
+  count: number;
+  totalAccruedUnsettled: string;
+  grns: Array<{
+    grnId: string;
+    grnDate: string;
+    supplierName: string;
+    invoiceSettlement: string;
+    accruedAmount: string;
+  }>;
 };
 
 const ACCOUNT_TYPES = ['asset', 'liability', 'equity', 'income', 'expense'] as const;
@@ -241,6 +254,9 @@ export function ChartOfAccountsPage() {
   });
   const [cashId, setCashId] = useState('');
   const [bankId, setBankId] = useState('');
+  const [periodLockedThrough, setPeriodLockedThrough] = useState('');
+  const [showPeriodLock, setShowPeriodLock] = useState(false);
+  const [periodLockConfirmOpen, setPeriodLockConfirmOpen] = useState(false);
 
   const accounts = useQuery({
     queryKey: ['accounts', 'tree'],
@@ -286,7 +302,17 @@ export function ChartOfAccountsPage() {
     if (!settings.data) return;
     setCashId((prev) => prev || settings.data!.defaultCashAccountId);
     setBankId((prev) => prev || settings.data!.defaultBankAccountId);
+    setPeriodLockedThrough(settings.data.periodLockedThrough ?? '');
   }, [settings.data]);
+
+  const periodLockWarnings = useQuery({
+    queryKey: ['period-lock-warnings', periodLockedThrough],
+    enabled: canRead && showPeriodLock && periodLockedThrough.length === 10,
+    queryFn: () =>
+      apiFetch<{ data: PeriodLockWarnings }>(
+        `/settings/accounting/period-lock-warnings?lockedThrough=${encodeURIComponent(periodLockedThrough)}`
+      ).then((r) => r.data),
+  });
 
   const selectedNode = useMemo(
     () => (selectedId ? findNode(filteredTree, selectedId) : null),
@@ -330,6 +356,33 @@ export function ChartOfAccountsPage() {
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings', 'accounting'] }),
   });
+
+  const savePeriodLock = useMutation({
+    mutationFn: () =>
+      apiFetch('/settings/accounting', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          periodLockedThrough: periodLockedThrough.trim() || null,
+        }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['settings', 'accounting'] });
+      setPeriodLockConfirmOpen(false);
+    },
+  });
+
+  const requestSavePeriodLock = () => {
+    if (!periodLockedThrough.trim()) {
+      savePeriodLock.mutate();
+      return;
+    }
+    const w = periodLockWarnings.data;
+    if (w && w.count > 0) {
+      setPeriodLockConfirmOpen(true);
+      return;
+    }
+    savePeriodLock.mutate();
+  };
 
   const createAcc = useMutation({
     mutationFn: () =>
@@ -632,6 +685,113 @@ export function ChartOfAccountsPage() {
           </div>
         )}
       </section>
+
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800/80"
+          onClick={() => setShowPeriodLock((v) => !v)}
+          aria-expanded={showPeriodLock}
+        >
+          Accounting period lock
+          <span className="text-slate-400 dark:text-slate-500">{showPeriodLock ? '▼' : '▶'}</span>
+        </button>
+        {showPeriodLock && settings.data && (
+          <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-800">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Documents on or before this date cannot be posted. Review GRNs without posted supplier invoices before
+              extending the lock.
+            </p>
+            <label className="mt-4 block text-sm">
+              <span className="text-slate-600 dark:text-slate-400">Locked through (inclusive)</span>
+              <input
+                type="date"
+                className="mt-1 rounded-md border border-slate-300 px-3 py-2"
+                value={periodLockedThrough}
+                onChange={(e) => setPeriodLockedThrough(e.target.value)}
+                disabled={!canWrite}
+              />
+            </label>
+            {periodLockedThrough.length === 10 && periodLockWarnings.data && periodLockWarnings.data.count > 0 && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                <p className="font-medium">
+                  {periodLockWarnings.data.count} posted GRN(s) through this date have no posted supplier invoice
+                </p>
+                <p className="mt-1">
+                  Unsettled accrued purchases: {periodLockWarnings.data.totalAccruedUnsettled}. Accrued purchases may
+                  be overstated until supplier invoices are posted.
+                </p>
+                <ul className="mt-2 max-h-32 list-inside list-disc overflow-y-auto text-xs">
+                  {periodLockWarnings.data.grns.slice(0, 8).map((g) => (
+                    <li key={g.grnId}>
+                      {g.grnDate} — {g.supplierName} ({g.invoiceSettlement.replace('_', ' ')})
+                    </li>
+                  ))}
+                  {periodLockWarnings.data.grns.length > 8 && (
+                    <li>…and {periodLockWarnings.data.grns.length - 8} more</li>
+                  )}
+                </ul>
+              </div>
+            )}
+            {canWrite && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+                  disabled={savePeriodLock.isPending}
+                  onClick={requestSavePeriodLock}
+                >
+                  Save period lock
+                </button>
+                {periodLockedThrough && (
+                  <button
+                    type="button"
+                    className="text-sm text-slate-600 hover:underline dark:text-slate-400"
+                    onClick={() => {
+                      setPeriodLockedThrough('');
+                      savePeriodLock.mutate();
+                    }}
+                  >
+                    Clear lock
+                  </button>
+                )}
+              </div>
+            )}
+            {savePeriodLock.isError && (
+              <p className="mt-2 text-sm text-red-600">{(savePeriodLock.error as Error).message}</p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {periodLockConfirmOpen && periodLockWarnings.data && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-w-md rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Confirm period lock</h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              {periodLockWarnings.data.count} GRN(s) through {periodLockedThrough} do not have a posted supplier invoice.
+              Accrued purchases of {periodLockWarnings.data.totalAccruedUnsettled} may remain open. Continue anyway?
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm dark:border-slate-600"
+                onClick={() => setPeriodLockConfirmOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
+                disabled={savePeriodLock.isPending}
+                onClick={() => savePeriodLock.mutate()}
+              >
+                Lock period anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
