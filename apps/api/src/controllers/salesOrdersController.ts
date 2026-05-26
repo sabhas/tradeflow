@@ -279,7 +279,6 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
     const saved = await runInTransaction(async (manager) => {
       const o = await manager.findOne(SalesOrder, {
         where: { id: req.params.id },
-        relations: ['lines'],
       });
       if (!o) throw new HttpError(404, { error: 'Not found' });
       if (o.status !== 'draft') throw new HttpError(400, { error: 'Only draft sales orders can be edited' });
@@ -290,11 +289,13 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
       if (b.salespersonId !== undefined) o.salespersonId = b.salespersonId ?? undefined;
       if (b.notes !== undefined) o.notes = b.notes ?? undefined;
 
-      const lineRowsForStock = (): Array<{ productId: string; quantity: number }> =>
-        (o.lines || []).map((l) => ({
+      const lineRowsForStock = async (): Promise<Array<{ productId: string; quantity: number }>> => {
+        const dbLines = await manager.find(SalesOrderLine, { where: { salesOrderId: o.id } });
+        return dbLines.map((l) => ({
           productId: l.productId,
           quantity: parseFloat(l.quantity),
         }));
+      };
 
       if (b.lines) {
         await assertSalesOrderLinesInStock(
@@ -334,8 +335,16 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
           );
         }
       } else if (b.discountAmount !== undefined) {
-        await assertSalesOrderLinesInStock(manager, o.warehouseId, lineRowsForStock());
-        const lines = (o.lines || []).map((l) => ({
+        const dbLines = await manager.find(SalesOrderLine, { where: { salesOrderId: o.id } });
+        await assertSalesOrderLinesInStock(
+          manager,
+          o.warehouseId,
+          dbLines.map((l) => ({
+            productId: l.productId,
+            quantity: parseFloat(l.quantity),
+          }))
+        );
+        const lines = dbLines.map((l) => ({
           productId: l.productId,
           quantity: parseFloat(l.quantity),
           unitPrice: l.unitPrice,
@@ -362,8 +371,11 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
             })
           );
         }
-      } else if (b.warehouseId !== undefined && (o.lines?.length ?? 0) > 0) {
-        await assertSalesOrderLinesInStock(manager, o.warehouseId, lineRowsForStock());
+      } else if (b.warehouseId !== undefined) {
+        const stockLines = await lineRowsForStock();
+        if (stockLines.length > 0) {
+          await assertSalesOrderLinesInStock(manager, o.warehouseId, stockLines);
+        }
       }
       await manager.save(o);
       return manager.findOneOrFail(SalesOrder, {
