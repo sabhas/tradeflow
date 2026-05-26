@@ -1,5 +1,6 @@
 import { EntityManager, In } from 'typeorm';
 import { Product } from '@tradeflow/db';
+import { toIsoDateString } from '../utils/date';
 
 export async function enforceProductBatchControls(
   manager: EntityManager,
@@ -36,7 +37,7 @@ function normalizeLayerBatchCode(code: string | null | undefined): string {
 }
 
 function normalizeLayerExpiry(expiry: string | null | undefined): string {
-  return expiry ? String(expiry).slice(0, 10) : '';
+  return toIsoDateString(expiry) ?? '';
 }
 
 export function batchExpiryKey(batchCode?: string | null, expiryDate?: string | null): string {

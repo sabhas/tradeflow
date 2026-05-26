@@ -1,4 +1,5 @@
 import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { dateOnlyColumnTransformer } from '../dateColumn';
 import { Product } from './Product';
 import { Invoice } from './Invoice';
 import { SalesOrderLine } from './SalesOrderLine';
@@ -59,6 +60,6 @@ export class InvoiceLine extends BaseEntity {
   @Column({ name: 'batch_code', type: 'varchar', length: 128, nullable: true })
   batchCode?: string;
 
-  @Column({ name: 'expiry_date', type: 'date', nullable: true })
+  @Column({ name: 'expiry_date', type: 'date', nullable: true, transformer: dateOnlyColumnTransformer })
   expiryDate?: string;
 }

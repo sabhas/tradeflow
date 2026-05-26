@@ -35,8 +35,6 @@ export async function syncCreditNoteLinesWithOriginal(
     return {
       ...line,
       productId: ol.productId,
-      batchCode: ol.batchCode ?? null,
-      expiryDate: ol.expiryDate ? String(ol.expiryDate).slice(0, 10) : null,
       unitPrice: line.unitPrice?.trim() ? line.unitPrice : ol.unitPrice,
     };
   });

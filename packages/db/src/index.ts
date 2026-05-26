@@ -1,4 +1,5 @@
 export { dataSource } from './data-source';
+export { dateOnlyColumnTransformer, normalizeDateOnly } from './dateColumn';
 export * from './entities/User';
 export * from './entities/Role';
 export * from './entities/Permission';

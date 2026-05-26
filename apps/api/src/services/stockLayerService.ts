@@ -6,6 +6,7 @@ import {
   StockLayer,
 } from '@tradeflow/db';
 import { decimalCmp, decimalSub, parseDecimalStrict } from '../utils/decimal';
+import { toIsoDateString } from '../utils/date';
 import { getCompanySettingsRow } from './companySettings';
 
 export type CostingMode = 'fefo' | 'fifo' | 'lifo';
@@ -51,7 +52,7 @@ export async function consumeFromLayers(
 
   const layers = await manager.query(
     `
-    SELECT l.id, l.quantity_remaining, l.unit_cost, l.batch_code, l.expiry_date
+    SELECT l.id, l.quantity_remaining, l.unit_cost, l.batch_code, l.expiry_date::text AS expiry_date
       , l.trade_price, l.retail_price
     FROM stock_layers l
     WHERE l.product_id = $1 AND l.warehouse_id = $2
@@ -199,7 +200,7 @@ export async function addInboundLayer(
     tradePrice: trade,
     retailPrice: retail,
     batchCode: params.batchCode,
-    expiryDate: params.expiryDate,
+    expiryDate: toIsoDateString(params.expiryDate),
     receivedAt: params.receivedAt ?? new Date(),
     sourceRefType: params.sourceRefType,
     sourceRefId: params.sourceRefId,
@@ -222,7 +223,7 @@ export async function planLayerConsumptions(
   const order = layerOrderClause(mode);
   const layers = await manager.query(
     `
-    SELECT l.id, l.quantity_remaining, l.unit_cost, l.batch_code, l.expiry_date
+    SELECT l.id, l.quantity_remaining, l.unit_cost, l.batch_code, l.expiry_date::text AS expiry_date
       , l.trade_price, l.retail_price
     FROM stock_layers l
     WHERE l.product_id = $1 AND l.warehouse_id = $2

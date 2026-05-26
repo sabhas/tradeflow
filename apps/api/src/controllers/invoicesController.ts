@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import type { EntityManager } from 'typeorm';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
 import {
@@ -17,7 +18,11 @@ import { getPagination } from '../utils/pagination';
 import { computeSalesDocumentTotals } from '../services/salesTotals';
 import { runInTransaction } from '../services/inventoryService';
 import { postInvoice, resolveInvoiceDueDate } from '../services/invoicePosting';
-import { syncCreditNoteLinesWithOriginal } from '../services/invoiceCreditNoteLines';
+import { syncCreditNoteLinesWithOriginal, buildOriginalLineMap } from '../services/invoiceCreditNoteLines';
+import {
+  assertCreditNoteLinesMatchOriginal,
+  enforceProductBatchControls,
+} from '../services/productBatchControls';
 import { getCompanySettingsRow } from '../services/companySettings';
 import { resolveInvoiceLineUnitPrices } from '../services/invoicePricingService';
 import {
@@ -31,6 +36,8 @@ import {
   type InvoicePrintData,
 } from '../services/invoiceHtml';
 import { created, htmlOk, ok, type ControllerResult } from '../utils/controllerResult';
+import { parseDecimalStrict } from '../utils/decimal';
+import { toIsoDateString } from '../utils/date';
 import { HttpError } from '../utils/httpError';
 
 type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
@@ -41,11 +48,43 @@ function lineBatchExpiryFields(line: {
   expiryDate?: string | null;
 }): { batchCode?: string; expiryDate?: string } {
   const batchCode = line.batchCode?.trim();
-  const expiryDate = line.expiryDate?.trim();
   return {
     batchCode: batchCode ? batchCode : undefined,
-    expiryDate: expiryDate ? expiryDate.slice(0, 10) : undefined,
+    expiryDate: toIsoDateString(line.expiryDate),
   };
+}
+
+type InvoiceLineInsert = {
+  productId: string;
+  quantity: string | number;
+  unitPrice: string;
+  taxAmount: string;
+  discountAmount: string;
+  taxProfileId?: string | null;
+  originalInvoiceLineId?: string | null;
+  batchCode?: string | null;
+  expiryDate?: string | null;
+};
+
+/** Direct insert avoids TypeORM relation sync nulling invoice_id on save. */
+async function insertInvoiceLine(
+  manager: EntityManager,
+  invoiceId: string,
+  line: InvoiceLineInsert
+): Promise<void> {
+  const batchExpiry = lineBatchExpiryFields(line);
+  await manager.insert(InvoiceLine, {
+    invoiceId,
+    productId: line.productId,
+    quantity: parseDecimalStrict(String(line.quantity)),
+    unitPrice: parseDecimalStrict(line.unitPrice),
+    taxAmount: parseDecimalStrict(line.taxAmount),
+    discountAmount: parseDecimalStrict(line.discountAmount || '0'),
+    taxProfileId: line.taxProfileId ?? undefined,
+    originalInvoiceLineId: line.originalInvoiceLineId ?? undefined,
+    batchCode: batchExpiry.batchCode,
+    expiryDate: batchExpiry.expiryDate,
+  });
 }
 
 export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
@@ -84,7 +123,7 @@ export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
         discountAmount: l.discountAmount,
         taxProfileId: l.taxProfileId,
         batchCode: l.batchCode ?? null,
-        expiryDate: l.expiryDate ? String(l.expiryDate).slice(0, 10) : null,
+        expiryDate: toIsoDateString(l.expiryDate) ?? null,
       })) ?? undefined,
   };
 }
@@ -223,12 +262,20 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
         if (!b.originalInvoiceId) throw new Error('Credit note requires original invoice');
         const orig = await manager.findOne(Invoice, {
           where: { id: b.originalInvoiceId, deletedAt: IsNull() },
+          relations: ['lines'],
         });
         if (!orig) throw new Error('Original invoice not found');
         if (orig.status !== 'posted') throw new Error('Original invoice must be posted');
         if (orig.customerId !== b.customerId) throw new Error('Customer must match original invoice');
         if (orig.warehouseId !== b.warehouseId) throw new Error('Warehouse must match original invoice');
         lineInputs = await syncCreditNoteLinesWithOriginal(manager, b.originalInvoiceId, b.lines);
+        const activeCreditLines = lineInputs.filter((l) => l.quantity > 0);
+        await enforceProductBatchControls(manager, activeCreditLines);
+        await assertCreditNoteLinesMatchOriginal(
+          manager,
+          activeCreditLines,
+          buildOriginalLineMap(orig.lines ?? [])
+        );
       }
       const pricedLines = await resolveInvoiceLineUnitPrices(manager, b.warehouseId, lineInputs);
       const totals = await computeSalesDocumentTotals(
@@ -332,7 +379,6 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
     const out = await runInTransaction(async (manager) => {
       const inv = await manager.findOne(Invoice, {
         where: { id: req.params.id, deletedAt: IsNull() },
-        relations: ['lines'],
       });
       if (!inv) throw new Error('Not found');
       if (inv.status !== 'draft') throw new Error('Only draft invoices can be edited');
@@ -373,8 +419,19 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
         if (inv.documentKind === 'credit_note') {
           if (!inv.originalInvoiceId) throw new Error('Credit note requires original invoice');
           lineInputs = await syncCreditNoteLinesWithOriginal(manager, inv.originalInvoiceId, b.lines);
+          const activeCreditLines = lineInputs.filter((l) => l.quantity > 0);
+          await enforceProductBatchControls(manager, activeCreditLines);
+          const orig = await manager.findOne(Invoice, {
+            where: { id: inv.originalInvoiceId, deletedAt: IsNull() },
+            relations: ['lines'],
+          });
+          if (!orig) throw new Error('Original invoice not found');
+          await assertCreditNoteLinesMatchOriginal(
+            manager,
+            activeCreditLines,
+            buildOriginalLineMap(orig.lines ?? [])
+          );
         }
-        await manager.delete(InvoiceLine, { invoiceId: inv.id });
         const pricedLines = await resolveInvoiceLineUnitPrices(
           manager,
           b.warehouseId ?? inv.warehouseId,
@@ -396,26 +453,26 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
         inv.taxAmount = totals.taxAmount;
         inv.discountAmount = totals.discountAmount;
         inv.total = totals.total;
+        await manager.delete(InvoiceLine, { invoiceId: inv.id });
         for (let i = 0; i < totals.lines.length; i++) {
           const l = totals.lines[i];
           const pl = pricedLines[i];
           const inputLine = lineInputs[i];
-          await manager.save(
-            manager.create(InvoiceLine, {
-              invoiceId: inv.id,
-              productId: l.productId,
-              quantity: l.quantity,
-              unitPrice: l.unitPrice,
-              taxAmount: l.taxAmount,
-              discountAmount: l.discountAmount,
-              taxProfileId: l.taxProfileId ?? undefined,
-              originalInvoiceLineId: pl.originalInvoiceLineId ?? undefined,
-              ...(inv.documentKind === 'credit_note' ? lineBatchExpiryFields(inputLine) : {}),
-            })
-          );
+          await insertInvoiceLine(manager, inv.id, {
+            productId: l.productId,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            taxAmount: l.taxAmount,
+            discountAmount: l.discountAmount,
+            taxProfileId: l.taxProfileId,
+            originalInvoiceLineId: pl.originalInvoiceLineId,
+            batchCode: inv.documentKind === 'credit_note' ? inputLine.batchCode : undefined,
+            expiryDate: inv.documentKind === 'credit_note' ? inputLine.expiryDate : undefined,
+          });
         }
       } else if (b.discountAmount !== undefined) {
-        const lines = (inv.lines || []).map((l) => ({
+        const dbLines = await manager.find(InvoiceLine, { where: { invoiceId: inv.id } });
+        const lines = dbLines.map((l) => ({
           productId: l.productId,
           quantity: parseFloat(l.quantity),
           unitPrice: l.unitPrice,
@@ -434,20 +491,17 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
         for (let i = 0; i < totals.lines.length; i++) {
           const l = totals.lines[i];
           const src = lines[i];
-          await manager.save(
-            manager.create(InvoiceLine, {
-              invoiceId: inv.id,
-              productId: l.productId,
-              quantity: l.quantity,
-              unitPrice: l.unitPrice,
-              taxAmount: l.taxAmount,
-              discountAmount: l.discountAmount,
-              taxProfileId: l.taxProfileId ?? undefined,
-              originalInvoiceLineId: src?.originalInvoiceLineId ?? undefined,
-              batchCode: src?.batchCode,
-              expiryDate: src?.expiryDate,
-            })
-          );
+          await insertInvoiceLine(manager, inv.id, {
+            productId: l.productId,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            taxAmount: l.taxAmount,
+            discountAmount: l.discountAmount,
+            taxProfileId: l.taxProfileId,
+            originalInvoiceLineId: src?.originalInvoiceLineId,
+            batchCode: src?.batchCode,
+            expiryDate: src?.expiryDate,
+          });
         }
       }
       if (inv.documentKind !== 'credit_note') {

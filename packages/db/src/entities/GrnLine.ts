@@ -1,4 +1,5 @@
 import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { dateOnlyColumnTransformer } from '../dateColumn';
 import { Grn } from './Grn';
 import { Product } from './Product';
 import { PurchaseOrderLine } from './PurchaseOrderLine';
@@ -37,7 +38,7 @@ export class GrnLine extends BaseEntity {
   @Column({ name: 'batch_code', type: 'varchar', length: 128, nullable: true })
   batchCode?: string;
 
-  @Column({ name: 'expiry_date', type: 'date', nullable: true })
+  @Column({ name: 'expiry_date', type: 'date', nullable: true, transformer: dateOnlyColumnTransformer })
   expiryDate?: string;
 
   @Column({ name: 'purchase_order_line_id', nullable: true })

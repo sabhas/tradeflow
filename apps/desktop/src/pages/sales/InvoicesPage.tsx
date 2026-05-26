@@ -14,6 +14,7 @@ import { SalesSubNav } from '../../components/SalesSubNav';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { useMoneyFormat } from '../../hooks/useMoneyFormat';
+import { parseApiDateOnly } from '../../lib/dateOnly';
 
 interface CustomerOpt {
   id: string;
@@ -215,7 +216,7 @@ export function InvoicesPage() {
             originalInvoiceLineId:
               (d.documentKind ?? 'invoice') === 'credit_note' ? l.originalInvoiceLineId ?? '' : '',
             batchCode: l.batchCode ?? '',
-            expiryDate: l.expiryDate ? String(l.expiryDate).slice(0, 10) : '',
+            expiryDate: parseApiDateOnly(l.expiryDate),
             maxReturnQty:
               (d.documentKind ?? 'invoice') === 'credit_note' ? parseFloat(l.quantity) : undefined,
           }))
@@ -269,7 +270,7 @@ export function InvoicesPage() {
         taxProfileId: l.taxProfileId ?? '',
         originalInvoiceLineId: l.id,
         batchCode: l.batchCode ?? '',
-        expiryDate: l.expiryDate ? String(l.expiryDate).slice(0, 10) : '',
+        expiryDate: parseApiDateOnly(l.expiryDate),
         maxReturnQty: parseFloat(l.quantity),
       }))
     );
@@ -417,6 +418,13 @@ export function InvoicesPage() {
             const name = productById.get(l.productId)?.name ?? 'Product';
             throw new Error(`Return quantity for "${name}" cannot exceed ${l.maxReturnQty} sold on the invoice`);
           }
+          const meta = productById.get(l.productId);
+          if (meta?.batchTracked && !l.batchCode.trim()) {
+            throw new Error(`Batch is required for "${meta.name}" (batch-tracked product)`);
+          }
+          if (meta?.expiryTracked && !l.expiryDate.trim()) {
+            throw new Error(`Expiry date is required for "${meta.name}" (expiry-tracked product)`);
+          }
         }
       }
       const payload: Record<string, unknown> = {
@@ -436,10 +444,8 @@ export function InvoicesPage() {
           taxProfileId: l.taxProfileId || null,
           originalInvoiceLineId:
             documentKind === 'credit_note' && l.originalInvoiceLineId ? l.originalInvoiceLineId : null,
-          batchCode:
-            documentKind === 'credit_note' && l.batchCode.trim() ? l.batchCode.trim() : null,
-          expiryDate:
-            documentKind === 'credit_note' && l.expiryDate.trim() ? l.expiryDate.trim() : null,
+          batchCode: documentKind === 'credit_note' ? l.batchCode.trim() || null : null,
+          expiryDate: documentKind === 'credit_note' ? l.expiryDate.trim() || null : null,
         })),
       };
       if (canPickTemplate) {
@@ -1111,13 +1117,18 @@ export function InvoicesPage() {
                   Batch-tracked products are split by batch when you post (FEFO/FIFO).
                 </p>
               )}
+              {documentKind === 'credit_note' && (
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Batch- and expiry-tracked lines require batch and expiry matching what was sold on the
+                  source invoice.
+                </p>
+              )}
             </div>
             <div className="mt-2 space-y-2">
               {lines.map((line, idx) => {
                 const product = line.productId ? productById.get(line.productId) : undefined;
-                const showBatchInfo =
-                  documentKind === 'credit_note' &&
-                  (line.batchCode || line.expiryDate || product?.batchTracked || product?.expiryTracked);
+                const batchRequired = documentKind === 'credit_note' && !!product?.batchTracked;
+                const expiryRequired = documentKind === 'credit_note' && !!product?.expiryTracked;
 
                 return (
                 <div key={idx} className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40">
@@ -1232,14 +1243,48 @@ export function InvoicesPage() {
                     </button>
                   </div>
                   </div>
-                  {showBatchInfo && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Sold on invoice:{' '}
-                      <span className="font-medium text-slate-800 dark:text-slate-200">
-                        {line.batchCode.trim() ? line.batchCode : 'Unspecified'}
-                        {line.expiryDate ? ` · exp ${line.expiryDate}` : ''}
-                      </span>
-                    </p>
+                  {(batchRequired || expiryRequired) && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {batchRequired && (
+                        <label>
+                          <span className="text-xs text-slate-500">
+                            Batch<span className="text-amber-700 dark:text-amber-400"> *</span>
+                          </span>
+                          <input
+                            className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                            value={line.batchCode}
+                            onChange={(e) =>
+                              setLines((prev) => {
+                                const n = [...prev];
+                                n[idx] = { ...n[idx], batchCode: e.target.value };
+                                return n;
+                              })
+                            }
+                            placeholder="Batch sold on invoice"
+                            aria-required
+                          />
+                        </label>
+                      )}
+                      {expiryRequired && (
+                        <label>
+                          <span className="text-xs text-slate-500">
+                            Expiry<span className="text-amber-700 dark:text-amber-400"> *</span>
+                          </span>
+                          <DatePickerInput
+                            className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                            value={line.expiryDate}
+                            required
+                            onChange={(e) =>
+                              setLines((prev) => {
+                                const n = [...prev];
+                                n[idx] = { ...n[idx], expiryDate: e.target.value };
+                                return n;
+                              })
+                            }
+                          />
+                        </label>
+                      )}
+                    </div>
                   )}
                   {documentKind !== 'credit_note' && (
                     <div>

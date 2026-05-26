@@ -2,6 +2,7 @@ import { EntityManager, In, IsNull } from 'typeorm';
 import { Customer, InventoryMovement, Invoice, InvoiceLine, Product, SalesOrderLine } from '@tradeflow/db';
 import { applyMovement, assertProductInScope, assertWarehouseInScope, runInTransaction } from './inventoryService';
 import { decimalAdd, decimalSub, parseDecimalStrict } from '../utils/decimal';
+import { toIsoDateString } from '../utils/date';
 import { moneyCmp, moneySub } from '../utils/money';
 import { getCustomerCreditExposure, getInvoiceAmountAllocated } from './salesCustomerBalance';
 import { postSalesCreditNoteJournal, postSalesInvoiceJournal } from './accountingPosting';
@@ -193,7 +194,7 @@ export async function postInvoice(invoiceId: string, userId: string | undefined)
           userId,
           invoiceLineId: line.id,
           batchCode: line.batchCode?.trim() || undefined,
-          expiryDate: line.expiryDate ? String(line.expiryDate).slice(0, 10) : undefined,
+          expiryDate: toIsoDateString(line.expiryDate),
         });
       }
 

@@ -1,6 +1,7 @@
 import { EntityManager, In } from 'typeorm';
 import { Invoice, InvoiceLine, Product } from '@tradeflow/db';
 import { parseDecimalStrict } from '../utils/decimal';
+import { toIsoDateString } from '../utils/date';
 import { computeSalesDocumentTotals } from './salesTotals';
 import { pickLayerPrice } from './invoicePricingService';
 import {
@@ -93,7 +94,7 @@ export async function expandBatchTrackedInvoiceLinesForPost(
         taxProfileId: line.taxProfileId,
         salesOrderLineId: line.salesOrderLineId,
         batchCode: line.batchCode?.trim(),
-        expiryDate: line.expiryDate ? String(line.expiryDate).slice(0, 10) : undefined,
+        expiryDate: toIsoDateString(line.expiryDate),
       });
       if (line.salesOrderLineId) {
         salesOrderDelivered.set(
@@ -124,7 +125,7 @@ export async function expandBatchTrackedInvoiceLinesForPost(
         taxProfileId: line.taxProfileId,
         salesOrderLineId: i === 0 ? line.salesOrderLineId : undefined,
         batchCode: part.batchCode?.trim() || undefined,
-        expiryDate: part.expiryDate,
+        expiryDate: toIsoDateString(part.expiryDate),
         planned: [part],
       });
     }
@@ -173,7 +174,7 @@ export async function expandBatchTrackedInvoiceLinesForPost(
         taxProfileId: tl.taxProfileId ?? undefined,
         salesOrderLineId: src.salesOrderLineId,
         batchCode: src.batchCode,
-        expiryDate: src.expiryDate,
+        expiryDate: toIsoDateString(src.expiryDate),
       })
     );
     plans.push({
@@ -200,7 +201,7 @@ export async function planConsumptionForInvoiceLine(
   const company = await loadCompanyForInventory(manager);
   const parts = await planLayerConsumptions(manager, product, company, warehouseId, line.quantity);
   const batchNorm = (line.batchCode ?? '').trim();
-  const expiryNorm = line.expiryDate ? String(line.expiryDate).slice(0, 10) : '';
+  const expiryNorm = toIsoDateString(line.expiryDate) ?? '';
 
   const match = parts.filter(
     (p) =>

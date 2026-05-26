@@ -8,6 +8,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { dateOnlyColumnTransformer } from '../dateColumn';
 import { GrnLine } from './GrnLine';
 import { Product } from './Product';
 import { Warehouse } from './Warehouse';
@@ -47,7 +48,7 @@ export class StockLayer extends BaseEntity {
   @Column({ name: 'batch_code', type: 'varchar', length: 128, nullable: true })
   batchCode?: string;
 
-  @Column({ name: 'expiry_date', type: 'date', nullable: true })
+  @Column({ name: 'expiry_date', type: 'date', nullable: true, transformer: dateOnlyColumnTransformer })
   expiryDate?: string;
 
   @Column({ name: 'received_at', type: 'timestamptz' })
