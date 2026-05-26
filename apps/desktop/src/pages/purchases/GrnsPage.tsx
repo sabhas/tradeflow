@@ -6,6 +6,7 @@ import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { CUSTOM_OPTION_VALUE, SelectOrCustomInput } from '../../components/SelectOrCustomInput';
+import { DatePickerInput } from '../../components/DatePickerInput';
 import { formatAmount, parseAmount } from '../../lib/numberFormat';
 import { invalidateGrnInvoiceSignals } from '../../lib/purchaseQueryInvalidation';
 import { hasPermission } from '../../lib/permissions';
@@ -744,7 +745,7 @@ export function GrnsPage() {
                 </div>
                 {grnDetail.data.status === 'posted' &&
                   grnDetail.data.invoiceSettlement !== 'invoice_posted' && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/50 dark:text-amber-200">
                       <p className="font-medium">Supplier invoice required</p>
                       <p className="mt-1 text-amber-900/90 dark:text-amber-200/90">
                         Post a supplier invoice linked to this GRN to clear accrued purchases and record accounts payable.
@@ -770,7 +771,7 @@ export function GrnsPage() {
                           ) : null)}
                         <Link
                           to={`/purchases/invoices?grnId=${grnDetail.data.id}`}
-                          className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100/80 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100"
+                          className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100/80 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100 dark:hover:bg-amber-950/50"
                         >
                           Open supplier invoices
                         </Link>
@@ -891,8 +892,7 @@ export function GrnsPage() {
               </label>
               <label className="block text-sm sm:col-span-2">
                 <span className="text-slate-600 dark:text-slate-400">Receipt date</span>
-                <input
-                  type="date"
+                <DatePickerInput
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
                   value={grnDate}
                   onChange={(e) => setGrnDate(e.target.value)}
@@ -1150,8 +1150,7 @@ export function GrnsPage() {
                     <span className="text-xs text-slate-500">
                       Expiry{expiryRequired ? <span className="text-amber-700 dark:text-amber-400"> *</span> : ' (optional)'}
                     </span>
-                    <input
-                      type="date"
+                    <DatePickerInput
                       className={`mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm ${batchDerivedLockInputClass}`}
                       value={line.expiryDate}
                       required={expiryRequired}
