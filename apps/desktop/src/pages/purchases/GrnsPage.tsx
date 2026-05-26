@@ -6,7 +6,8 @@ import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { CUSTOM_OPTION_VALUE, SelectOrCustomInput } from '../../components/SelectOrCustomInput';
-import { formatAmount, formatAmountInput, normalizeAmountInput } from '../../lib/numberFormat';
+import { formatAmount, parseAmount } from '../../lib/numberFormat';
+import { invalidateGrnInvoiceSignals } from '../../lib/purchaseQueryInvalidation';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { useMoneyFormat } from '../../hooks/useMoneyFormat';
@@ -96,7 +97,9 @@ export function GrnsPage() {
   const canInvoiceWrite = hasPermission(permissions, 'purchases.supplier_invoices:write');
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { formatMoney, formatMoneyInput, normalizeMoneyInput } = useMoneyFormat();
+  const { formatMoney, formatMoneyPlain, formatMoneyInput, normalizeMoneyInput } = useMoneyFormat();
+
+  const moneyForApi = (raw: string) => String(parseAmount(raw));
   const [searchParams, setSearchParams] = useSearchParams();
   const fromPo = searchParams.get('fromPo') || '';
   const invoiceSettlementFilter = searchParams.get('invoiceSettlement') || '';
@@ -122,6 +125,7 @@ export function GrnsPage() {
   const [error, setError] = useState<string | null>(null);
   const [copiedGrnId, setCopiedGrnId] = useState<string | null>(null);
   const [viewGrnId, setViewGrnId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [postSuccessGrnId, setPostSuccessGrnId] = useState<string | null>(null);
 
   const listQuery = invoiceSettlementFilter
@@ -137,6 +141,12 @@ export function GrnsPage() {
     queryKey: ['grn', viewGrnId],
     enabled: canRead && !!viewGrnId,
     queryFn: () => apiFetch<{ data: GrnDetail }>(`/grns/${viewGrnId}`).then((r) => r.data),
+  });
+
+  const editDetail = useQuery({
+    queryKey: ['grn', editingId],
+    enabled: canRead && panelOpen && !!editingId,
+    queryFn: () => apiFetch<{ data: GrnDetail }>(`/grns/${editingId}`).then((r) => r.data),
   });
 
   const productsForView = useQuery({
@@ -164,7 +174,7 @@ export function GrnsPage() {
 
   const products = useQuery({
     queryKey: ['products', 'grn-dd'],
-    enabled: canRead && panelOpen && !purchaseOrderId,
+    enabled: canRead && panelOpen && (!purchaseOrderId || !!editingId),
     queryFn: () =>
       apiFetch<{
         data: Array<{
@@ -270,7 +280,43 @@ export function GrnsPage() {
   }, [batchBalances.data]);
 
   useEffect(() => {
-    if (!eligible.data) return;
+    if (!editDetail.data || !editingId) return;
+    const d = editDetail.data;
+    setPurchaseOrderId(d.purchaseOrderId ?? null);
+    setSupplierId(d.supplierId);
+    setWarehouseId(d.warehouseId);
+    setGrnDate(d.grnDate);
+    setLines(
+      (d.lines ?? []).length
+        ? (d.lines ?? []).map((l) => ({
+            productId: l.productId,
+            quantity: parseFloat(l.quantity),
+            unitPrice: formatMoneyPlain(l.unitPrice),
+            tradePrice: l.tradePrice != null && l.tradePrice !== '' ? formatMoneyPlain(l.tradePrice) : '',
+            retailPrice: l.retailPrice != null && l.retailPrice !== '' ? formatMoneyPlain(l.retailPrice) : '',
+            purchaseOrderLineId: l.purchaseOrderLineId ?? '',
+            batchCode: l.batchCode ?? '',
+            expiryDate: l.expiryDate ?? '',
+            selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
+          }))
+        : [
+            {
+              productId: '',
+              quantity: 1,
+              unitPrice: '0',
+              tradePrice: '',
+              retailPrice: '',
+              purchaseOrderLineId: '',
+              batchCode: '',
+              expiryDate: '',
+              selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
+            },
+          ]
+    );
+  }, [editDetail.data, editingId]);
+
+  useEffect(() => {
+    if (!eligible.data || editingId) return;
     setSupplierId(eligible.data.supplierId);
     setWarehouseId(eligible.data.warehouseId);
     if (eligible.data.lines.length) {
@@ -278,7 +324,7 @@ export function GrnsPage() {
         eligible.data.lines.map((l) => ({
           productId: l.productId,
           quantity: parseFloat(l.remaining),
-          unitPrice: formatMoney(l.unitPrice),
+          unitPrice: formatMoneyPlain(l.unitPrice),
           tradePrice: '',
           retailPrice: '',
           purchaseOrderLineId: l.purchaseOrderLineId,
@@ -309,17 +355,19 @@ export function GrnsPage() {
     );
   }, [supplierId, purchaseOrderId, products.data]);
 
-  const createGrn = useMutation({
+  const saveGrn = useMutation({
     mutationFn: async () => {
       setError(null);
       const cleaned = lines.filter((l) => l.productId && l.quantity > 0);
       if (!supplierId) throw new Error('Select a supplier');
       if (!warehouseId) throw new Error('Select a warehouse');
       if (cleaned.length === 0) throw new Error('Add at least one line with quantity');
-      for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-        const l = lines[lineIdx];
+      for (const l of lines) {
         if (!l.productId || l.quantity <= 0) continue;
-        const fromPo = poLinked && eligible.data?.lines[lineIdx];
+        const fromPo =
+          poLinked && l.purchaseOrderLineId
+            ? eligible.data?.lines.find((el) => el.purchaseOrderLineId === l.purchaseOrderLineId)
+            : undefined;
         const meta = fromPo
           ? {
               batchTracked: fromPo.batchTracked,
@@ -335,35 +383,46 @@ export function GrnsPage() {
           throw new Error(`Expiry date is required for "${meta.name}" (expiry-tracked product)`);
         }
       }
-      await apiFetch('/grns', {
-        method: 'POST',
-        body: JSON.stringify({
-          purchaseOrderId: purchaseOrderId || null,
-          supplierId,
-          warehouseId,
-          grnDate,
-          lines: cleaned.map((l) => ({
-            productId: l.productId,
-            quantity: l.quantity,
-            unitPrice: l.unitPrice || undefined,
-            tradePrice: l.tradePrice.trim() ? l.tradePrice.trim() : undefined,
-            retailPrice: l.retailPrice.trim() ? l.retailPrice.trim() : undefined,
-            purchaseOrderLineId: l.purchaseOrderLineId || null,
-            batchCode: l.batchCode.trim() ? l.batchCode.trim() : null,
-            expiryDate: l.expiryDate.trim() ? l.expiryDate : null,
-          })),
-        }),
-      });
+      const payload = {
+        purchaseOrderId: purchaseOrderId || null,
+        supplierId,
+        warehouseId,
+        grnDate,
+        lines: cleaned.map((l) => ({
+          productId: l.productId,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice.trim() ? moneyForApi(l.unitPrice) : undefined,
+          tradePrice: l.tradePrice.trim() ? moneyForApi(l.tradePrice) : undefined,
+          retailPrice: l.retailPrice.trim() ? moneyForApi(l.retailPrice) : undefined,
+          purchaseOrderLineId: l.purchaseOrderLineId || null,
+          batchCode: l.batchCode.trim() ? l.batchCode.trim() : null,
+          expiryDate: l.expiryDate.trim() ? l.expiryDate : null,
+        })),
+      };
+      if (editingId) {
+        await apiFetch(`/grns/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      } else {
+        await apiFetch('/grns', { method: 'POST', body: JSON.stringify(payload) });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['grns'] });
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
+      if (editingId) qc.invalidateQueries({ queryKey: ['grn', editingId] });
       setPanelOpen(false);
+      setEditingId(null);
       setPurchaseOrderId(null);
       setSearchParams({});
     },
     onError: (e: Error) => setError(e.message),
   });
+
+  const openEditDraft = (id: string) => {
+    setViewGrnId(null);
+    setEditingId(id);
+    setError(null);
+    setPanelOpen(true);
+  };
 
   const postGrn = useMutation({
     mutationFn: (id: string) => apiFetch(`/grns/${id}/post`, { method: 'POST', body: '{}' }),
@@ -371,7 +430,7 @@ export function GrnsPage() {
       qc.invalidateQueries({ queryKey: ['grns'] });
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
       qc.invalidateQueries({ queryKey: ['inventory'] });
-      qc.invalidateQueries({ queryKey: ['grns', 'pending-invoice-count'] });
+      invalidateGrnInvoiceSignals(qc);
       setPostSuccessGrnId(id);
     },
     onError: (e: Error) => setError(e.message),
@@ -384,9 +443,8 @@ export function GrnsPage() {
         body: '{}',
       }).then((r) => r.data),
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['grns'] });
       qc.invalidateQueries({ queryKey: ['supplier-invoices'] });
-      qc.invalidateQueries({ queryKey: ['grns', 'pending-invoice-count'] });
+      invalidateGrnInvoiceSignals(qc);
       setPostSuccessGrnId(null);
       setViewGrnId(null);
       navigate(`/purchases/invoices?edit=${data.supplierInvoiceId}`);
@@ -412,6 +470,7 @@ export function GrnsPage() {
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
             onClick={() => {
               setViewGrnId(null);
+              setEditingId(null);
               setPurchaseOrderId(null);
               setSupplierId('');
               setGrnDate(new Date().toISOString().slice(0, 10));
@@ -556,6 +615,15 @@ export function GrnsPage() {
                   >
                     View
                   </button>
+                  {canWrite && r.status === 'draft' && (
+                    <button
+                      type="button"
+                      className="ml-3 text-indigo-600 hover:underline"
+                      onClick={() => openEditDraft(r.id)}
+                    >
+                      Edit
+                    </button>
+                  )}
                   {canPost && r.status === 'draft' && (
                     <button
                       type="button"
@@ -565,7 +633,6 @@ export function GrnsPage() {
                       Post to stock
                     </button>
                   )}
-                  
                 </td>
               </tr>
             ))}
@@ -711,6 +778,15 @@ export function GrnsPage() {
                     </div>
                   )}
                 <div className="flex flex-wrap justify-end gap-2">
+                  {canWrite && grnDetail.data.status === 'draft' && (
+                    <button
+                      type="button"
+                      className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+                      onClick={() => openEditDraft(grnDetail.data!.id)}
+                    >
+                      Edit draft
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -744,12 +820,15 @@ export function GrnsPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">New goods receipt</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {editingId ? 'Edit goods receipt' : 'New goods receipt'}
+              </h2>
               <button
                 type="button"
                 className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                 onClick={() => {
                   setPanelOpen(false);
+                  setEditingId(null);
                   setError(null);
                 }}
               >
@@ -761,6 +840,9 @@ export function GrnsPage() {
               <span className="font-medium text-slate-700 dark:text-slate-200">Tip:</span>
               <span>Link from a purchase order to pre-fill lines, or create a standalone receipt for a supplier.</span>
             </div>
+            {editDetail.isLoading && editingId && (
+              <p className="mt-4 text-sm text-slate-500">Loading draft…</p>
+            )}
             {error && (
               <div
                 role="alert"
@@ -778,7 +860,7 @@ export function GrnsPage() {
                   placeholder="Paste PO id or use Receive link from orders list"
                   value={purchaseOrderId ?? ''}
                   onChange={(e) => setPurchaseOrderId(e.target.value || null)}
-                  disabled={!!fromPo}
+                  disabled={!!fromPo || !!editingId}
                 />
               </label>
               <label className="block text-sm">
@@ -847,7 +929,15 @@ export function GrnsPage() {
             </div>
             <div className="mt-2 space-y-2">
               {lines.map((line, idx) => {
-                const poLine = purchaseOrderId ? eligible.data?.lines[idx] : undefined;
+                const poLine =
+                  purchaseOrderId && line.purchaseOrderLineId
+                    ? eligible.data?.lines.find((el) => el.purchaseOrderLineId === line.purchaseOrderLineId)
+                    : purchaseOrderId
+                      ? eligible.data?.lines[idx]
+                      : undefined;
+                const poProductName =
+                  poLine?.productName ??
+                  (line.productId ? productById.get(line.productId)?.name : undefined);
                 const manualProduct = line.productId ? productById.get(line.productId) : undefined;
                 const batchRequired = poLine?.batchTracked ?? manualProduct?.batchTracked ?? false;
                 const expiryRequired = poLine?.expiryTracked ?? manualProduct?.expiryTracked ?? false;
@@ -871,9 +961,9 @@ export function GrnsPage() {
                         Select supplier first to choose a product.
                       </span>
                     )}
-                    {purchaseOrderId && eligible.data?.lines[idx]?.productName ? (
+                    {purchaseOrderId && poProductName ? (
                       <div className="mt-0.5 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950">
-                        {eligible.data.lines[idx].productName}
+                        {poProductName}
                       </div>
                     ) : (
                       <Combobox
@@ -887,9 +977,9 @@ export function GrnsPage() {
                             n[idx] = {
                               ...n[idx],
                               productId: v,
-                              unitPrice: p ? formatMoney(p.costPrice) : n[idx].unitPrice,
-                              tradePrice: p ? formatMoney(p.sellingPrice) : n[idx].tradePrice,
-                              retailPrice: p ? formatMoney(p.retailPrice) : n[idx].retailPrice,
+                              unitPrice: p ? formatMoneyPlain(p.costPrice) : n[idx].unitPrice,
+                              tradePrice: p ? formatMoneyPlain(p.sellingPrice) : n[idx].tradePrice,
+                              retailPrice: p ? formatMoneyPlain(p.retailPrice) : n[idx].retailPrice,
                               batchCode: '',
                               expiryDate: '',
                               selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
@@ -926,9 +1016,9 @@ export function GrnsPage() {
                               selectedExistingBatchKey: selected.key,
                               batchCode: selected.displayCode,
                               expiryDate: selected.expiryDate ? String(selected.expiryDate).slice(0, 10) : '',
-                              unitPrice: formatMoney(selected.avgUnitCost),
-                              tradePrice: formatMoney((selected.tradePrice ?? n[idx].tradePrice) || '0'),
-                              retailPrice: formatMoney((selected.retailPrice ?? n[idx].retailPrice) || '0'),
+                              unitPrice: formatMoneyPlain(selected.avgUnitCost),
+                              tradePrice: formatMoneyPlain((selected.tradePrice ?? n[idx].tradePrice) || '0'),
+                              retailPrice: formatMoneyPlain((selected.retailPrice ?? n[idx].retailPrice) || '0'),
                             };
                             return n;
                           }
@@ -939,14 +1029,14 @@ export function GrnsPage() {
                             batchCode: value,
                             selectedExistingBatchKey: CUSTOM_OPTION_VALUE,
                             unitPrice:
-                              (wasLocked || !n[idx].unitPrice.trim()) && p ? formatMoney(p.costPrice) : n[idx].unitPrice,
+                              (wasLocked || !n[idx].unitPrice.trim()) && p ? formatMoneyPlain(p.costPrice) : n[idx].unitPrice,
                             tradePrice:
                               (wasLocked || !n[idx].tradePrice.trim()) && p
-                                ? formatMoney(p.sellingPrice)
+                                ? formatMoneyPlain(p.sellingPrice)
                                 : n[idx].tradePrice,
                             retailPrice:
                               (wasLocked || !n[idx].retailPrice.trim()) && p
-                                ? formatMoney(p.retailPrice)
+                                ? formatMoneyPlain(p.retailPrice)
                                 : n[idx].retailPrice,
                             expiryDate: wasLocked ? '' : n[idx].expiryDate,
                           };
@@ -985,19 +1075,22 @@ export function GrnsPage() {
                     <span className="text-xs text-slate-500">Unit cost</span>
                     <input
                       className={`mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm ${batchDerivedLockInputClass}`}
-                      value={formatMoneyInput(line.unitPrice)}
+                      value={line.unitPrice}
                       disabled={lockBatchDerivedFields}
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: normalizeMoneyInput(e.target.value) };
+                          n[idx] = { ...n[idx], unitPrice: formatMoneyInput(e.target.value) };
                           return n;
                         })
                       }
                       onBlur={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], unitPrice: formatMoney(normalizeMoneyInput(e.target.value)) };
+                          n[idx] = {
+                            ...n[idx],
+                            unitPrice: formatMoneyPlain(normalizeMoneyInput(e.target.value)),
+                          };
                           return n;
                         })
                       }
@@ -1012,7 +1105,17 @@ export function GrnsPage() {
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], tradePrice: e.target.value };
+                          n[idx] = { ...n[idx], tradePrice: formatMoneyInput(e.target.value) };
+                          return n;
+                        })
+                      }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = {
+                            ...n[idx],
+                            tradePrice: formatMoneyPlain(normalizeMoneyInput(e.target.value)),
+                          };
                           return n;
                         })
                       }
@@ -1027,7 +1130,17 @@ export function GrnsPage() {
                       onChange={(e) =>
                         setLines((prev) => {
                           const n = [...prev];
-                          n[idx] = { ...n[idx], retailPrice: e.target.value };
+                          n[idx] = { ...n[idx], retailPrice: formatMoneyInput(e.target.value) };
+                          return n;
+                        })
+                      }
+                      onBlur={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = {
+                            ...n[idx],
+                            retailPrice: formatMoneyPlain(normalizeMoneyInput(e.target.value)),
+                          };
                           return n;
                         })
                       }
@@ -1069,6 +1182,7 @@ export function GrnsPage() {
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => {
                   setPanelOpen(false);
+                  setEditingId(null);
                   setSearchParams({});
                   setError(null);
                 }}
@@ -1078,11 +1192,11 @@ export function GrnsPage() {
               {canWrite && (
                 <button
                   type="button"
-                  disabled={createGrn.isPending}
+                  disabled={saveGrn.isPending || (!!editingId && editDetail.isLoading)}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                  onClick={() => createGrn.mutate()}
+                  onClick={() => saveGrn.mutate()}
                 >
-                  Save draft GRN
+                  {editingId ? 'Update draft GRN' : 'Save draft GRN'}
                 </button>
               )}
             </div>

@@ -5,6 +5,7 @@ import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
 import { formatAmount, formatAmountInput, normalizeAmountInput } from '../../lib/numberFormat';
+import { invalidateGrnInvoiceSignals } from '../../lib/purchaseQueryInvalidation';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { useMoneyFormat } from '../../hooks/useMoneyFormat';
@@ -328,6 +329,7 @@ export function SupplierInvoicesPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['supplier-invoices'] });
+      invalidateGrnInvoiceSignals(qc);
       setPanelOpen(false);
       setEditingId(null);
     },
@@ -336,13 +338,19 @@ export function SupplierInvoicesPage() {
 
   const postInv = useMutation({
     mutationFn: (id: string) => apiFetch(`/supplier-invoices/${id}/post`, { method: 'POST', body: '{}' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['supplier-invoices'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['supplier-invoices'] });
+      invalidateGrnInvoiceSignals(qc);
+    },
     onError: (e: Error) => setError(e.message),
   });
 
   const del = useMutation({
     mutationFn: (id: string) => apiFetch(`/supplier-invoices/${id}`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['supplier-invoices'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['supplier-invoices'] });
+      invalidateGrnInvoiceSignals(qc);
+    },
     onError: (e: Error) => setError(e.message),
   });
 

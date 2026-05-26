@@ -36,6 +36,28 @@ async function resolveSupplierDueDate(manager: EntityManager, supplierId: string
   return addDaysIso(invoiceDate, 30);
 }
 
+/** Persist header fields only — avoids TypeORM orphaning line FKs when lines were replaced via query builder. */
+async function persistSupplierInvoiceHeader(manager: EntityManager, inv: SupplierInvoice): Promise<void> {
+  await manager.update(
+    SupplierInvoice,
+    { id: inv.id },
+    {
+      supplierId: inv.supplierId,
+      invoiceNumber: inv.invoiceNumber,
+      invoiceDate: inv.invoiceDate,
+      dueDate: inv.dueDate,
+      purchaseOrderId: inv.purchaseOrderId,
+      grnId: inv.grnId,
+      status: inv.status,
+      subtotal: inv.subtotal,
+      taxAmount: inv.taxAmount,
+      discountAmount: inv.discountAmount,
+      total: inv.total,
+      notes: inv.notes,
+    }
+  );
+}
+
 function serialize(inv: SupplierInvoice, lines?: SupplierInvoiceLine[]) {
   return {
     id: inv.id,
@@ -267,7 +289,6 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
     const row = await runInTransaction(async (manager) => {
       const inv = await manager.findOne(SupplierInvoice, {
         where: { id: req.params.id },
-        relations: ['lines'],
       });
       if (!inv) throw new Error('Not found');
       if (inv.status !== 'draft') throw new Error('Only draft supplier invoices can be edited');
@@ -320,18 +341,16 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
         for (let i = 0; i < totals.lines.length; i++) {
           const cmp = totals.lines[i];
           const src = linesIn[i];
-          await manager.save(
-            manager.create(SupplierInvoiceLine, {
-              supplierInvoiceId: inv.id,
-              productId: cmp.productId,
-              quantity: parseDecimalStrict(String(src.quantity)),
-              unitPrice: parseDecimalStrict(String(src.unitPrice)),
-              taxAmount: cmp.taxAmount,
-              discountAmount: cmp.discountAmount,
-              grnLineId: src.grnLineId ?? undefined,
-              taxProfileId: src.taxProfileId ?? undefined,
-            })
-          );
+          await manager.insert(SupplierInvoiceLine, {
+            supplierInvoiceId: inv.id,
+            productId: cmp.productId,
+            quantity: parseDecimalStrict(String(src.quantity)),
+            unitPrice: parseDecimalStrict(String(src.unitPrice)),
+            taxAmount: cmp.taxAmount,
+            discountAmount: cmp.discountAmount,
+            grnLineId: src.grnLineId ?? undefined,
+            taxProfileId: src.taxProfileId ?? undefined,
+          });
         }
       } else if (b.discountAmount !== undefined || b.supplierId !== undefined) {
         const dbLines = await manager.find(SupplierInvoiceLine, { where: { supplierInvoiceId: inv.id } });
@@ -361,7 +380,7 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
       }
 
       if (b.supplierId !== undefined) inv.supplierId = b.supplierId;
-      await manager.save(inv);
+      await persistSupplierInvoiceHeader(manager, inv);
       return manager.findOneOrFail(SupplierInvoice, {
         where: { id: inv.id },
         relations: ['lines', 'supplier'],

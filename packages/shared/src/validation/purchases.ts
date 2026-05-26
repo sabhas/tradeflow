@@ -38,6 +38,10 @@ export const createGrnSchema = z.object({
     .min(1),
 });
 
+export const updateGrnSchema = createGrnSchema.partial().extend({
+  lines: createGrnSchema.shape.lines.optional(),
+});
+
 export const createSupplierInvoiceSchema = z.object({
   supplierId: z.string().uuid(),
   invoiceNumber: z.string().min(1),

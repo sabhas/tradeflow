@@ -10,7 +10,8 @@ export function decimalIsNegative(s: string): boolean {
 }
 
 export function parseDecimalStrict(s: string): string {
-  const n = parseFloat(s);
+  const normalized = String(s).replace(/,/g, '').trim();
+  const n = parseFloat(normalized);
   if (!Number.isFinite(n)) throw new Error('Invalid number');
   return n.toFixed(4);
 }

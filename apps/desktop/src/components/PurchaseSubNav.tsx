@@ -1,16 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { NavLink } from 'react-router-dom';
 import { apiFetch } from '../api/client';
+import { pendingSupplierInvoiceCountKey } from '../lib/purchaseQueryInvalidation';
 import { hasPermission } from '../lib/permissions';
 import { useAppSelector } from '../hooks/useAppSelector';
 
 const links = [
   { to: '/purchases/orders', label: 'Purchase orders' },
   { to: '/purchases/grns', label: 'Goods receipt (GRN)' },
-  { to: '/purchases/returns', label: 'Purchase returns' },
   { to: '/purchases/invoices', label: 'Supplier invoices', badgeKey: 'invoices' as const },
   { to: '/purchases/payments', label: 'Payments' },
   { to: '/purchases/reports', label: 'Statement & aging' },
+  { to: '/purchases/returns', label: 'Purchase returns' },
 ] as const;
 
 export function PurchaseSubNav() {
@@ -18,7 +19,7 @@ export function PurchaseSubNav() {
   const canGrn = hasPermission(permissions, 'purchases.grn:read');
 
   const pending = useQuery({
-    queryKey: ['grns', 'pending-invoice-count'],
+    queryKey: pendingSupplierInvoiceCountKey,
     enabled: canGrn,
     queryFn: () => apiFetch<{ data: { count: number } }>('/grns/pending-invoice-count').then((r) => r.data.count),
     refetchInterval: 120_000,

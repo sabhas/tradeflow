@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Grn, GrnLine, Product, PurchaseOrder, PurchaseOrderLine, SupplierInvoice, SupplierInvoiceLine } from '@tradeflow/db';
-import { createGrnSchema } from '@tradeflow/shared';
+import { createGrnSchema, updateGrnSchema } from '@tradeflow/shared';
 import { getPagination } from '../utils/pagination';
 import {
   applyMovement,
@@ -26,6 +26,7 @@ import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
 
 type CreateGrnInput = z.infer<typeof createGrnSchema>;
+type UpdateGrnInput = z.infer<typeof updateGrnSchema>;
 
 function serializeGrn(g: Grn, lines?: GrnLine[], linked?: LinkedSupplierInvoice | null) {
   return {
@@ -271,6 +272,102 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
     return created({ data: serializeGrn(row, row.lines, linkedMap.get(row.id)) });
   } catch (e) {
     throw new HttpError(400, { error: e instanceof Error ? e.message : 'Failed to create GRN' });
+  }
+}
+
+export async function updateGrn(req: Request, body: UpdateGrnInput): Promise<ControllerResult> {
+  try {
+    const row = await runInTransaction(async (manager) => {
+      const grn = await manager.findOne(Grn, {
+        where: { id: req.params.id },
+        relations: ['lines'],
+      });
+      if (!grn) throw new Error('Not found');
+      if (grn.status !== 'draft') throw new Error('Only draft GRNs can be edited');
+
+      const supplierId = body.supplierId ?? grn.supplierId;
+      const warehouseId = body.warehouseId ?? grn.warehouseId;
+      const grnDate = body.grnDate !== undefined ? body.grnDate.slice(0, 10) : grn.grnDate;
+      const purchaseOrderId =
+        body.purchaseOrderId !== undefined ? (body.purchaseOrderId ?? undefined) : grn.purchaseOrderId;
+
+      try {
+        await assertWarehouseInScope(warehouseId, undefined);
+        if (body.lines) {
+          for (const line of body.lines) {
+            await assertProductInScope(line.productId, undefined);
+          }
+        }
+      } catch (e) {
+        throw new Error(e instanceof Error ? e.message : 'Bad request');
+      }
+
+      if (purchaseOrderId) {
+        const po = await manager.findOne(PurchaseOrder, {
+          where: { id: purchaseOrderId },
+          relations: ['lines'],
+        });
+        if (!po) throw new Error('Purchase order not found');
+        if (po.supplierId !== supplierId) throw new Error('Supplier must match purchase order');
+        if (po.warehouseId !== warehouseId) throw new Error('Warehouse must match purchase order');
+        if (body.lines) {
+          for (const ln of body.lines) {
+            if (!ln.purchaseOrderLineId) continue;
+            const pol = po.lines?.find((p) => p.id === ln.purchaseOrderLineId);
+            if (!pol) throw new Error('Invalid purchase order line');
+            if (pol.productId !== ln.productId) throw new Error('Product does not match PO line');
+            const rem = parseFloat(pol.quantity) - parseFloat(pol.receivedQuantity);
+            const q = parseFloat(String(ln.quantity));
+            if (q > rem + 0.0001) throw new Error('Receive quantity exceeds open PO quantity');
+          }
+        }
+      }
+
+      grn.supplierId = supplierId;
+      grn.warehouseId = warehouseId;
+      grn.grnDate = grnDate;
+      grn.purchaseOrderId = purchaseOrderId;
+      await manager.save(grn);
+
+      if (body.lines) {
+        await enforceProductBatchControls(manager, body.lines);
+        await manager.delete(GrnLine, { grnId: grn.id });
+        for (const ln of body.lines) {
+          let unitPriceStr = '0.0000';
+          if (ln.purchaseOrderLineId) {
+            const pol = await manager.findOne(PurchaseOrderLine, { where: { id: ln.purchaseOrderLineId } });
+            if (!pol) throw new Error('Purchase order line not found');
+            unitPriceStr = pol.unitPrice;
+          }
+          if (ln.unitPrice != null && ln.unitPrice !== '') unitPriceStr = String(ln.unitPrice);
+          await manager.save(
+            manager.create(GrnLine, {
+              grnId: grn.id,
+              productId: ln.productId,
+              quantity: parseDecimalStrict(String(ln.quantity)),
+              unitPrice: parseDecimalStrict(unitPriceStr),
+              tradePrice: ln.tradePrice != null && ln.tradePrice !== '' ? parseDecimalStrict(String(ln.tradePrice)) : undefined,
+              retailPrice:
+                ln.retailPrice != null && ln.retailPrice !== '' ? parseDecimalStrict(String(ln.retailPrice)) : undefined,
+              purchaseOrderLineId: ln.purchaseOrderLineId ?? undefined,
+              batchCode: ln.batchCode?.trim() || undefined,
+              expiryDate: ln.expiryDate?.trim() ? ln.expiryDate.slice(0, 10) : undefined,
+            })
+          );
+        }
+      }
+
+      return manager.findOneOrFail(Grn, {
+        where: { id: grn.id },
+        relations: ['lines', 'supplier', 'warehouse'],
+      });
+    });
+    const linkedMap = await loadLinkedInvoicesByGrnIds([row.id]);
+    return ok({ data: serializeGrn(row, row.lines, linkedMap.get(row.id)) });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Failed to update GRN';
+    if (msg === 'Not found') throw new HttpError(404, { error: msg });
+    throw new HttpError(400, { error: msg });
   }
 }
 

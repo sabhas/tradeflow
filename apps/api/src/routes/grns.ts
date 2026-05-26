@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createGrnSchema } from '@tradeflow/shared';
+import { createGrnSchema, updateGrnSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -44,6 +44,24 @@ grnsRouter.post(
       return;
     }
     sendControllerResult(res, await grnsController.createGrn(req, parsed.data));
+  })
+);
+
+grnsRouter.patch(
+  '/:id',
+  requirePermission('purchases.grn', 'write'),
+  auditMiddleware({
+    entity: 'Grn',
+    getEntityId: (req) => req.params.id,
+    getNewValue: (req) => req.body,
+  }),
+  asyncHandler(async (req, res) => {
+    const parsed = updateGrnSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
+      return;
+    }
+    sendControllerResult(res, await grnsController.updateGrn(req, parsed.data));
   })
 );
 
