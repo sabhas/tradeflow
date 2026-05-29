@@ -25,6 +25,39 @@ function splitLineDiscount(totalDisc: number, partQty: number, totalQty: number,
   return (partQty / totalQty) * totalDisc;
 }
 
+function lineStockOutQty(line: InvoiceLine): number {
+  return parseFloat(line.quantity) + parseFloat(line.bonusQuantity || '0');
+}
+
+function sliceConsumptions(
+  parts: LayerConsumption[],
+  paidQty: number,
+  bonusQty: number
+): { paidParts: LayerConsumption[]; bonusParts: LayerConsumption[] } {
+  const paidParts: LayerConsumption[] = [];
+  const bonusParts: LayerConsumption[] = [];
+  let paidLeft = paidQty;
+  let bonusLeft = bonusQty;
+
+  for (const part of parts) {
+    let remaining = parseFloat(part.quantity);
+    while (remaining > 1e-6 && paidLeft > 1e-6) {
+      const take = Math.min(remaining, paidLeft);
+      paidParts.push({ ...part, quantity: parseDecimalStrict(take.toFixed(4)) });
+      paidLeft -= take;
+      remaining -= take;
+    }
+    while (remaining > 1e-6 && bonusLeft > 1e-6) {
+      const take = Math.min(remaining, bonusLeft);
+      bonusParts.push({ ...part, quantity: parseDecimalStrict(take.toFixed(4)) });
+      bonusLeft -= take;
+      remaining -= take;
+    }
+  }
+
+  return { paidParts, bonusParts };
+}
+
 /**
  * Before posting a sales invoice: split batch-tracked draft lines into one row per batch (FEFO/FIFO),
  * recompute document totals, and return per-line planned layer consumptions for stock posting.
@@ -49,6 +82,7 @@ export async function expandBatchTrackedInvoiceLinesForPost(
   type DraftLine = {
     productId: string;
     quantity: number;
+    bonusQuantity: string;
     unitPrice: string;
     discountAmount: string;
     taxProfileId?: string | null;
@@ -65,12 +99,14 @@ export async function expandBatchTrackedInvoiceLinesForPost(
     const product = productById.get(line.productId);
     if (!product) throw new Error(`Product not found: ${line.productId}`);
     const qty = parseFloat(line.quantity);
+    const bonusQty = parseFloat(line.bonusQuantity || '0');
     if (qty <= 0) throw new Error('Line quantity must be positive');
 
     if (!productNeedsBatchSplit(product)) {
       expanded.push({
         productId: line.productId,
         quantity: qty,
+        bonusQuantity: line.bonusQuantity || '0',
         unitPrice: line.unitPrice,
         discountAmount: line.discountAmount,
         taxProfileId: line.taxProfileId,
@@ -89,6 +125,7 @@ export async function expandBatchTrackedInvoiceLinesForPost(
       expanded.push({
         productId: line.productId,
         quantity: qty,
+        bonusQuantity: line.bonusQuantity || '0',
         unitPrice: line.unitPrice,
         discountAmount: line.discountAmount,
         taxProfileId: line.taxProfileId,
@@ -105,28 +142,38 @@ export async function expandBatchTrackedInvoiceLinesForPost(
       continue;
     }
 
-    const parts = await planLayerConsumptions(manager, product, company, invoice.warehouseId, line.quantity);
+    const allParts = await planLayerConsumptions(
+      manager,
+      product,
+      company,
+      invoice.warehouseId,
+      String(qty + bonusQty)
+    );
+    const { paidParts, bonusParts } = sliceConsumptions(allParts, qty, bonusQty);
     const totalDisc = parseFloat(line.discountAmount || '0');
     let discAssigned = 0;
     const useRetail = product.autoPriceFromRetail === true;
 
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
+    for (let i = 0; i < paidParts.length; i++) {
+      const part = paidParts[i];
       const partQty = parseFloat(part.quantity);
-      const partDisc = splitLineDiscount(totalDisc, partQty, qty, i === parts.length - 1, discAssigned);
+      const partDisc = splitLineDiscount(totalDisc, partQty, qty, i === paidParts.length - 1, discAssigned);
       discAssigned += partDisc;
       const unitPrice = pickLayerPrice(product, useRetail, part.tradePrice, part.retailPrice);
+      const planned: LayerConsumption[] =
+        i === 0 ? [...(bonusParts.length ? [part, ...bonusParts] : [part])] : [part];
 
       expanded.push({
         productId: line.productId,
         quantity: partQty,
+        bonusQuantity: i === 0 ? parseDecimalStrict(String(bonusQty)) : '0.0000',
         unitPrice,
         discountAmount: partDisc.toFixed(4),
         taxProfileId: line.taxProfileId,
         salesOrderLineId: i === 0 ? line.salesOrderLineId : undefined,
         batchCode: part.batchCode?.trim() || undefined,
         expiryDate: toIsoDateString(part.expiryDate),
-        planned: [part],
+        planned,
       });
     }
 
@@ -144,6 +191,7 @@ export async function expandBatchTrackedInvoiceLinesForPost(
     expanded.map((l) => ({
       productId: l.productId,
       quantity: l.quantity,
+      bonusQuantity: l.bonusQuantity,
       unitPrice: l.unitPrice,
       discountAmount: l.discountAmount,
       taxProfileId: l.taxProfileId,
@@ -168,6 +216,7 @@ export async function expandBatchTrackedInvoiceLinesForPost(
         invoiceId: invoice.id,
         productId: tl.productId,
         quantity: tl.quantity,
+        bonusQuantity: src.bonusQuantity,
         unitPrice: tl.unitPrice,
         taxAmount: tl.taxAmount,
         discountAmount: tl.discountAmount,
@@ -199,7 +248,14 @@ export async function planConsumptionForInvoiceLine(
   line: InvoiceLine
 ): Promise<LayerConsumption[]> {
   const company = await loadCompanyForInventory(manager);
-  const parts = await planLayerConsumptions(manager, product, company, warehouseId, line.quantity);
+  const stockQty = lineStockOutQty(line);
+  const parts = await planLayerConsumptions(
+    manager,
+    product,
+    company,
+    warehouseId,
+    parseDecimalStrict(stockQty.toFixed(4))
+  );
   const batchNorm = (line.batchCode ?? '').trim();
   const expiryNorm = toIsoDateString(line.expiryDate) ?? '';
 
@@ -211,7 +267,7 @@ export async function planConsumptionForInvoiceLine(
 
   if (match.length === 1) return match;
 
-  const qtyNeed = parseFloat(parseDecimalStrict(line.quantity));
+  const qtyNeed = stockQty;
   let got = 0;
   const out: LayerConsumption[] = [];
   for (const p of match) {

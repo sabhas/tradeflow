@@ -49,6 +49,7 @@ const PAGE_SIZE = 50;
 type Line = {
   productId: string;
   quantity: number;
+  bonusQuantity: number;
   unitPrice: string;
   discountAmount: string;
   taxProfileId: string;
@@ -61,6 +62,7 @@ type Line = {
 const emptyLine = (): Line => ({
   productId: '',
   quantity: 1,
+  bonusQuantity: 0,
   unitPrice: '0',
   discountAmount: '0',
   taxProfileId: '',
@@ -176,6 +178,7 @@ export function InvoicesPage() {
             id: string;
             productId: string;
             quantity: string;
+            bonusQuantity?: string;
             unitPrice: string;
             discountAmount: string;
             taxProfileId?: string | null;
@@ -210,6 +213,7 @@ export function InvoicesPage() {
         ? d.lines.map((l) => ({
             productId: l.productId,
             quantity: parseFloat(l.quantity),
+            bonusQuantity: parseFloat(l.bonusQuantity ?? '0'),
             unitPrice: l.unitPrice,
             discountAmount: l.discountAmount,
             taxProfileId: l.taxProfileId ?? '',
@@ -223,6 +227,41 @@ export function InvoicesPage() {
         : [emptyLine()]
     );
   }, [detail.data, editingId]);
+
+  const bonusDeps = useMemo(
+    () => lines.map((l) => `${l.productId}:${l.quantity}`).join('|'),
+    [lines]
+  );
+
+  useEffect(() => {
+    if (documentKind !== 'invoice' || !panelOpen) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const nextBonuses = await Promise.all(
+          lines.map(async (line) => {
+            if (!line.productId || line.quantity <= 0) return 0;
+            const res = await apiFetch<{ data: { bonusQuantity: string } }>(
+              `/bonus-rules/calculate?productId=${encodeURIComponent(line.productId)}&quantity=${line.quantity}`
+            );
+            return parseFloat(res.data.bonusQuantity) || 0;
+          })
+        );
+        if (cancelled) return;
+        setLines((prev) =>
+          prev.map((line, i) =>
+            line.bonusQuantity === nextBonuses[i] ? line : { ...line, bonusQuantity: nextBonuses[i] ?? 0 }
+          )
+        );
+      } catch {
+        /* bonus preview is best-effort */
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [bonusDeps, documentKind, panelOpen]);
 
   const postedForCredit = useQuery({
     queryKey: ['invoices', 'credit-source', customerId],
@@ -265,6 +304,7 @@ export function InvoicesPage() {
       data.lines.map((l) => ({
         productId: l.productId,
         quantity: parseFloat(l.quantity),
+        bonusQuantity: 0,
         unitPrice: l.unitPrice,
         discountAmount: l.discountAmount,
         taxProfileId: l.taxProfileId ?? '',
@@ -372,6 +412,7 @@ export function InvoicesPage() {
           next[next.length - 1] = {
             productId: data.id,
             quantity: 1,
+            bonusQuantity: 0,
             unitPrice: data.sellingPrice,
             discountAmount: '0',
             taxProfileId: '',
@@ -386,6 +427,7 @@ export function InvoicesPage() {
           {
             productId: data.id,
             quantity: 1,
+            bonusQuantity: 0,
             unitPrice: data.sellingPrice,
             discountAmount: '0',
             taxProfileId: '',
@@ -439,6 +481,7 @@ export function InvoicesPage() {
         lines: cleaned.map((l) => ({
           productId: l.productId,
           quantity: l.quantity,
+          bonusQuantity: l.bonusQuantity > 0 ? String(l.bonusQuantity) : undefined,
           unitPrice: l.unitPrice.trim() ? l.unitPrice : undefined,
           discountAmount: l.discountAmount || '0',
           taxProfileId: l.taxProfileId || null,
@@ -1183,6 +1226,17 @@ export function InvoicesPage() {
                       }
                     />
                   </label>
+                  {documentKind === 'invoice' && (
+                    <label className="sm:col-span-1">
+                      <span className="text-xs text-slate-500">Bonus</span>
+                      <input
+                        readOnly
+                        tabIndex={-1}
+                        className="mt-0.5 w-full rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm tabular-nums text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300"
+                        value={line.bonusQuantity > 0 ? line.bonusQuantity : '—'}
+                      />
+                    </label>
+                  )}
                   <label className="sm:col-span-2">
                     <span className="text-xs text-slate-500">Price</span>
                     <input
@@ -1291,7 +1345,7 @@ export function InvoicesPage() {
                       <LineStockInfo
                         productId={line.productId}
                         warehouseId={warehouseId}
-                        requestedQuantity={line.quantity}
+                        requestedQuantity={line.quantity + (line.bonusQuantity || 0)}
                       />
                     </div>
                   )}

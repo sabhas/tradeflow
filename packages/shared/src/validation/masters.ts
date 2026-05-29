@@ -205,6 +205,22 @@ export const createPaymentTermsSchema = z.object({
 
 export const updatePaymentTermsSchema = createPaymentTermsSchema.partial();
 
+export const createBonusRuleSchema = z.object({
+  productId: z.string().uuid(),
+  minQuantity: decimal,
+  bonusQuantity: decimal,
+  isActive: z.boolean().optional(),
+});
+
+export const updateBonusRuleSchema = createBonusRuleSchema.partial().extend({
+  productId: z.string().uuid().optional(),
+});
+
+export const calculateBonusSchema = z.object({
+  productId: z.string().uuid(),
+  quantity: z.number().finite().positive(),
+});
+
 export type CreateProductCategoryInput = z.infer<typeof createProductCategorySchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;

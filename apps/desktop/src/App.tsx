@@ -8,6 +8,7 @@ import { ProductCategoriesPage } from './pages/masters/ProductCategoriesPage';
 import { ProductsPage } from './pages/masters/ProductsPage';
 import { UnitsPage } from './pages/masters/UnitsPage';
 import { PriceLevelsPage } from './pages/masters/PriceLevelsPage';
+import { BonusRulesPage } from './pages/masters/BonusRulesPage';
 import { CustomersPage } from './pages/masters/CustomersPage';
 import { TownsAndAreasPage } from './pages/masters/TownsAndAreasPage';
 import { SuppliersPage } from './pages/masters/SuppliersPage';
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="masters/products" element={<ProductsPage />} />
           <Route path="masters/units" element={<UnitsPage />} />
           <Route path="masters/price-levels" element={<PriceLevelsPage />} />
+          <Route path="masters/bonus-rules" element={<BonusRulesPage />} />
           <Route path="masters/customers" element={<CustomersPage />} />
           <Route path="masters/customer-types" element={<CustomerTypesPage />} />
           <Route path="masters/towns-areas" element={<TownsAndAreasPage />} />

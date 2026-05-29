@@ -19,6 +19,7 @@ import {
   assertSalesOrderConfirmedForInvoice,
 } from '../services/salesOrderInvoiceGuard';
 import { assertSalesOrderLinesInStock } from '../services/salesOrderStockValidation';
+import { calculateBonus } from '../services/bonusService';
 
 type CreateSalesOrderInput = z.infer<typeof createSalesOrderSchema>;
 type UpdateSalesOrderInput = z.infer<typeof updateSalesOrderSchema>;
@@ -483,12 +484,20 @@ export async function convertSalesOrderToInvoice(
       }
 
       const invDisc = b.discountAmount ?? '0.0000';
+      const linesWithBonus: Array<(typeof lineInputs)[number] & { bonusQuantity: string }> = [];
+      for (const line of lineInputs) {
+        linesWithBonus.push({
+          ...line,
+          bonusQuantity: await calculateBonus(manager, line.productId, line.quantity),
+        });
+      }
       const totals = await computeSalesDocumentTotals(
         manager,
         o.customerId,
-        lineInputs.map((l) => ({
+        linesWithBonus.map((l) => ({
           productId: l.productId,
           quantity: l.quantity,
+          bonusQuantity: l.bonusQuantity,
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
@@ -524,13 +533,14 @@ export async function convertSalesOrderToInvoice(
 
       for (let i = 0; i < totals.lines.length; i++) {
         const l = totals.lines[i];
-        const meta = lineInputs[i];
+        const meta = linesWithBonus[i];
         await manager.save(
           manager.create(InvoiceLine, {
             invoiceId: invoice.id,
             productId: l.productId,
             salesOrderLineId: meta.salesOrderLineId,
             quantity: l.quantity,
+            bonusQuantity: meta.bonusQuantity,
             unitPrice: l.unitPrice,
             taxAmount: l.taxAmount,
             discountAmount: l.discountAmount,
@@ -562,6 +572,7 @@ export async function convertSalesOrderToInvoice(
           productId: l.productId,
           salesOrderLineId: l.salesOrderLineId,
           quantity: l.quantity,
+          bonusQuantity: l.bonusQuantity,
           unitPrice: l.unitPrice,
           taxAmount: l.taxAmount,
           discountAmount: l.discountAmount,

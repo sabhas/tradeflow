@@ -67,6 +67,7 @@ const menuItems: MenuItem[] = [
       { type: 'link', path: '/masters/products', label: 'Products', icon: '📦', permission: 'masters.products:read' },
       { type: 'link', path: '/masters/units', label: 'Units', icon: '📏', permission: 'masters.products:read' },
       { type: 'link', path: '/masters/price-levels', label: 'Price levels', icon: '💰', permission: 'masters.products:read' },
+      { type: 'link', path: '/masters/bonus-rules', label: 'Bonus rules', icon: '🎁', permission: 'masters.products:read' },
       { type: 'link', path: '/masters/customers', label: 'Customers', icon: '👤', permission: 'masters.customers:read' },
       { type: 'link', path: '/masters/customer-types', label: 'Customer types', icon: '🏷️', permission: 'masters.customers:read' },
       { type: 'link', path: '/masters/towns-areas', label: 'Towns & areas', icon: '📍', permission: 'masters.customers:read' },

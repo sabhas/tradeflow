@@ -138,6 +138,7 @@ export async function postInvoice(invoiceId: string, userId: string | undefined)
 
       for (const { line, plannedConsumptions } of plans) {
         const q = parseFloat(line.quantity);
+        const bonusQty = parseFloat(line.bonusQuantity || '0');
         if (q <= 0) continue;
         const product = productById.get(line.productId);
         if (!product) throw new Error('Product not found');
@@ -147,7 +148,8 @@ export async function postInvoice(invoiceId: string, userId: string | undefined)
           planned = await planConsumptionForInvoiceLine(manager, product, inv.warehouseId, line);
         }
 
-        const delta = (-q).toFixed(4);
+        const stockOut = q + bonusQty;
+        const delta = (-stockOut).toFixed(4);
         await applyMovement(manager, {
           productId: line.productId,
           warehouseId: inv.warehouseId,

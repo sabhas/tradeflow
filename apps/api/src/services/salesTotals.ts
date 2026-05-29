@@ -1,5 +1,5 @@
-import { EntityManager, IsNull } from 'typeorm';
-import { Customer, TaxProfile } from '@tradeflow/db';
+import { EntityManager, In, IsNull } from 'typeorm';
+import { Customer, Product, TaxProfile } from '@tradeflow/db';
 import { computeLineTax } from '@tradeflow/shared';
 import { moneyIsNegative } from '../utils/money';
 import { roundAmountString } from '../utils/rounding';
@@ -11,6 +11,7 @@ export interface LineIn {
   unitPrice: string;
   discountAmount?: string;
   taxProfileId?: string | null;
+  bonusQuantity?: string;
 }
 
 export interface ComputedLine {
@@ -46,6 +47,13 @@ export async function computeSalesDocumentTotals(
   let subAcc = 0;
   let taxAcc = 0;
 
+  const productIds = [...new Set(lines.map((l) => l.productId))];
+  const products =
+    productIds.length > 0
+      ? await manager.find(Product, { where: { id: In(productIds), deletedAt: IsNull() } })
+      : [];
+  const productById = new Map(products.map((p) => [p.id, p]));
+
   for (const line of lines) {
     const tpId = line.taxProfileId ?? customer.taxProfileId;
     let profile: { rate: string; isInclusive: boolean } | null = null;
@@ -55,13 +63,17 @@ export async function computeSalesDocumentTotals(
     }
     const qtyStr = roundAmountString(String(line.quantity), qd, mode);
     const q = parseFloat(qtyStr);
+    const bonusQ = parseFloat(line.bonusQuantity || '0');
+    const product = productById.get(line.productId);
+    const taxableQty = product?.staxOnBonusSale ? q + bonusQ : q;
     const p = parseFloat(line.unitPrice);
     const ld = parseFloat(line.discountAmount || '0');
     if (q <= 0) throw new Error('Line quantity must be positive');
-    const gross = q * p - ld;
+    const gross = taxableQty * p - ld;
     const { baseAmount: baseStr, taxAmount: taxStr } = computeLineTax(gross, profile);
     const baseRounded = roundAmountString(baseStr, md, mode);
     const taxRounded = roundAmountString(taxStr, md, mode);
+    const revenueBase = q * p - ld;
     computed.push({
       ...line,
       quantity: qtyStr,
@@ -71,7 +83,7 @@ export async function computeSalesDocumentTotals(
           : roundAmountString('0', md, mode),
       taxAmount: taxRounded,
     });
-    subAcc += parseFloat(baseRounded);
+    subAcc += parseFloat(roundAmountString(String(revenueBase), md, mode));
     taxAcc += parseFloat(taxRounded);
   }
 

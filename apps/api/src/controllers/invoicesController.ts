@@ -24,7 +24,8 @@ import {
   enforceProductBatchControls,
 } from '../services/productBatchControls';
 import { getCompanySettingsRow } from '../services/companySettings';
-import { resolveInvoiceLineUnitPrices } from '../services/invoicePricingService';
+import { resolveInvoiceLineUnitPrices, type InvoiceLinePricingResolved } from '../services/invoicePricingService';
+import { calculateBonus } from '../services/bonusService';
 import {
   assertNoOtherInvoiceForSalesOrder,
   assertSalesOrderConfirmedForInvoice,
@@ -57,6 +58,7 @@ function lineBatchExpiryFields(line: {
 type InvoiceLineInsert = {
   productId: string;
   quantity: string | number;
+  bonusQuantity?: string | number;
   unitPrice: string;
   taxAmount: string;
   discountAmount: string;
@@ -77,6 +79,7 @@ async function insertInvoiceLine(
     invoiceId,
     productId: line.productId,
     quantity: parseDecimalStrict(String(line.quantity)),
+    bonusQuantity: parseDecimalStrict(String(line.bonusQuantity ?? '0')),
     unitPrice: parseDecimalStrict(line.unitPrice),
     taxAmount: parseDecimalStrict(line.taxAmount),
     discountAmount: parseDecimalStrict(line.discountAmount || '0'),
@@ -85,6 +88,28 @@ async function insertInvoiceLine(
     batchCode: batchExpiry.batchCode,
     expiryDate: batchExpiry.expiryDate,
   });
+}
+
+async function attachBonusQuantities(
+  manager: EntityManager,
+  documentKind: string,
+  pricedLines: InvoiceLinePricingResolved[],
+  inputLines: Array<{ bonusQuantity?: string }>
+): Promise<Array<InvoiceLinePricingResolved & { bonusQuantity: string }>> {
+  if (documentKind === 'credit_note') {
+    return pricedLines.map((l) => ({ ...l, bonusQuantity: '0.0000' }));
+  }
+  const out: Array<InvoiceLinePricingResolved & { bonusQuantity: string }> = [];
+  for (let i = 0; i < pricedLines.length; i++) {
+    const line = pricedLines[i];
+    const input = inputLines[i];
+    const bonusQuantity =
+      input?.bonusQuantity != null && input.bonusQuantity !== ''
+        ? parseDecimalStrict(input.bonusQuantity)
+        : await calculateBonus(manager, line.productId, line.quantity);
+    out.push({ ...line, bonusQuantity });
+  }
+  return out;
 }
 
 export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
@@ -118,6 +143,7 @@ export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
         salesOrderLineId: l.salesOrderLineId,
         originalInvoiceLineId: l.originalInvoiceLineId ?? null,
         quantity: l.quantity,
+        bonusQuantity: l.bonusQuantity ?? '0',
         unitPrice: l.unitPrice,
         taxAmount: l.taxAmount,
         discountAmount: l.discountAmount,
@@ -278,12 +304,14 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
         );
       }
       const pricedLines = await resolveInvoiceLineUnitPrices(manager, b.warehouseId, lineInputs);
+      const linesWithBonus = await attachBonusQuantities(manager, documentKind, pricedLines, lineInputs);
       const totals = await computeSalesDocumentTotals(
         manager,
         b.customerId,
-        pricedLines.map((l) => ({
+        linesWithBonus.map((l) => ({
           productId: l.productId,
           quantity: l.quantity,
+          bonusQuantity: l.bonusQuantity,
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
@@ -324,13 +352,14 @@ export async function createInvoice(req: Request, body: CreateInvoiceInput): Pro
       await manager.save(inv);
       for (let i = 0; i < totals.lines.length; i++) {
         const l = totals.lines[i];
-        const pl = pricedLines[i];
+        const pl = linesWithBonus[i];
         const inputLine = lineInputs[i];
         await manager.save(
           manager.create(InvoiceLine, {
             invoiceId: inv.id,
             productId: l.productId,
             quantity: l.quantity,
+            bonusQuantity: pl.bonusQuantity,
             unitPrice: l.unitPrice,
             taxAmount: l.taxAmount,
             discountAmount: l.discountAmount,
@@ -437,12 +466,19 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
           b.warehouseId ?? inv.warehouseId,
           lineInputs
         );
+        const linesWithBonus = await attachBonusQuantities(
+          manager,
+          inv.documentKind ?? 'invoice',
+          pricedLines,
+          lineInputs
+        );
         const totals = await computeSalesDocumentTotals(
           manager,
           inv.customerId,
-          pricedLines.map((l) => ({
+          linesWithBonus.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
+            bonusQuantity: l.bonusQuantity,
             unitPrice: l.unitPrice,
             discountAmount: l.discountAmount,
             taxProfileId: l.taxProfileId,
@@ -456,11 +492,12 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
         await manager.delete(InvoiceLine, { invoiceId: inv.id });
         for (let i = 0; i < totals.lines.length; i++) {
           const l = totals.lines[i];
-          const pl = pricedLines[i];
+          const pl = linesWithBonus[i];
           const inputLine = lineInputs[i];
           await insertInvoiceLine(manager, inv.id, {
             productId: l.productId,
             quantity: l.quantity,
+            bonusQuantity: pl.bonusQuantity,
             unitPrice: l.unitPrice,
             taxAmount: l.taxAmount,
             discountAmount: l.discountAmount,
@@ -475,6 +512,7 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
         const lines = dbLines.map((l) => ({
           productId: l.productId,
           quantity: parseFloat(l.quantity),
+          bonusQuantity: l.bonusQuantity,
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
@@ -494,6 +532,7 @@ export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Pro
           await insertInvoiceLine(manager, inv.id, {
             productId: l.productId,
             quantity: l.quantity,
+            bonusQuantity: src?.bonusQuantity ?? '0',
             unitPrice: l.unitPrice,
             taxAmount: l.taxAmount,
             discountAmount: l.discountAmount,
