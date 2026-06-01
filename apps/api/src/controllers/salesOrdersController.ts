@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import type { EntityManager } from 'typeorm';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
 import { Product, SalesOrder, SalesOrderLine, Invoice, InvoiceLine } from '@tradeflow/db';
@@ -19,12 +20,38 @@ import {
   assertSalesOrderConfirmedForInvoice,
 } from '../services/salesOrderInvoiceGuard';
 import { assertSalesOrderLinesInStock } from '../services/salesOrderStockValidation';
-import { calculateBonus } from '../services/bonusService';
+import { calculateBonus, calculateBonusBatch } from '../services/bonusService';
 
 type CreateSalesOrderInput = z.infer<typeof createSalesOrderSchema>;
 type UpdateSalesOrderInput = z.infer<typeof updateSalesOrderSchema>;
 type ConvertOrderToInvoiceInput = z.infer<typeof convertOrderToInvoiceSchema>;
 type BulkSalesOrdersInput = z.infer<typeof bulkSalesOrdersSchema>;
+
+type SalesOrderLineInput = {
+  productId: string;
+  quantity: number;
+  unitPrice: string;
+  discountAmount?: string;
+  taxProfileId?: string | null;
+};
+
+async function attachSalesOrderLineBonuses(
+  manager: EntityManager,
+  lines: SalesOrderLineInput[]
+): Promise<Array<SalesOrderLineInput & { bonusQuantity: string }>> {
+  const bonusMap = await calculateBonusBatch(
+    manager,
+    lines.map((l) => ({ productId: l.productId, quantity: l.quantity }))
+  );
+  return lines.map((l) => ({
+    ...l,
+    bonusQuantity: bonusMap.get(`${l.productId}:${l.quantity}`) ?? '0.0000',
+  }));
+}
+
+function stockQtyForLine(quantity: number, bonusQuantity: string): number {
+  return quantity + parseFloat(bonusQuantity || '0');
+}
 
 export function serializeSalesOrder(
   o: SalesOrder,
@@ -58,6 +85,7 @@ export function serializeSalesOrder(
         id: l.id,
         productId: l.productId,
         quantity: l.quantity,
+        bonusQuantity: l.bonusQuantity ?? '0',
         unitPrice: l.unitPrice,
         taxAmount: l.taxAmount,
         discountAmount: l.discountAmount,
@@ -212,17 +240,22 @@ export async function createSalesOrder(req: Request, body: CreateSalesOrderInput
   const b = body;
   try {
     const saved = await runInTransaction(async (manager) => {
+      const linesWithBonus = await attachSalesOrderLineBonuses(manager, b.lines);
       await assertSalesOrderLinesInStock(
         manager,
         b.warehouseId ?? undefined,
-        b.lines.map((l) => ({ productId: l.productId, quantity: l.quantity }))
+        linesWithBonus.map((l) => ({
+          productId: l.productId,
+          quantity: stockQtyForLine(l.quantity, l.bonusQuantity),
+        }))
       );
       const totals = await computeSalesDocumentTotals(
         manager,
         b.customerId,
-        b.lines.map((l) => ({
+        linesWithBonus.map((l) => ({
           productId: l.productId,
           quantity: l.quantity,
+          bonusQuantity: l.bonusQuantity,
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
@@ -243,12 +276,15 @@ export async function createSalesOrder(req: Request, body: CreateSalesOrderInput
         createdBy: req.auth?.userId,
       });
       await manager.save(o);
-      for (const l of totals.lines) {
+      for (let i = 0; i < totals.lines.length; i++) {
+        const l = totals.lines[i];
+        const meta = linesWithBonus[i];
         await manager.save(
           manager.create(SalesOrderLine, {
             salesOrderId: o.id,
             productId: l.productId,
             quantity: l.quantity,
+            bonusQuantity: meta.bonusQuantity,
             unitPrice: l.unitPrice,
             taxAmount: l.taxAmount,
             discountAmount: l.discountAmount,
@@ -290,27 +326,24 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
       if (b.salespersonId !== undefined) o.salespersonId = b.salespersonId ?? undefined;
       if (b.notes !== undefined) o.notes = b.notes ?? undefined;
 
-      const lineRowsForStock = async (): Promise<Array<{ productId: string; quantity: number }>> => {
-        const dbLines = await manager.find(SalesOrderLine, { where: { salesOrderId: o.id } });
-        return dbLines.map((l) => ({
-          productId: l.productId,
-          quantity: parseFloat(l.quantity),
-        }));
-      };
-
       if (b.lines) {
+        const linesWithBonus = await attachSalesOrderLineBonuses(manager, b.lines);
         await assertSalesOrderLinesInStock(
           manager,
           o.warehouseId,
-          b.lines.map((l) => ({ productId: l.productId, quantity: l.quantity }))
+          linesWithBonus.map((l) => ({
+            productId: l.productId,
+            quantity: stockQtyForLine(l.quantity, l.bonusQuantity),
+          }))
         );
         await manager.delete(SalesOrderLine, { salesOrderId: o.id });
         const totals = await computeSalesDocumentTotals(
           manager,
           o.customerId,
-          b.lines.map((l) => ({
+          linesWithBonus.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
+            bonusQuantity: l.bonusQuantity,
             unitPrice: l.unitPrice,
             discountAmount: l.discountAmount,
             taxProfileId: l.taxProfileId,
@@ -321,12 +354,15 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
         o.taxAmount = totals.taxAmount;
         o.discountAmount = totals.discountAmount;
         o.total = totals.total;
-        for (const l of totals.lines) {
+        for (let i = 0; i < totals.lines.length; i++) {
+          const l = totals.lines[i];
+          const meta = linesWithBonus[i];
           await manager.save(
             manager.create(SalesOrderLine, {
               salesOrderId: o.id,
               productId: l.productId,
               quantity: l.quantity,
+              bonusQuantity: meta.bonusQuantity,
               unitPrice: l.unitPrice,
               taxAmount: l.taxAmount,
               discountAmount: l.discountAmount,
@@ -342,12 +378,13 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
           o.warehouseId,
           dbLines.map((l) => ({
             productId: l.productId,
-            quantity: parseFloat(l.quantity),
+            quantity: stockQtyForLine(parseFloat(l.quantity), l.bonusQuantity ?? '0'),
           }))
         );
         const lines = dbLines.map((l) => ({
           productId: l.productId,
           quantity: parseFloat(l.quantity),
+          bonusQuantity: l.bonusQuantity ?? '0',
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
@@ -358,12 +395,15 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
         o.discountAmount = totals.discountAmount;
         o.total = totals.total;
         await manager.delete(SalesOrderLine, { salesOrderId: o.id });
-        for (const l of totals.lines) {
+        for (let i = 0; i < totals.lines.length; i++) {
+          const l = totals.lines[i];
+          const meta = lines[i];
           await manager.save(
             manager.create(SalesOrderLine, {
               salesOrderId: o.id,
               productId: l.productId,
               quantity: l.quantity,
+              bonusQuantity: meta.bonusQuantity,
               unitPrice: l.unitPrice,
               taxAmount: l.taxAmount,
               discountAmount: l.discountAmount,
@@ -373,9 +413,16 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
           );
         }
       } else if (b.warehouseId !== undefined) {
-        const stockLines = await lineRowsForStock();
-        if (stockLines.length > 0) {
-          await assertSalesOrderLinesInStock(manager, o.warehouseId, stockLines);
+        const dbLines = await manager.find(SalesOrderLine, { where: { salesOrderId: o.id } });
+        if (dbLines.length > 0) {
+          await assertSalesOrderLinesInStock(
+            manager,
+            o.warehouseId,
+            dbLines.map((l) => ({
+              productId: l.productId,
+              quantity: stockQtyForLine(parseFloat(l.quantity), l.bonusQuantity ?? '0'),
+            }))
+          );
         }
       }
       await manager.save(o);

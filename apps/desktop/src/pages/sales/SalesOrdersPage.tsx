@@ -39,6 +39,7 @@ interface OrderLine {
   id: string;
   productId: string;
   quantity: string;
+  bonusQuantity?: string;
   unitPrice: string;
   discountAmount: string;
   taxProfileId?: string | null;
@@ -46,11 +47,19 @@ interface OrderLine {
   product?: { sku: string; name: string };
 }
 
-type Line = { productId: string; quantity: number; unitPrice: string; discountAmount: string; taxProfileId: string };
+type Line = {
+  productId: string;
+  quantity: number;
+  bonusQuantity: number;
+  unitPrice: string;
+  discountAmount: string;
+  taxProfileId: string;
+};
 
 const emptyLine = (): Line => ({
   productId: '',
   quantity: 1,
+  bonusQuantity: 0,
   unitPrice: '0',
   discountAmount: '0',
   taxProfileId: '',
@@ -216,6 +225,7 @@ export function SalesOrdersPage() {
         ? d.lines.map((l) => ({
             productId: l.productId,
             quantity: parseFloat(l.quantity),
+            bonusQuantity: parseFloat(l.bonusQuantity ?? '0'),
             unitPrice: formatMoneyPlain(l.unitPrice),
             discountAmount: formatMoneyPlain(l.discountAmount),
             taxProfileId: l.taxProfileId ?? '',
@@ -375,6 +385,41 @@ export function SalesOrdersPage() {
     editingId && detail.data?.id === editingId ? detail.data : undefined;
   /** API allows edits only for draft; avoid showing an editable form that will fail on save. */
   const orderReadOnly = !!editingId && (!panelOrder || panelOrder.status !== 'draft');
+
+  const bonusDeps = useMemo(
+    () => lines.map((l) => `${l.productId}:${l.quantity}`).join('|'),
+    [lines]
+  );
+
+  useEffect(() => {
+    if (!panelOpen || orderReadOnly) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const nextBonuses = await Promise.all(
+          lines.map(async (line) => {
+            if (!line.productId || line.quantity <= 0) return 0;
+            const res = await apiFetch<{ data: { bonusQuantity: string } }>(
+              `/bonus-rules/calculate?productId=${encodeURIComponent(line.productId)}&quantity=${line.quantity}`
+            );
+            return parseFloat(res.data.bonusQuantity) || 0;
+          })
+        );
+        if (cancelled) return;
+        setLines((prev) =>
+          prev.map((line, i) =>
+            line.bonusQuantity === nextBonuses[i] ? line : { ...line, bonusQuantity: nextBonuses[i] ?? 0 }
+          )
+        );
+      } catch {
+        /* bonus preview is best-effort */
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [bonusDeps, panelOpen, orderReadOnly, lines]);
 
   const doConvert = useMutation({
     mutationFn: async () => {
@@ -1034,6 +1079,15 @@ export function SalesOrdersPage() {
                       }
                     />
                   </label>
+                  <label className="sm:col-span-1">
+                    <span className="text-xs text-slate-500">Bonus</span>
+                    <input
+                      readOnly
+                      tabIndex={-1}
+                      className="mt-0.5 w-full rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm tabular-nums text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300"
+                      value={line.bonusQuantity > 0 ? line.bonusQuantity : '—'}
+                    />
+                  </label>
                   <label className="sm:col-span-2">
                     <span className="text-xs text-slate-500">Price</span>
                     <input
@@ -1121,7 +1175,7 @@ export function SalesOrdersPage() {
                     <LineStockInfo
                       productId={line.productId}
                       warehouseId={warehouseId}
-                      requestedQuantity={line.quantity}
+                      requestedQuantity={line.quantity + (line.bonusQuantity || 0)}
                     />
                   </div>
                 </div>
@@ -1194,6 +1248,11 @@ export function SalesOrdersPage() {
                       <span className="flex-1 truncate text-slate-700 dark:text-slate-200">
                         {ol?.product ? `${ol.product.sku} — ${ol.product.name}` : ol?.productId ?? il.salesOrderLineId}
                       </span>
+                      {ol && parseFloat(ol.bonusQuantity ?? '0') > 0 && (
+                        <span className="shrink-0 text-xs text-slate-500 tabular-nums">
+                          bonus {parseFloat(ol.bonusQuantity ?? '0')}
+                        </span>
+                      )}
                       <input
                         type="number"
                         inputMode="decimal"
