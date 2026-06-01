@@ -1,5 +1,5 @@
-import { EntityManager, IsNull } from 'typeorm';
-import { Supplier, TaxProfile } from '@tradeflow/db';
+import { EntityManager, In, IsNull } from 'typeorm';
+import { Product, Supplier, TaxProfile } from '@tradeflow/db';
 import { computeLineTax } from '@tradeflow/shared';
 import { moneyAdd, moneySub, moneyIsNegative } from '../utils/money';
 
@@ -9,6 +9,7 @@ export interface PurchaseLineIn {
   unitPrice: string;
   discountAmount?: string;
   taxProfileId?: string | null;
+  bonusQuantity?: string;
 }
 
 export interface PurchaseComputedLine {
@@ -39,6 +40,13 @@ export async function computePurchaseDocumentTotals(
   });
   if (!supplier) throw new Error('Supplier not found');
 
+  const productIds = [...new Set(lines.map((l) => l.productId))];
+  const products =
+    productIds.length > 0
+      ? await manager.find(Product, { where: { id: In(productIds), deletedAt: IsNull() } })
+      : [];
+  const productById = new Map(products.map((p) => [p.id, p]));
+
   const discHeader = headerDiscount && parseFloat(headerDiscount) !== 0 ? headerDiscount : '0.0000';
   const computed: PurchaseComputedLine[] = [];
   let subtotal = '0.0000';
@@ -52,18 +60,23 @@ export async function computePurchaseDocumentTotals(
       if (tp) profile = { rate: tp.rate, isInclusive: tp.isInclusive };
     }
     const q = line.quantity;
+    const bonusQ = parseFloat(line.bonusQuantity || '0');
+    const product = productById.get(line.productId);
+    const taxableQty = product?.staxOnBonusPurchase ? q + bonusQ : q;
     const p = parseFloat(line.unitPrice);
     const ld = parseFloat(line.discountAmount || '0');
     if (q <= 0) throw new Error('Line quantity must be positive');
-    const gross = q * p - ld;
+    const gross = taxableQty * p - ld;
     const { baseAmount: baseStr, taxAmount: taxStr } = computeLineTax(gross, profile);
+    const costBasis = q * p - ld;
+    const costBaseStr = costBasis.toFixed(4);
     computed.push({
       ...line,
       discountAmount: line.discountAmount !== undefined ? String(line.discountAmount) : '0.0000',
       taxAmount: taxStr,
-      lineBase: baseStr,
+      lineBase: costBaseStr,
     });
-    subtotal = moneyAdd(subtotal, baseStr);
+    subtotal = moneyAdd(subtotal, costBaseStr);
     taxSum = moneyAdd(taxSum, taxStr);
   }
 

@@ -46,6 +46,7 @@ function serializeGrn(g: Grn, lines?: GrnLine[], linked?: LinkedSupplierInvoice 
         id: l.id,
         productId: l.productId,
         quantity: l.quantity,
+        bonusQuantity: l.bonusQuantity ?? '0',
         unitPrice: l.unitPrice,
         tradePrice: l.tradePrice ?? null,
         retailPrice: l.retailPrice ?? null,
@@ -173,6 +174,7 @@ export async function createSupplierInvoiceDraftFromGrn(req: Request): Promise<C
             supplierInvoiceId: inv.id,
             productId: cmp.productId,
             quantity: parseDecimalStrict(String(gl.quantity)),
+            bonusQuantity: gl.bonusQuantity ?? '0.0000',
             unitPrice: parseDecimalStrict(String(gl.unitPrice)),
             taxAmount: cmp.taxAmount,
             discountAmount: cmp.discountAmount,
@@ -247,11 +249,13 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
           unitPriceStr = pol.unitPrice;
         }
         if (ln.unitPrice != null && ln.unitPrice !== '') unitPriceStr = String(ln.unitPrice);
+        const bonusQty = ln.bonusQuantity != null && ln.bonusQuantity !== '' ? parseDecimalStrict(String(ln.bonusQuantity)) : '0.0000';
         await manager.save(
           manager.create(GrnLine, {
             grnId: grn.id,
             productId: ln.productId,
             quantity: parseDecimalStrict(String(ln.quantity)),
+            bonusQuantity: bonusQty,
             unitPrice: parseDecimalStrict(unitPriceStr),
             tradePrice: ln.tradePrice != null && ln.tradePrice !== '' ? parseDecimalStrict(String(ln.tradePrice)) : undefined,
             retailPrice:
@@ -340,11 +344,13 @@ export async function updateGrn(req: Request, body: UpdateGrnInput): Promise<Con
             unitPriceStr = pol.unitPrice;
           }
           if (ln.unitPrice != null && ln.unitPrice !== '') unitPriceStr = String(ln.unitPrice);
+          const bonusQty = ln.bonusQuantity != null && ln.bonusQuantity !== '' ? parseDecimalStrict(String(ln.bonusQuantity)) : '0.0000';
           await manager.save(
             manager.create(GrnLine, {
               grnId: grn.id,
               productId: ln.productId,
               quantity: parseDecimalStrict(String(ln.quantity)),
+              bonusQuantity: bonusQty,
               unitPrice: parseDecimalStrict(unitPriceStr),
               tradePrice: ln.tradePrice != null && ln.tradePrice !== '' ? parseDecimalStrict(String(ln.tradePrice)) : undefined,
               retailPrice:
@@ -388,14 +394,20 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
         await assertWarehouseInScope(grn.warehouseId, undefined);
         const product = await manager.findOne(Product, { where: { id: line.productId } });
         if (!product) throw new Error('Product not found');
-        const qty = parseDecimalStrict(line.quantity);
+        const paidQty = parseFloat(line.quantity);
+        const bonusQty = parseFloat(line.bonusQuantity ?? '0');
+        const totalQty = paidQty + bonusQty;
+        const stockDelta = parseDecimalStrict(totalQty.toFixed(4));
+        const unitCost = totalQty > 0
+          ? parseDecimalStrict(((paidQty * parseFloat(line.unitPrice)) / totalQty).toFixed(4))
+          : line.unitPrice;
         await applyMovement(manager, {
           productId: line.productId,
           warehouseId: grn.warehouseId,
-          quantityDelta: qty,
+          quantityDelta: stockDelta,
           refType: 'purchase',
           refId: grn.id,
-          unitCost: line.unitPrice,
+          unitCost,
           movementDate: grn.grnDate,
           userId: req.auth?.userId,
           grnLineId: line.id,
@@ -420,7 +432,7 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
         if (line.purchaseOrderLineId) {
           const pol = await manager.findOne(PurchaseOrderLine, { where: { id: line.purchaseOrderLineId } });
           if (pol) {
-            const newRec = (parseFloat(pol.receivedQuantity) + parseFloat(qty)).toFixed(4);
+            const newRec = (parseFloat(pol.receivedQuantity) + paidQty).toFixed(4);
             pol.receivedQuantity = newRec;
             await manager.save(pol);
           }

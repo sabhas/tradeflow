@@ -5,7 +5,7 @@
   "scripts": {
     "dev:api": "pnpm --filter @tradeflow/shared build && pnpm --filter @tradeflow/db build && pnpm --filter api dev",
     "dev:desktop": "pnpm --filter desktop dev",
-    "build": "pnpm -r run build --filter '@tradeflow/*'",
+    "build": "pnpm --filter '@tradeflow/*' -r run build",
     "db:migrate": "pnpm --filter @tradeflow/db migrate",
     "db:migrate:revert": "pnpm --filter @tradeflow/db migrate:revert",
     "db:seed": "pnpm --filter @tradeflow/db seed"

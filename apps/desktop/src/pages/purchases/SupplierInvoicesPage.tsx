@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
 import { Combobox } from '../../components/Combobox';
 import { PurchaseSubNav } from '../../components/PurchaseSubNav';
-import { formatAmount, formatAmountInput, normalizeAmountInput } from '../../lib/numberFormat';
+import { formatAmount } from '../../lib/numberFormat';
 import { invalidateGrnInvoiceSignals } from '../../lib/purchaseQueryInvalidation';
 import { hasPermission } from '../../lib/permissions';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -24,6 +24,7 @@ interface InvoiceDetailLine {
   id: string;
   productId: string;
   quantity: string;
+  bonusQuantity: string;
   unitPrice: string;
   discountAmount: string;
   taxAmount: string;
@@ -45,6 +46,7 @@ interface InvoiceDetail extends InvRow {
 type Line = {
   productId: string;
   quantity: number;
+  bonusQuantity: string;
   unitPrice: string;
   discountAmount: string;
   taxProfileId: string;
@@ -54,6 +56,7 @@ type Line = {
 const emptyLine = (): Line => ({
   productId: '',
   quantity: 1,
+  bonusQuantity: '0',
   unitPrice: '0',
   discountAmount: '0',
   taxProfileId: '',
@@ -187,7 +190,7 @@ export function SupplierInvoicesPage() {
           status: string;
           invoiceSettlement?: string;
           supplierInvoiceId?: string | null;
-          lines?: Array<{ id: string; productId: string; quantity: string; unitPrice: string }>;
+          lines?: Array<{ id: string; productId: string; quantity: string; bonusQuantity?: string; unitPrice: string }>;
         };
       }>(`/grns/${grnIdTrimmed}`).then((r) => r.data),
   });
@@ -250,6 +253,7 @@ export function SupplierInvoicesPage() {
       gl.map((l) => ({
         productId: l.productId,
         quantity: parseFloat(l.quantity),
+        bonusQuantity: l.bonusQuantity ?? '0',
         unitPrice: formatMoney(l.unitPrice),
         discountAmount: formatMoney('0'),
         taxProfileId: '',
@@ -275,6 +279,7 @@ export function SupplierInvoicesPage() {
         ? invLines.map((l) => ({
             productId: l.productId,
             quantity: parseFloat(l.quantity),
+            bonusQuantity: l.bonusQuantity ?? '0',
             unitPrice: formatMoney(l.unitPrice),
             discountAmount: formatMoney(l.discountAmount),
             taxProfileId: l.taxProfileId ?? '',
@@ -291,7 +296,7 @@ export function SupplierInvoicesPage() {
     );
     setLines((prev) =>
       prev.map((line) =>
-        line.productId && !supplierProducts.has(line.productId) ? { ...line, productId: '' } : line
+        line.productId && !supplierProducts.has(line.productId) ? { ...line, productId: '', bonusQuantity: '0' } : line
       )
     );
   }, [supplierId, products.data]);
@@ -301,6 +306,7 @@ export function SupplierInvoicesPage() {
       setError(null);
       const cleaned = lines.filter((l) => l.productId);
       if (!supplierId) throw new Error('Select a supplier');
+      if (!grnId.trim() || !isUuid(grnId.trim())) throw new Error('A posted GRN is required before creating a supplier invoice');
       if (!invoiceNumber.trim()) throw new Error('Invoice number required');
       if (cleaned.length === 0) throw new Error('Add at least one line');
       const payload = {
@@ -315,6 +321,7 @@ export function SupplierInvoicesPage() {
         lines: cleaned.map((l) => ({
           productId: l.productId,
           quantity: l.quantity,
+          bonusQuantity: l.bonusQuantity || '0',
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount || '0',
           taxProfileId: l.taxProfileId || null,
@@ -516,6 +523,7 @@ export function SupplierInvoicesPage() {
                         <tr>
                           <th className="px-3 py-2 text-left font-medium">Product</th>
                           <th className="px-3 py-2 text-right font-medium">Qty</th>
+                          <th className="px-3 py-2 text-right font-medium">Bonus</th>
                           <th className="px-3 py-2 text-right font-medium">Price</th>
                           <th className="px-3 py-2 text-right font-medium">Discount</th>
                           <th className="px-3 py-2 text-right font-medium">Tax</th>
@@ -532,6 +540,7 @@ export function SupplierInvoicesPage() {
                               )}
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.quantity, 4)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.bonusQuantity ?? '0', 4)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{formatMoney(line.unitPrice)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{formatMoney(line.discountAmount)}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{formatMoney(line.taxAmount)}</td>
@@ -638,12 +647,16 @@ export function SupplierInvoicesPage() {
                 />
               </label>
               <label className="block text-sm sm:col-span-2">
-                <span className="text-slate-600 dark:text-slate-400">GRN id (optional link)</span>
+                <span className="text-slate-600 dark:text-slate-400">
+                  GRN id <span className="text-red-600">*</span>
+                </span>
                 <input
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
                   value={grnId}
-                  placeholder="Paste GRN UUID for cost match"
+                  placeholder="Paste GRN UUID — a posted GRN is required"
                   onChange={(e) => setGrnId(e.target.value)}
+                  required
+                  aria-required="true"
                   aria-label="GRN id"
                 />
               </label>
@@ -674,6 +687,7 @@ export function SupplierInvoicesPage() {
                               gl.map((l) => ({
                                 productId: l.productId,
                                 quantity: parseFloat(l.quantity),
+                                bonusQuantity: l.bonusQuantity ?? '0',
                                 unitPrice: formatMoney(l.unitPrice),
                                 discountAmount: formatMoney('0'),
                                 taxProfileId: '',
@@ -746,7 +760,7 @@ export function SupplierInvoicesPage() {
                       <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">Select supplier first</p>
                     )}
                   </label>
-                  <label className="sm:col-span-2">
+                  <label className="sm:col-span-1">
                     <span className="text-xs text-slate-500">Qty</span>
                     <input
                       type="number"
@@ -761,6 +775,24 @@ export function SupplierInvoicesPage() {
                           const raw = e.target.value;
                           const v = raw === '' ? 0 : Number(raw);
                           n[idx] = { ...n[idx], quantity: Number.isFinite(v) ? v : 0 };
+                          return n;
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="sm:col-span-1">
+                    <span className="text-xs text-slate-500">Bonus</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      min={0}
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm tabular-nums"
+                      value={line.bonusQuantity}
+                      onChange={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], bonusQuantity: e.target.value };
                           return n;
                         })
                       }
@@ -787,7 +819,7 @@ export function SupplierInvoicesPage() {
                       }
                     />
                   </label>
-                  <label className="sm:col-span-2">
+                  <label className="sm:col-span-1">
                     <span className="text-xs text-slate-500">Disc.</span>
                     <input
                       className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"

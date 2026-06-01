@@ -19,6 +19,7 @@ import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { postSupplierInvoiceJournal } from '../services/accountingPosting';
 import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
 import { addDaysIso } from '../services/salesTotals';
+import { calculateBonus } from '../services/bonusService';
 import { parseDecimalStrict } from '../utils/decimal';
 import { moneySub } from '../utils/money';
 import { assertGrnLinkableToInvoice } from '../services/grnInvoiceSettlement';
@@ -82,6 +83,7 @@ function serialize(inv: SupplierInvoice, lines?: SupplierInvoiceLine[]) {
         id: l.id,
         productId: l.productId,
         quantity: l.quantity,
+        bonusQuantity: l.bonusQuantity ?? '0',
         unitPrice: l.unitPrice,
         taxAmount: l.taxAmount,
         discountAmount: l.discountAmount,
@@ -201,26 +203,35 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
 
   try {
     const row = await runInTransaction(async (manager) => {
-      if (b.grnId) {
-        await assertGrnLinkableToInvoice(manager, b.grnId, b.supplierId);
-        for (const ln of b.lines) {
-          if (!ln.grnLineId) continue;
-          const gl = await manager.findOne(GrnLine, { where: { id: ln.grnLineId } });
-          if (!gl || gl.grnId !== b.grnId) throw new Error('GRN line does not belong to linked GRN');
-        }
+      if (!b.grnId) throw new Error('A posted GRN is required before creating a supplier invoice');
+      await assertGrnLinkableToInvoice(manager, b.grnId, b.supplierId);
+      for (const ln of b.lines) {
+        if (!ln.grnLineId) continue;
+        const gl = await manager.findOne(GrnLine, { where: { id: ln.grnLineId } });
+        if (!gl || gl.grnId !== b.grnId) throw new Error('GRN line does not belong to linked GRN');
       }
 
       for (const line of b.lines) {
         await assertProductInScope(line.productId, undefined);
       }
 
+      const bonusQuantities: string[] = [];
+      for (const l of b.lines) {
+        if (l.bonusQuantity != null && l.bonusQuantity !== '') {
+          bonusQuantities.push(parseDecimalStrict(String(l.bonusQuantity)));
+        } else {
+          bonusQuantities.push(await calculateBonus(manager, l.productId, l.quantity));
+        }
+      }
+
       const totals = await computePurchaseDocumentTotals(
         manager,
         b.supplierId,
-        b.lines.map((l) => ({
+        b.lines.map((l, i) => ({
           productId: l.productId,
           quantity: l.quantity,
           unitPrice: String(l.unitPrice),
+          bonusQuantity: bonusQuantities[i],
           discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
           taxProfileId: l.taxProfileId,
         })),
@@ -236,7 +247,7 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
         invoiceDate: b.invoiceDate.slice(0, 10),
         dueDate: due,
         purchaseOrderId: b.purchaseOrderId ?? undefined,
-        grnId: b.grnId ?? undefined,
+        grnId: b.grnId,
         status: 'draft',
         subtotal: totals.subtotal,
         taxAmount: totals.taxAmount,
@@ -255,6 +266,7 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
             supplierInvoiceId: inv.id,
             productId: cmp.productId,
             quantity: parseDecimalStrict(String(src.quantity)),
+            bonusQuantity: bonusQuantities[i],
             unitPrice: parseDecimalStrict(String(src.unitPrice)),
             taxAmount: cmp.taxAmount,
             discountAmount: cmp.discountAmount,
@@ -313,6 +325,7 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
           productId: l.productId,
           quantity: l.quantity,
           unitPrice: String(l.unitPrice),
+          bonusQuantity: l.bonusQuantity != null ? String(l.bonusQuantity) : undefined,
           discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
           taxProfileId: l.taxProfileId,
           grnLineId: l.grnLineId,
@@ -326,10 +339,21 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
             if (!gl || gl.grnId !== inv.grnId) throw new Error('GRN line does not belong to linked GRN');
           }
         }
+        const bonusQuantities: string[] = [];
+        for (const l of linesIn) {
+          if (l.bonusQuantity != null && l.bonusQuantity !== '') {
+            bonusQuantities.push(parseDecimalStrict(l.bonusQuantity));
+          } else {
+            bonusQuantities.push(await calculateBonus(manager, l.productId, l.quantity));
+          }
+        }
         const totals = await computePurchaseDocumentTotals(
           manager,
           nextSupplier,
-          linesIn.map(({ grnLineId: _g, ...rest }) => rest),
+          linesIn.map(({ grnLineId: _g, ...rest }, i) => ({
+            ...rest,
+            bonusQuantity: bonusQuantities[i],
+          })),
           b.discountAmount ?? inv.discountAmount
         );
         inv.subtotal = totals.subtotal;
@@ -345,6 +369,7 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
             supplierInvoiceId: inv.id,
             productId: cmp.productId,
             quantity: parseDecimalStrict(String(src.quantity)),
+            bonusQuantity: bonusQuantities[i],
             unitPrice: parseDecimalStrict(String(src.unitPrice)),
             taxAmount: cmp.taxAmount,
             discountAmount: cmp.discountAmount,
@@ -358,6 +383,7 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
           productId: l.productId,
           quantity: parseFloat(l.quantity),
           unitPrice: l.unitPrice,
+          bonusQuantity: l.bonusQuantity ?? '0',
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
         }));
@@ -414,6 +440,7 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
           productId: l.productId,
           quantity: parseFloat(l.quantity),
           unitPrice: l.unitPrice,
+          bonusQuantity: l.bonusQuantity ?? '0',
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
         })) ?? [];
@@ -436,9 +463,11 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
         const line = inv.lines![i];
         const cmp = totals.lines[i];
         if (!line.grnLineId) continue;
-        const qty = cmp.quantity;
-        if (qty <= 0) continue;
-        const unitCost = (parseFloat(cmp.lineBase) / qty).toFixed(4);
+        const paidQty = cmp.quantity;
+        if (paidQty <= 0) continue;
+        const bonusQty = parseFloat(line.bonusQuantity ?? '0');
+        const totalQty = paidQty + bonusQty;
+        const unitCost = (parseFloat(cmp.lineBase) / totalQty).toFixed(4);
         const uc = parseDecimalStrict(unitCost);
         await manager.update(
           InventoryMovement,

@@ -27,6 +27,7 @@ export const createGrnSchema = z.object({
       z.object({
         productId: z.string().uuid(),
         quantity: z.number().finite().positive(),
+        bonusQuantity: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
         unitPrice: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
         tradePrice: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
         retailPrice: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
@@ -48,7 +49,7 @@ export const createSupplierInvoiceSchema = z.object({
   invoiceDate: z.string(),
   dueDate: z.union([z.string(), z.null()]).optional(),
   purchaseOrderId: optionalUuid,
-  grnId: optionalUuid,
+  grnId: z.string().uuid(),
   notes: z.string().optional().nullable(),
   discountAmount: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
   lines: z
@@ -57,6 +58,7 @@ export const createSupplierInvoiceSchema = z.object({
         productId: z.string().uuid(),
         quantity: z.number().finite().positive(),
         unitPrice: z.union([z.number(), z.string()]).transform((v) => String(v)),
+        bonusQuantity: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
         discountAmount: z.union([z.number(), z.string()]).transform((v) => String(v)).optional(),
         taxProfileId: optionalUuid,
         grnLineId: optionalUuid,

@@ -94,6 +94,7 @@ export function renderInvoiceBody(opts: InvoicePrintData): string {
     lines
       .map((l) => {
         const name = productNames.get(l.productId) ?? l.productId;
+        const batch = l.batchCode?.trim() || '';
         const qty = roundAmountString(l.quantity, qd, mode);
         const bonus = roundAmountString(l.bonusQuantity || '0', qd, mode);
         const price = roundAmountString(l.unitPrice, md, mode);
@@ -110,6 +111,7 @@ export function renderInvoiceBody(opts: InvoicePrintData): string {
         );
         return `<tr>
     <td>${esc(name)}</td>
+    <td>${esc(batch)}</td>
     <td style="text-align:right">${esc(qty)}</td>
     <td style="text-align:right">${esc(bonus)}</td>
     <td style="text-align:right">${esc(price)} ${cur}</td>
@@ -147,7 +149,7 @@ export function renderInvoiceBody(opts: InvoicePrintData): string {
   <p>Warehouse: ${esc(inv.warehouse?.name ?? inv.warehouseId)} · Payment: ${esc(inv.paymentType)}</p>
   ${termsBlock}
   <table>
-    <thead><tr><th>Product</th><th>Qty</th><th>Bonus</th><th>Price</th><th>Disc</th><th>Tax</th><th>Line</th></tr></thead>
+    <thead><tr><th>Product</th><th>Batch</th><th>Qty</th><th>Bonus</th><th>Price</th><th>Disc</th><th>Tax</th><th>Line</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
   <div class="totals">

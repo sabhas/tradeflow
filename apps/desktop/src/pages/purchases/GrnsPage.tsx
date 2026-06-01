@@ -30,6 +30,7 @@ interface GrnDetailLine {
   id: string;
   productId: string;
   quantity: string;
+  bonusQuantity: string;
   unitPrice: string;
   tradePrice?: string | null;
   retailPrice?: string | null;
@@ -81,6 +82,7 @@ interface BatchBalanceRow {
 type Line = {
   productId: string;
   quantity: number;
+  bonusQuantity: string;
   unitPrice: string;
   tradePrice: string;
   retailPrice: string;
@@ -114,6 +116,7 @@ export function GrnsPage() {
     {
       productId: '',
       quantity: 1,
+      bonusQuantity: '0',
       unitPrice: '0',
       tradePrice: '',
       retailPrice: '',
@@ -292,6 +295,7 @@ export function GrnsPage() {
         ? (d.lines ?? []).map((l) => ({
             productId: l.productId,
             quantity: parseFloat(l.quantity),
+            bonusQuantity: l.bonusQuantity ?? '0',
             unitPrice: formatMoneyPlain(l.unitPrice),
             tradePrice: l.tradePrice != null && l.tradePrice !== '' ? formatMoneyPlain(l.tradePrice) : '',
             retailPrice: l.retailPrice != null && l.retailPrice !== '' ? formatMoneyPlain(l.retailPrice) : '',
@@ -304,6 +308,7 @@ export function GrnsPage() {
             {
               productId: '',
               quantity: 1,
+              bonusQuantity: '0',
               unitPrice: '0',
               tradePrice: '',
               retailPrice: '',
@@ -325,6 +330,7 @@ export function GrnsPage() {
         eligible.data.lines.map((l) => ({
           productId: l.productId,
           quantity: parseFloat(l.remaining),
+          bonusQuantity: '0',
           unitPrice: formatMoneyPlain(l.unitPrice),
           tradePrice: '',
           retailPrice: '',
@@ -392,6 +398,7 @@ export function GrnsPage() {
         lines: cleaned.map((l) => ({
           productId: l.productId,
           quantity: l.quantity,
+          bonusQuantity: l.bonusQuantity || '0',
           unitPrice: l.unitPrice.trim() ? moneyForApi(l.unitPrice) : undefined,
           tradePrice: l.tradePrice.trim() ? moneyForApi(l.tradePrice) : undefined,
           retailPrice: l.retailPrice.trim() ? moneyForApi(l.retailPrice) : undefined,
@@ -479,6 +486,7 @@ export function GrnsPage() {
                 {
                   productId: '',
                   quantity: 1,
+                  bonusQuantity: '0',
                   unitPrice: '0',
                   tradePrice: '',
                   retailPrice: '',
@@ -709,6 +717,7 @@ export function GrnsPage() {
                         <tr>
                           <th className="px-3 py-2 text-left font-medium">Product</th>
                           <th className="px-3 py-2 text-right font-medium">Qty</th>
+                          <th className="px-3 py-2 text-right font-medium">Bonus</th>
                           <th className="px-3 py-2 text-right font-medium">Unit cost</th>
                           <th className="px-3 py-2 text-left font-medium">Batch</th>
                           <th className="px-3 py-2 text-left font-medium">Expiry</th>
@@ -725,6 +734,7 @@ export function GrnsPage() {
                               )}
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">{formatAmount(line.quantity, 4)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{parseFloat(line.bonusQuantity) > 0 ? formatAmount(line.bonusQuantity, 4) : '—'}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{formatMoney(line.unitPrice)}</td>
                             <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{line.batchCode ?? '—'}</td>
                             <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{line.expiryDate ?? '—'}</td>
@@ -912,6 +922,7 @@ export function GrnsPage() {
                       {
                         productId: '',
                         quantity: 1,
+                        bonusQuantity: '0',
                         unitPrice: '0',
                         tradePrice: '',
                         retailPrice: '',
@@ -954,7 +965,7 @@ export function GrnsPage() {
                   className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40"
                 >
                   <div className="grid gap-2 sm:grid-cols-12 sm:items-end">
-                  <label className="flex flex-col gap-0.5 sm:col-span-5">
+                  <label className="flex flex-col gap-0.5 sm:col-span-4">
                     <span className="text-xs text-slate-500 dark:text-slate-400">Product</span>
                     {!supplierId && (
                       <span className="text-[11px] font-medium text-amber-800 dark:text-amber-400">
@@ -977,6 +988,7 @@ export function GrnsPage() {
                             n[idx] = {
                               ...n[idx],
                               productId: v,
+                              bonusQuantity: '0',
                               unitPrice: p ? formatMoneyPlain(p.costPrice) : n[idx].unitPrice,
                               tradePrice: p ? formatMoneyPlain(p.sellingPrice) : n[idx].tradePrice,
                               retailPrice: p ? formatMoneyPlain(p.retailPrice) : n[idx].retailPrice,
@@ -994,7 +1006,7 @@ export function GrnsPage() {
                       />
                     )}
                   </label>
-                  <label className="sm:col-span-4">
+                  <label className="sm:col-span-3">
                     <span className="text-xs text-slate-500">
                       Batch{batchRequired ? <span className="text-amber-700 dark:text-amber-400"> *</span> : ' (optional)'}
                     </span>
@@ -1064,6 +1076,24 @@ export function GrnsPage() {
                           const raw = e.target.value;
                           const v = raw === '' ? 0 : Number(raw);
                           n[idx] = { ...n[idx], quantity: Number.isFinite(v) ? v : 0 };
+                          return n;
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="sm:col-span-2">
+                    <span className="text-xs text-slate-500">Bonus qty</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      min={0}
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm tabular-nums"
+                      value={line.bonusQuantity}
+                      onChange={(e) =>
+                        setLines((prev) => {
+                          const n = [...prev];
+                          n[idx] = { ...n[idx], bonusQuantity: e.target.value };
                           return n;
                         })
                       }

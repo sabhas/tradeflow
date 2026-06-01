@@ -26,6 +26,9 @@ export class SupplierInvoiceLine extends BaseEntity {
   @Column({ type: 'decimal', precision: 14, scale: 4 })
   quantity!: string;
 
+  @Column({ name: 'bonus_quantity', type: 'decimal', precision: 14, scale: 4, default: 0 })
+  bonusQuantity!: string;
+
   @Column({ name: 'unit_price', type: 'decimal', precision: 14, scale: 4 })
   unitPrice!: string;
 
