@@ -603,49 +603,6 @@ export function SupplierInvoicesPage() {
             </div>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Supplier</span>
-                <Combobox
-                  className="mt-1 w-full max-w-none"
-                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
-                  value={supplierId}
-                  onChange={setSupplierId}
-                  options={supplierOptions}
-                  placeholder="Search supplier…"
-                  disabled={suppliers.isLoading}
-                  aria-label="Supplier"
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-slate-600 dark:text-slate-400">
-                  Supplier ref / invoice # <span className="text-red-600">*</span>
-                </span>
-                <input
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  required
-                  aria-required="true"
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Invoice date</span>
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                  value={invoiceDate}
-                  onChange={(e) => setInvoiceDate(e.target.value)}
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Due date (optional)</span>
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-              </label>
               <label className="block text-sm sm:col-span-2">
                 <span className="text-slate-600 dark:text-slate-400">
                   GRN id <span className="text-red-600">*</span>
@@ -704,6 +661,49 @@ export function SupplierInvoicesPage() {
                   )}
                 </div>
               )}
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Supplier</span>
+                <Combobox
+                  className="mt-1 w-full max-w-none"
+                  inputClassName="rounded-md border border-slate-300 px-3 py-2"
+                  value={supplierId}
+                  onChange={setSupplierId}
+                  options={supplierOptions}
+                  placeholder="Search supplier…"
+                  disabled={suppliers.isLoading}
+                  aria-label="Supplier"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">
+                  Supplier ref / invoice # <span className="text-red-600">*</span>
+                </span>
+                <input
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  required
+                  aria-required="true"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Invoice date</span>
+                <input
+                  type="date"
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Due date (optional)</span>
+                <input
+                  type="date"
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </label>
               <label className="block text-sm sm:col-span-2">
                 <span className="text-slate-600 dark:text-slate-400">Header discount</span>
                 <input
