@@ -138,30 +138,25 @@ export async function createJournalEntry(
   body: CreateJournalEntryInput
 ): Promise<ControllerResult> {
   const b = body;
-  try {
-    const lines = normalizeLines(b.lines);
-    assertBalanced(lines);
+  const lines = normalizeLines(b.lines);
+  assertBalanced(lines);
 
-    const full = await runInTransaction(async (manager) => {
-      const entry = manager.create(JournalEntry, {
-        entryDate: b.entryDate.slice(0, 10),
-        reference: b.reference ?? undefined,
-        description: b.description ?? undefined,
-        status: 'draft',
-        createdBy: req.auth?.userId,
-      });
-      await manager.save(entry);
-      await replaceLines(manager, entry.id, lines);
-      return manager.findOneOrFail(JournalEntry, {
-        where: { id: entry.id, deletedAt: IsNull() },
-        relations: ['lines'],
-      });
+  const full = await runInTransaction(async (manager) => {
+    const entry = manager.create(JournalEntry, {
+      entryDate: b.entryDate.slice(0, 10),
+      reference: b.reference ?? undefined,
+      description: b.description ?? undefined,
+      status: 'draft',
+      createdBy: req.auth?.userId,
     });
-    return created({ data: serializeJournalEntry(full, full.lines) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+    await manager.save(entry);
+    await replaceLines(manager, entry.id, lines);
+    return manager.findOneOrFail(JournalEntry, {
+      where: { id: entry.id, deletedAt: IsNull() },
+      relations: ['lines'],
+    });
+  });
+  return created({ data: serializeJournalEntry(full, full.lines) });
 }
 
 export async function updateJournalEntry(
@@ -180,35 +175,30 @@ export async function updateJournalEntry(
     throw new HttpError(400, { error: 'System-sourced entries cannot be edited here' });
   }
 
-  try {
-    const full = await runInTransaction(async (manager) => {
-      const cur = await manager.findOne(JournalEntry, {
-        where: { id: row.id, deletedAt: IsNull() },
-      });
-      if (!cur) throw new Error('Not found');
-      if (b.entryDate !== undefined) cur.entryDate = b.entryDate.slice(0, 10);
-      if (b.reference !== undefined) cur.reference = b.reference ?? undefined;
-      if (b.description !== undefined) cur.description = b.description ?? undefined;
-
-      if (b.lines) {
-        const lines = normalizeLines(b.lines);
-        assertBalanced(lines);
-        await manager.save(cur);
-        await replaceLines(manager, cur.id, lines);
-      } else {
-        await manager.save(cur);
-      }
-
-      return manager.findOneOrFail(JournalEntry, {
-        where: { id: row.id, deletedAt: IsNull() },
-        relations: ['lines'],
-      });
+  const full = await runInTransaction(async (manager) => {
+    const cur = await manager.findOne(JournalEntry, {
+      where: { id: row.id, deletedAt: IsNull() },
     });
-    return ok({ data: serializeJournalEntry(full, full.lines) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+    if (!cur) throw new Error('Not found');
+    if (b.entryDate !== undefined) cur.entryDate = b.entryDate.slice(0, 10);
+    if (b.reference !== undefined) cur.reference = b.reference ?? undefined;
+    if (b.description !== undefined) cur.description = b.description ?? undefined;
+
+    if (b.lines) {
+      const lines = normalizeLines(b.lines);
+      assertBalanced(lines);
+      await manager.save(cur);
+      await replaceLines(manager, cur.id, lines);
+    } else {
+      await manager.save(cur);
+    }
+
+    return manager.findOneOrFail(JournalEntry, {
+      where: { id: row.id, deletedAt: IsNull() },
+      relations: ['lines'],
+    });
+  });
+  return ok({ data: serializeJournalEntry(full, full.lines) });
 }
 
 export async function deleteJournalEntry(req: Request): Promise<ControllerResult> {
@@ -248,32 +238,23 @@ export async function postJournalEntry(req: Request): Promise<ControllerResult> 
     debit: l.debit,
     credit: l.credit,
   }));
-  try {
-    assertBalanced(lines);
-  } catch (e) {
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+  assertBalanced(lines);
 
-  try {
-    const full = await runInTransaction(async (manager) => {
-      const cur = await manager.findOne(JournalEntry, {
-        where: { id: row.id, deletedAt: IsNull() },
-        relations: ['lines'],
-      });
-      if (!cur || cur.status !== 'draft') throw new Error('Entry state changed');
-      await assertDateNotPeriodLocked(manager, cur.entryDate);
-      cur.status = 'posted';
-      await manager.save(cur);
-      return manager.findOneOrFail(JournalEntry, {
-        where: { id: cur.id, deletedAt: IsNull() },
-        relations: ['lines'],
-      });
+  const full = await runInTransaction(async (manager) => {
+    const cur = await manager.findOne(JournalEntry, {
+      where: { id: row.id, deletedAt: IsNull() },
+      relations: ['lines'],
     });
-    return ok({ data: serializeJournalEntry(full, full.lines) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+    if (!cur || cur.status !== 'draft') throw new Error('Entry state changed');
+    await assertDateNotPeriodLocked(manager, cur.entryDate);
+    cur.status = 'posted';
+    await manager.save(cur);
+    return manager.findOneOrFail(JournalEntry, {
+      where: { id: cur.id, deletedAt: IsNull() },
+      relations: ['lines'],
+    });
+  });
+  return ok({ data: serializeJournalEntry(full, full.lines) });
 }
 
 export async function reverseJournalEntry(req: Request, entryDate?: string): Promise<ControllerResult> {
@@ -294,39 +275,34 @@ export async function reverseJournalEntry(req: Request, entryDate?: string): Pro
   const today = new Date().toISOString().slice(0, 10);
   const reversalDate = (entryDate ?? today).slice(0, 10);
 
-  try {
-    const full = await runInTransaction(async (manager) => {
-      await assertDateNotPeriodLocked(manager, reversalDate);
+  const full = await runInTransaction(async (manager) => {
+    await assertDateNotPeriodLocked(manager, reversalDate);
 
-      const revLines = original.lines.map((l) => ({
-        accountId: l.accountId,
-        debit: l.credit,
-        credit: l.debit,
-      }));
-      assertBalanced(revLines);
+    const revLines = original.lines.map((l) => ({
+      accountId: l.accountId,
+      debit: l.credit,
+      credit: l.debit,
+    }));
+    assertBalanced(revLines);
 
-      const ref = original.reference?.trim() || original.id.slice(0, 8);
-      const entry = manager.create(JournalEntry, {
-        entryDate: reversalDate,
-        reference: `REV-${ref}`.slice(0, 120),
-        description: `Reversal of journal ${ref}`,
-        status: 'posted',
-        sourceType: 'journal_reversal',
-        sourceId: original.id,
-        createdBy: req.auth?.userId,
-      });
-      await manager.save(entry);
-      await replaceLines(manager, entry.id, revLines);
-      return manager.findOneOrFail(JournalEntry, {
-        where: { id: entry.id, deletedAt: IsNull() },
-        relations: ['lines'],
-      });
+    const ref = original.reference?.trim() || original.id.slice(0, 8);
+    const entry = manager.create(JournalEntry, {
+      entryDate: reversalDate,
+      reference: `REV-${ref}`.slice(0, 120),
+      description: `Reversal of journal ${ref}`,
+      status: 'posted',
+      sourceType: 'journal_reversal',
+      sourceId: original.id,
+      createdBy: req.auth?.userId,
     });
-    return created({ data: serializeJournalEntry(full, full.lines) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+    await manager.save(entry);
+    await replaceLines(manager, entry.id, revLines);
+    return manager.findOneOrFail(JournalEntry, {
+      where: { id: entry.id, deletedAt: IsNull() },
+      relations: ['lines'],
+    });
+  });
+  return created({ data: serializeJournalEntry(full, full.lines) });
 }
 
 export async function getJournalEntrySnapshotForAudit(id: string) {

@@ -268,123 +268,113 @@ export async function printInvoicesBatch(
 
 export async function createInvoice(req: Request, body: CreateInvoiceInput): Promise<ControllerResult> {
   const b = body;
-  try {
-    const saved = await runInTransaction(async (manager) => {
-      const documentKind = b.documentKind ?? 'invoice';
-      const due = await resolveInvoiceDueDate(
+  const saved = await runInTransaction(async (manager) => {
+    const documentKind = b.documentKind ?? 'invoice';
+    const due = await resolveInvoiceDueDate(
+      manager,
+      b.customerId,
+      b.invoiceDate.slice(0, 10),
+      b.paymentType ?? 'credit',
+      b.dueDate ?? null
+    );
+    let lineInputs = b.lines;
+    if (documentKind === 'credit_note') {
+      if (!b.originalInvoiceId) throw new Error('Credit note requires original invoice');
+      const orig = await manager.findOne(Invoice, {
+        where: { id: b.originalInvoiceId, deletedAt: IsNull() },
+        relations: ['lines'],
+      });
+      if (!orig) throw new Error('Original invoice not found');
+      if (orig.status !== 'posted') throw new Error('Original invoice must be posted');
+      if (orig.customerId !== b.customerId) throw new Error('Customer must match original invoice');
+      if (orig.warehouseId !== b.warehouseId) throw new Error('Warehouse must match original invoice');
+      lineInputs = await syncCreditNoteLinesWithOriginal(manager, b.originalInvoiceId, b.lines);
+      const activeCreditLines = lineInputs.filter((l) => l.quantity > 0);
+      await enforceProductBatchControls(manager, activeCreditLines);
+      await assertCreditNoteLinesMatchOriginal(
         manager,
-        b.customerId,
-        b.invoiceDate.slice(0, 10),
-        b.paymentType ?? 'credit',
-        b.dueDate ?? null
+        activeCreditLines,
+        buildOriginalLineMap(orig.lines ?? [])
       );
-      let lineInputs = b.lines;
-      if (documentKind === 'credit_note') {
-        if (!b.originalInvoiceId) throw new Error('Credit note requires original invoice');
-        const orig = await manager.findOne(Invoice, {
-          where: { id: b.originalInvoiceId, deletedAt: IsNull() },
-          relations: ['lines'],
-        });
-        if (!orig) throw new Error('Original invoice not found');
-        if (orig.status !== 'posted') throw new Error('Original invoice must be posted');
-        if (orig.customerId !== b.customerId) throw new Error('Customer must match original invoice');
-        if (orig.warehouseId !== b.warehouseId) throw new Error('Warehouse must match original invoice');
-        lineInputs = await syncCreditNoteLinesWithOriginal(manager, b.originalInvoiceId, b.lines);
-        const activeCreditLines = lineInputs.filter((l) => l.quantity > 0);
-        await enforceProductBatchControls(manager, activeCreditLines);
-        await assertCreditNoteLinesMatchOriginal(
-          manager,
-          activeCreditLines,
-          buildOriginalLineMap(orig.lines ?? [])
-        );
-      }
-      const pricedLines = await resolveInvoiceLineUnitPrices(manager, b.warehouseId, lineInputs);
-      const linesWithBonus = await attachBonusQuantities(manager, documentKind, pricedLines, lineInputs);
-      const totals = await computeSalesDocumentTotals(
-        manager,
-        b.customerId,
-        linesWithBonus.map((l) => ({
+    }
+    const pricedLines = await resolveInvoiceLineUnitPrices(manager, b.warehouseId, lineInputs);
+    const linesWithBonus = await attachBonusQuantities(manager, documentKind, pricedLines, lineInputs);
+    const totals = await computeSalesDocumentTotals(
+      manager,
+      b.customerId,
+      linesWithBonus.map((l) => ({
+        productId: l.productId,
+        quantity: l.quantity,
+        bonusQuantity: l.bonusQuantity,
+        unitPrice: l.unitPrice,
+        discountAmount: l.discountAmount,
+        taxProfileId: l.taxProfileId,
+      })),
+      b.discountAmount
+    );
+    let invoiceTemplateId: string | undefined = b.invoiceTemplateId ?? undefined;
+    if (invoiceTemplateId) {
+      const t = await manager.findOne(InvoiceTemplate, { where: { id: invoiceTemplateId } });
+      if (!t) throw new Error('Invoice template not found');
+    } else {
+      const cs = await getCompanySettingsRow(manager);
+      invoiceTemplateId = cs.defaultInvoiceTemplateId ?? undefined;
+    }
+    const inv = manager.create(Invoice, {
+      customerId: b.customerId,
+      invoiceDate: b.invoiceDate.slice(0, 10),
+      dueDate: due,
+      status: 'draft',
+      paymentType: b.paymentType ?? 'credit',
+      warehouseId: b.warehouseId,
+      documentKind,
+      originalInvoiceId: documentKind === 'credit_note' ? (b.originalInvoiceId ?? undefined) : undefined,
+      subtotal: totals.subtotal,
+      taxAmount: totals.taxAmount,
+      discountAmount: totals.discountAmount,
+      total: totals.total,
+      notes: b.notes ?? undefined,
+      salesOrderId: documentKind === 'credit_note' ? undefined : (b.salesOrderId ?? undefined),
+      salespersonId: b.salespersonId ?? undefined,
+      invoiceTemplateId,
+      createdBy: req.auth?.userId,
+    });
+    if (documentKind !== 'credit_note') {
+      await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
+      await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId);
+    }
+    await manager.save(inv);
+    for (let i = 0; i < totals.lines.length; i++) {
+      const l = totals.lines[i];
+      const pl = linesWithBonus[i];
+      const inputLine = lineInputs[i];
+      await manager.save(
+        manager.create(InvoiceLine, {
+          invoiceId: inv.id,
           productId: l.productId,
           quantity: l.quantity,
-          bonusQuantity: l.bonusQuantity,
+          bonusQuantity: pl.bonusQuantity,
           unitPrice: l.unitPrice,
+          taxAmount: l.taxAmount,
           discountAmount: l.discountAmount,
-          taxProfileId: l.taxProfileId,
-        })),
-        b.discountAmount
+          taxProfileId: l.taxProfileId ?? undefined,
+          originalInvoiceLineId: pl.originalInvoiceLineId ?? undefined,
+          ...(documentKind === 'credit_note' ? lineBatchExpiryFields(inputLine) : {}),
+        })
       );
-      let invoiceTemplateId: string | undefined = b.invoiceTemplateId ?? undefined;
-      if (invoiceTemplateId) {
-        const t = await manager.findOne(InvoiceTemplate, { where: { id: invoiceTemplateId } });
-        if (!t) throw new Error('Invoice template not found');
-      } else {
-        const cs = await getCompanySettingsRow(manager);
-        invoiceTemplateId = cs.defaultInvoiceTemplateId ?? undefined;
-      }
-      const inv = manager.create(Invoice, {
-        customerId: b.customerId,
-        invoiceDate: b.invoiceDate.slice(0, 10),
-        dueDate: due,
-        status: 'draft',
-        paymentType: b.paymentType ?? 'credit',
-        warehouseId: b.warehouseId,
-        documentKind,
-        originalInvoiceId: documentKind === 'credit_note' ? (b.originalInvoiceId ?? undefined) : undefined,
-        subtotal: totals.subtotal,
-        taxAmount: totals.taxAmount,
-        discountAmount: totals.discountAmount,
-        total: totals.total,
-        notes: b.notes ?? undefined,
-        salesOrderId: documentKind === 'credit_note' ? undefined : (b.salesOrderId ?? undefined),
-        salespersonId: b.salespersonId ?? undefined,
-        invoiceTemplateId,
-        createdBy: req.auth?.userId,
-      });
-      if (documentKind !== 'credit_note') {
-        await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
-        await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId);
-      }
-      await manager.save(inv);
-      for (let i = 0; i < totals.lines.length; i++) {
-        const l = totals.lines[i];
-        const pl = linesWithBonus[i];
-        const inputLine = lineInputs[i];
-        await manager.save(
-          manager.create(InvoiceLine, {
-            invoiceId: inv.id,
-            productId: l.productId,
-            quantity: l.quantity,
-            bonusQuantity: pl.bonusQuantity,
-            unitPrice: l.unitPrice,
-            taxAmount: l.taxAmount,
-            discountAmount: l.discountAmount,
-            taxProfileId: l.taxProfileId ?? undefined,
-            originalInvoiceLineId: pl.originalInvoiceLineId ?? undefined,
-            ...(documentKind === 'credit_note' ? lineBatchExpiryFields(inputLine) : {}),
-          })
-        );
-      }
-      return manager.findOneOrFail(Invoice, { where: { id: inv.id }, relations: ['lines'] });
-    });
-    return created({ data: serializeInvoice(saved, saved.lines) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+    }
+    return manager.findOneOrFail(Invoice, { where: { id: inv.id }, relations: ['lines'] });
+  });
+  return created({ data: serializeInvoice(saved, saved.lines) });
 }
 
 export async function postInvoiceAction(req: Request): Promise<ControllerResult> {
-  try {
-    const inv = await postInvoice(req.params.id, req.auth?.userId);
-    const full = await Invoice.findOne({
-      where: { id: inv.id, deletedAt: IsNull() },
-      relations: ['lines'],
-    });
-    return ok({ data: serializeInvoice(full!, full!.lines) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+  const inv = await postInvoice(req.params.id, req.auth?.userId);
+  const full = await Invoice.findOne({
+    where: { id: inv.id, deletedAt: IsNull() },
+    relations: ['lines'],
+  });
+  return ok({ data: serializeInvoice(full!, full!.lines) });
 }
 
 export async function getInvoice(req: Request): Promise<ControllerResult> {
@@ -399,161 +389,155 @@ export async function getInvoice(req: Request): Promise<ControllerResult> {
 }
 
 export async function updateInvoice(req: Request, body: UpdateInvoiceInput): Promise<ControllerResult> {
-  try {
-    const out = await runInTransaction(async (manager) => {
-      const inv = await manager.findOne(Invoice, {
-        where: { id: req.params.id, deletedAt: IsNull() },
-      });
-      if (!inv) throw new Error('Not found');
-      if (inv.status !== 'draft') throw new Error('Only draft invoices can be edited');
-      const b = body;
-      if (b.customerId !== undefined) inv.customerId = b.customerId;
-      if (b.invoiceDate !== undefined) inv.invoiceDate = b.invoiceDate.slice(0, 10);
-      if (b.warehouseId !== undefined) inv.warehouseId = b.warehouseId;
-      if (b.paymentType !== undefined) inv.paymentType = b.paymentType;
-      if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
-      if (b.salesOrderId !== undefined && inv.documentKind !== 'credit_note') {
-        inv.salesOrderId = b.salesOrderId ?? undefined;
+  const out = await runInTransaction(async (manager) => {
+    const inv = await manager.findOne(Invoice, {
+      where: { id: req.params.id, deletedAt: IsNull() },
+    });
+    if (!inv) throw new Error('Not found');
+    if (inv.status !== 'draft') throw new Error('Only draft invoices can be edited');
+    const b = body;
+    if (b.customerId !== undefined) inv.customerId = b.customerId;
+    if (b.invoiceDate !== undefined) inv.invoiceDate = b.invoiceDate.slice(0, 10);
+    if (b.warehouseId !== undefined) inv.warehouseId = b.warehouseId;
+    if (b.paymentType !== undefined) inv.paymentType = b.paymentType;
+    if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
+    if (b.salesOrderId !== undefined && inv.documentKind !== 'credit_note') {
+      inv.salesOrderId = b.salesOrderId ?? undefined;
+    }
+    if (b.salespersonId !== undefined) inv.salespersonId = b.salespersonId ?? undefined;
+    if (b.invoiceTemplateId !== undefined) {
+      if (b.invoiceTemplateId) {
+        const t = await manager.findOne(InvoiceTemplate, { where: { id: b.invoiceTemplateId } });
+        if (!t) throw new Error('Invoice template not found');
+        inv.invoiceTemplateId = b.invoiceTemplateId;
+      } else {
+        inv.invoiceTemplateId = undefined;
       }
-      if (b.salespersonId !== undefined) inv.salespersonId = b.salespersonId ?? undefined;
-      if (b.invoiceTemplateId !== undefined) {
-        if (b.invoiceTemplateId) {
-          const t = await manager.findOne(InvoiceTemplate, { where: { id: b.invoiceTemplateId } });
-          if (!t) throw new Error('Invoice template not found');
-          inv.invoiceTemplateId = b.invoiceTemplateId;
-        } else {
-          inv.invoiceTemplateId = undefined;
-        }
-      }
+    }
 
-      if (b.dueDate !== undefined && b.dueDate !== null) {
-        inv.dueDate = b.dueDate.slice(0, 10);
-      } else if (b.invoiceDate !== undefined || b.paymentType !== undefined) {
-        inv.dueDate = await resolveInvoiceDueDate(
+    if (b.dueDate !== undefined && b.dueDate !== null) {
+      inv.dueDate = b.dueDate.slice(0, 10);
+    } else if (b.invoiceDate !== undefined || b.paymentType !== undefined) {
+      inv.dueDate = await resolveInvoiceDueDate(
+        manager,
+        inv.customerId,
+        inv.invoiceDate,
+        inv.paymentType,
+        null
+      );
+    }
+
+    if (b.lines) {
+      let lineInputs = b.lines;
+      if (inv.documentKind === 'credit_note') {
+        if (!inv.originalInvoiceId) throw new Error('Credit note requires original invoice');
+        lineInputs = await syncCreditNoteLinesWithOriginal(manager, inv.originalInvoiceId, b.lines);
+        const activeCreditLines = lineInputs.filter((l) => l.quantity > 0);
+        await enforceProductBatchControls(manager, activeCreditLines);
+        const orig = await manager.findOne(Invoice, {
+          where: { id: inv.originalInvoiceId, deletedAt: IsNull() },
+          relations: ['lines'],
+        });
+        if (!orig) throw new Error('Original invoice not found');
+        await assertCreditNoteLinesMatchOriginal(
           manager,
-          inv.customerId,
-          inv.invoiceDate,
-          inv.paymentType,
-          null
+          activeCreditLines,
+          buildOriginalLineMap(orig.lines ?? [])
         );
       }
-
-      if (b.lines) {
-        let lineInputs = b.lines;
-        if (inv.documentKind === 'credit_note') {
-          if (!inv.originalInvoiceId) throw new Error('Credit note requires original invoice');
-          lineInputs = await syncCreditNoteLinesWithOriginal(manager, inv.originalInvoiceId, b.lines);
-          const activeCreditLines = lineInputs.filter((l) => l.quantity > 0);
-          await enforceProductBatchControls(manager, activeCreditLines);
-          const orig = await manager.findOne(Invoice, {
-            where: { id: inv.originalInvoiceId, deletedAt: IsNull() },
-            relations: ['lines'],
-          });
-          if (!orig) throw new Error('Original invoice not found');
-          await assertCreditNoteLinesMatchOriginal(
-            manager,
-            activeCreditLines,
-            buildOriginalLineMap(orig.lines ?? [])
-          );
-        }
-        const pricedLines = await resolveInvoiceLineUnitPrices(
-          manager,
-          b.warehouseId ?? inv.warehouseId,
-          lineInputs
-        );
-        const linesWithBonus = await attachBonusQuantities(
-          manager,
-          inv.documentKind ?? 'invoice',
-          pricedLines,
-          lineInputs
-        );
-        const totals = await computeSalesDocumentTotals(
-          manager,
-          inv.customerId,
-          linesWithBonus.map((l) => ({
-            productId: l.productId,
-            quantity: l.quantity,
-            bonusQuantity: l.bonusQuantity,
-            unitPrice: l.unitPrice,
-            discountAmount: l.discountAmount,
-            taxProfileId: l.taxProfileId,
-          })),
-          b.discountAmount !== undefined ? b.discountAmount : inv.discountAmount
-        );
-        inv.subtotal = totals.subtotal;
-        inv.taxAmount = totals.taxAmount;
-        inv.discountAmount = totals.discountAmount;
-        inv.total = totals.total;
-        await manager.delete(InvoiceLine, { invoiceId: inv.id });
-        for (let i = 0; i < totals.lines.length; i++) {
-          const l = totals.lines[i];
-          const pl = linesWithBonus[i];
-          const inputLine = lineInputs[i];
-          await insertInvoiceLine(manager, inv.id, {
-            productId: l.productId,
-            quantity: l.quantity,
-            bonusQuantity: pl.bonusQuantity,
-            unitPrice: l.unitPrice,
-            taxAmount: l.taxAmount,
-            discountAmount: l.discountAmount,
-            taxProfileId: l.taxProfileId,
-            originalInvoiceLineId: pl.originalInvoiceLineId,
-            batchCode: inv.documentKind === 'credit_note' ? inputLine.batchCode : undefined,
-            expiryDate: inv.documentKind === 'credit_note' ? inputLine.expiryDate : undefined,
-          });
-        }
-      } else if (b.discountAmount !== undefined) {
-        const dbLines = await manager.find(InvoiceLine, { where: { invoiceId: inv.id } });
-        const lines = dbLines.map((l) => ({
+      const pricedLines = await resolveInvoiceLineUnitPrices(
+        manager,
+        b.warehouseId ?? inv.warehouseId,
+        lineInputs
+      );
+      const linesWithBonus = await attachBonusQuantities(
+        manager,
+        inv.documentKind ?? 'invoice',
+        pricedLines,
+        lineInputs
+      );
+      const totals = await computeSalesDocumentTotals(
+        manager,
+        inv.customerId,
+        linesWithBonus.map((l) => ({
           productId: l.productId,
-          quantity: parseFloat(l.quantity),
+          quantity: l.quantity,
           bonusQuantity: l.bonusQuantity,
           unitPrice: l.unitPrice,
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
-          originalInvoiceLineId: l.originalInvoiceLineId,
-          batchCode: l.batchCode,
-          expiryDate: l.expiryDate,
-        }));
-        const totals = await computeSalesDocumentTotals(manager, inv.customerId, lines, b.discountAmount);
-        inv.subtotal = totals.subtotal;
-        inv.taxAmount = totals.taxAmount;
-        inv.discountAmount = totals.discountAmount;
-        inv.total = totals.total;
-        await manager.delete(InvoiceLine, { invoiceId: inv.id });
-        for (let i = 0; i < totals.lines.length; i++) {
-          const l = totals.lines[i];
-          const src = lines[i];
-          await insertInvoiceLine(manager, inv.id, {
-            productId: l.productId,
-            quantity: l.quantity,
-            bonusQuantity: src?.bonusQuantity ?? '0',
-            unitPrice: l.unitPrice,
-            taxAmount: l.taxAmount,
-            discountAmount: l.discountAmount,
-            taxProfileId: l.taxProfileId,
-            originalInvoiceLineId: src?.originalInvoiceLineId,
-            batchCode: src?.batchCode,
-            expiryDate: src?.expiryDate,
-          });
-        }
+        })),
+        b.discountAmount !== undefined ? b.discountAmount : inv.discountAmount
+      );
+      inv.subtotal = totals.subtotal;
+      inv.taxAmount = totals.taxAmount;
+      inv.discountAmount = totals.discountAmount;
+      inv.total = totals.total;
+      await manager.delete(InvoiceLine, { invoiceId: inv.id });
+      for (let i = 0; i < totals.lines.length; i++) {
+        const l = totals.lines[i];
+        const pl = linesWithBonus[i];
+        const inputLine = lineInputs[i];
+        await insertInvoiceLine(manager, inv.id, {
+          productId: l.productId,
+          quantity: l.quantity,
+          bonusQuantity: pl.bonusQuantity,
+          unitPrice: l.unitPrice,
+          taxAmount: l.taxAmount,
+          discountAmount: l.discountAmount,
+          taxProfileId: l.taxProfileId,
+          originalInvoiceLineId: pl.originalInvoiceLineId,
+          batchCode: inv.documentKind === 'credit_note' ? inputLine.batchCode : undefined,
+          expiryDate: inv.documentKind === 'credit_note' ? inputLine.expiryDate : undefined,
+        });
       }
-      if (inv.documentKind !== 'credit_note') {
-        await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
-        await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId, inv.id);
+    } else if (b.discountAmount !== undefined) {
+      const dbLines = await manager.find(InvoiceLine, { where: { invoiceId: inv.id } });
+      const lines = dbLines.map((l) => ({
+        productId: l.productId,
+        quantity: parseFloat(l.quantity),
+        bonusQuantity: l.bonusQuantity,
+        unitPrice: l.unitPrice,
+        discountAmount: l.discountAmount,
+        taxProfileId: l.taxProfileId,
+        originalInvoiceLineId: l.originalInvoiceLineId,
+        batchCode: l.batchCode,
+        expiryDate: l.expiryDate,
+      }));
+      const totals = await computeSalesDocumentTotals(manager, inv.customerId, lines, b.discountAmount);
+      inv.subtotal = totals.subtotal;
+      inv.taxAmount = totals.taxAmount;
+      inv.discountAmount = totals.discountAmount;
+      inv.total = totals.total;
+      await manager.delete(InvoiceLine, { invoiceId: inv.id });
+      for (let i = 0; i < totals.lines.length; i++) {
+        const l = totals.lines[i];
+        const src = lines[i];
+        await insertInvoiceLine(manager, inv.id, {
+          productId: l.productId,
+          quantity: l.quantity,
+          bonusQuantity: src?.bonusQuantity ?? '0',
+          unitPrice: l.unitPrice,
+          taxAmount: l.taxAmount,
+          discountAmount: l.discountAmount,
+          taxProfileId: l.taxProfileId,
+          originalInvoiceLineId: src?.originalInvoiceLineId,
+          batchCode: src?.batchCode,
+          expiryDate: src?.expiryDate,
+        });
       }
-      await manager.save(inv);
-      return manager.findOneOrFail(Invoice, {
-        where: { id: inv.id, deletedAt: IsNull() },
-        relations: ['lines'],
-      });
+    }
+    if (inv.documentKind !== 'credit_note') {
+      await assertSalesOrderConfirmedForInvoice(manager, inv.salesOrderId);
+      await assertNoOtherInvoiceForSalesOrder(manager, inv.salesOrderId, inv.id);
+    }
+    await manager.save(inv);
+    return manager.findOneOrFail(Invoice, {
+      where: { id: inv.id, deletedAt: IsNull() },
+      relations: ['lines'],
     });
-    return ok({ data: serializeInvoice(out, out.lines) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    const msg = (e as Error).message;
-    throw new HttpError(msg === 'Not found' ? 404 : 400, { error: msg });
-  }
+  });
+  return ok({ data: serializeInvoice(out, out.lines) });
 }
 
 export async function deleteInvoice(req: Request): Promise<ControllerResult> {

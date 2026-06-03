@@ -58,41 +58,36 @@ export async function createReceipt(req: Request, body: CreateReceiptInput): Pro
   if (Math.abs(allocSum - parseFloat(body.amount)) > 0.0001) {
     throw new HttpError(400, { error: 'Allocations must sum to receipt amount' });
   }
-  try {
-    const saved = await runInTransaction(async (manager) => {
-      await validateReceiptAllocations(manager, body.customerId, body.allocations);
-      const rec = manager.create(Receipt, {
-        customerId: body.customerId,
-        receiptDate: body.receiptDate.slice(0, 10),
-        amount: body.amount,
-        paymentMethod: body.paymentMethod,
-        reference: body.reference ?? undefined,
-        createdBy: req.auth?.userId,
-      });
-      await manager.save(rec);
-      for (const a of body.allocations) {
-        await manager.save(
-          manager.create(ReceiptAllocation, {
-            receiptId: rec.id,
-            invoiceId: a.invoiceId,
-            amount: a.amount,
-          })
-        );
-      }
-      await assertDateNotPeriodLocked(manager, rec.receiptDate);
-      await postReceiptJournal(manager, {
-        entryDate: rec.receiptDate,
-        reference: `RCPT-${rec.id.slice(0, 8)}`,
-        userId: req.auth?.userId,
-        receiptId: rec.id,
-        amount: rec.amount,
-        paymentMethod: rec.paymentMethod,
-      });
-      return manager.findOneOrFail(Receipt, { where: { id: rec.id }, relations: ['allocations'] });
+  const saved = await runInTransaction(async (manager) => {
+    await validateReceiptAllocations(manager, body.customerId, body.allocations);
+    const rec = manager.create(Receipt, {
+      customerId: body.customerId,
+      receiptDate: body.receiptDate.slice(0, 10),
+      amount: body.amount,
+      paymentMethod: body.paymentMethod,
+      reference: body.reference ?? undefined,
+      createdBy: req.auth?.userId,
     });
-    return created({ data: serialize(saved, saved.allocations) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+    await manager.save(rec);
+    for (const a of body.allocations) {
+      await manager.save(
+        manager.create(ReceiptAllocation, {
+          receiptId: rec.id,
+          invoiceId: a.invoiceId,
+          amount: a.amount,
+        })
+      );
+    }
+    await assertDateNotPeriodLocked(manager, rec.receiptDate);
+    await postReceiptJournal(manager, {
+      entryDate: rec.receiptDate,
+      reference: `RCPT-${rec.id.slice(0, 8)}`,
+      userId: req.auth?.userId,
+      receiptId: rec.id,
+      amount: rec.amount,
+      paymentMethod: rec.paymentMethod,
+    });
+    return manager.findOneOrFail(Receipt, { where: { id: rec.id }, relations: ['allocations'] });
+  });
+  return created({ data: serialize(saved, saved.allocations) });
 }

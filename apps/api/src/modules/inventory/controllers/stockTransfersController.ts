@@ -66,72 +66,58 @@ export async function createStockTransfer(
     throw new HttpError(400, { error: 'Source and destination warehouse must differ' });
   }
   const userId = req.auth?.userId;
-  try {
-    await assertWarehouseInScope(body.fromWarehouseId, undefined);
-    await assertWarehouseInScope(body.toWarehouseId, undefined);
-    for (const ln of body.lines) {
-      await assertProductInScope(ln.productId, undefined);
-      parseDecimalStrict(String(ln.quantity));
-    }
-  } catch (e) {
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Bad request' });
+  await assertWarehouseInScope(body.fromWarehouseId, undefined);
+  await assertWarehouseInScope(body.toWarehouseId, undefined);
+  for (const ln of body.lines) {
+    await assertProductInScope(ln.productId, undefined);
+    parseDecimalStrict(String(ln.quantity));
   }
 
-  try {
-    const row = await runInTransaction(async (manager) => {
-      const t = manager.create(StockTransfer, {
-        fromWarehouseId: body.fromWarehouseId,
-        toWarehouseId: body.toWarehouseId,
-        transferDate: body.transferDate.slice(0, 10),
-        status: 'draft',
-        notes: body.notes?.trim() || undefined,
-        createdBy: userId,
-      });
-      await manager.save(t);
-      for (const ln of body.lines) {
-        await manager.save(
-          manager.create(StockTransferLine, {
-            transferId: t.id,
-            productId: ln.productId,
-            quantity: parseDecimalStrict(String(ln.quantity)),
-          })
-        );
-      }
-      return manager.findOneOrFail(StockTransfer, {
-        where: { id: t.id },
-        relations: ['lines', 'lines.product', 'fromWarehouse', 'toWarehouse'],
-      });
+  const row = await runInTransaction(async (manager) => {
+    const t = manager.create(StockTransfer, {
+      fromWarehouseId: body.fromWarehouseId,
+      toWarehouseId: body.toWarehouseId,
+      transferDate: body.transferDate.slice(0, 10),
+      status: 'draft',
+      notes: body.notes?.trim() || undefined,
+      createdBy: userId,
     });
-    return created({ data: serialize(row, row.lines) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Failed to create transfer' });
-  }
+    await manager.save(t);
+    for (const ln of body.lines) {
+      await manager.save(
+        manager.create(StockTransferLine, {
+          transferId: t.id,
+          productId: ln.productId,
+          quantity: parseDecimalStrict(String(ln.quantity)),
+        })
+      );
+    }
+    return manager.findOneOrFail(StockTransfer, {
+      where: { id: t.id },
+      relations: ['lines', 'lines.product', 'fromWarehouse', 'toWarehouse'],
+    });
+  });
+  return created({ data: serialize(row, row.lines) });
 }
 
 export async function postStockTransfer(req: Request): Promise<ControllerResult> {
-  try {
-    const row = await runInTransaction(async (manager) => {
-      const t = await manager.findOne(StockTransfer, {
-        where: { id: req.params.id },
-        relations: ['lines'],
-      });
-      if (!t) throw new HttpError(404, { error: 'Not found' });
-      if (t.status !== 'draft') throw new HttpError(400, { error: 'Only draft transfers can be posted' });
-      if (!t.lines?.length) throw new HttpError(400, { error: 'Transfer has no lines' });
-      await postStockTransferTx(manager, t, t.lines, req.auth?.userId);
-
-      t.status = 'posted';
-      await manager.save(t);
-
-      return manager.findOneOrFail(StockTransfer, {
-        where: { id: t.id },
-        relations: ['lines', 'lines.product', 'fromWarehouse', 'toWarehouse'],
-      });
+  const row = await runInTransaction(async (manager) => {
+    const t = await manager.findOne(StockTransfer, {
+      where: { id: req.params.id },
+      relations: ['lines'],
     });
-    return ok({ data: serialize(row, row.lines) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Post failed' });
-  }
+    if (!t) throw new HttpError(404, { error: 'Not found' });
+    if (t.status !== 'draft') throw new HttpError(400, { error: 'Only draft transfers can be posted' });
+    if (!t.lines?.length) throw new HttpError(400, { error: 'Transfer has no lines' });
+    await postStockTransferTx(manager, t, t.lines, req.auth?.userId);
+
+    t.status = 'posted';
+    await manager.save(t);
+
+    return manager.findOneOrFail(StockTransfer, {
+      where: { id: t.id },
+      relations: ['lines', 'lines.product', 'fromWarehouse', 'toWarehouse'],
+    });
+  });
+  return ok({ data: serialize(row, row.lines) });
 }

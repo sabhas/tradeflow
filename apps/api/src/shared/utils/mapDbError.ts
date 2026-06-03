@@ -57,17 +57,3 @@ export function mapDbError(e: unknown): HttpError | null {
 
   return null;
 }
-
-/**
- * Re-throws HttpError; maps known DB errors; otherwise wraps as 400 with message.
- */
-export function handleControllerError(e: unknown, fallbackMessage = 'Operation failed'): never {
-  if (e instanceof HttpError) throw e;
-  const db = mapDbError(e);
-  if (db) throw db;
-  const msg = e instanceof Error ? e.message : fallbackMessage;
-  if (msg === 'Not found') {
-    throw new HttpError(404, { error: 'Not found' });
-  }
-  throw new HttpError(400, { error: msg });
-}

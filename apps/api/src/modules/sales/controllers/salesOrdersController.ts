@@ -236,20 +236,102 @@ export async function bulkSalesOrders(req: Request, body: BulkSalesOrdersInput):
 
 export async function createSalesOrder(req: Request, body: CreateSalesOrderInput): Promise<ControllerResult> {
   const b = body;
-  try {
-    const saved = await runInTransaction(async (manager) => {
+  const saved = await runInTransaction(async (manager) => {
+    const linesWithBonus = await attachSalesOrderLineBonuses(manager, b.lines);
+    await assertSalesOrderLinesInStock(
+      manager,
+      b.warehouseId ?? undefined,
+      linesWithBonus.map((l) => ({
+        productId: l.productId,
+        quantity: stockQtyForLine(l.quantity, l.bonusQuantity),
+      }))
+    );
+    const totals = await computeSalesDocumentTotals(
+      manager,
+      b.customerId,
+      linesWithBonus.map((l) => ({
+        productId: l.productId,
+        quantity: l.quantity,
+        bonusQuantity: l.bonusQuantity,
+        unitPrice: l.unitPrice,
+        discountAmount: l.discountAmount,
+        taxProfileId: l.taxProfileId,
+      })),
+      b.discountAmount
+    );
+    const o = manager.create(SalesOrder, {
+      customerId: b.customerId,
+      orderDate: b.orderDate.slice(0, 10),
+      status: 'draft',
+      warehouseId: b.warehouseId ?? undefined,
+      salespersonId: b.salespersonId ?? undefined,
+      subtotal: totals.subtotal,
+      taxAmount: totals.taxAmount,
+      discountAmount: totals.discountAmount,
+      total: totals.total,
+      notes: b.notes ?? undefined,
+      createdBy: req.auth?.userId,
+    });
+    await manager.save(o);
+    for (let i = 0; i < totals.lines.length; i++) {
+      const l = totals.lines[i];
+      const meta = linesWithBonus[i];
+      await manager.save(
+        manager.create(SalesOrderLine, {
+          salesOrderId: o.id,
+          productId: l.productId,
+          quantity: l.quantity,
+          bonusQuantity: meta.bonusQuantity,
+          unitPrice: l.unitPrice,
+          taxAmount: l.taxAmount,
+          discountAmount: l.discountAmount,
+          deliveredQuantity: '0.0000',
+          taxProfileId: l.taxProfileId ?? undefined,
+        })
+      );
+    }
+    return manager.findOneOrFail(SalesOrder, {
+      where: { id: o.id },
+      relations: ['lines', 'lines.product', 'customer', 'warehouse', 'salesperson'],
+    });
+  });
+  return created({
+    data: serializeSalesOrder(saved, saved.lines, {
+      hasInvoice: false,
+      lineCount: saved.lines?.length ?? 0,
+    }),
+  });
+}
+
+export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput): Promise<ControllerResult> {
+  const b = body;
+  const saved = await runInTransaction(async (manager) => {
+    const o = await manager.findOne(SalesOrder, {
+      where: { id: req.params.id },
+    });
+    if (!o) throw new HttpError(404, { error: 'Not found' });
+    if (o.status !== 'draft') throw new HttpError(400, { error: 'Only draft sales orders can be edited' });
+
+    if (b.customerId !== undefined) o.customerId = b.customerId;
+    if (b.orderDate !== undefined) o.orderDate = b.orderDate.slice(0, 10);
+    if (b.warehouseId !== undefined) o.warehouseId = b.warehouseId ?? undefined;
+    if (b.salespersonId !== undefined) o.salespersonId = b.salespersonId ?? undefined;
+    if (b.notes !== undefined) o.notes = b.notes ?? undefined;
+
+    if (b.lines) {
       const linesWithBonus = await attachSalesOrderLineBonuses(manager, b.lines);
       await assertSalesOrderLinesInStock(
         manager,
-        b.warehouseId ?? undefined,
+        o.warehouseId,
         linesWithBonus.map((l) => ({
           productId: l.productId,
           quantity: stockQtyForLine(l.quantity, l.bonusQuantity),
         }))
       );
+      await manager.delete(SalesOrderLine, { salesOrderId: o.id });
       const totals = await computeSalesDocumentTotals(
         manager,
-        b.customerId,
+        o.customerId,
         linesWithBonus.map((l) => ({
           productId: l.productId,
           quantity: l.quantity,
@@ -258,22 +340,12 @@ export async function createSalesOrder(req: Request, body: CreateSalesOrderInput
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
         })),
-        b.discountAmount
+        b.discountAmount !== undefined ? b.discountAmount : o.discountAmount
       );
-      const o = manager.create(SalesOrder, {
-        customerId: b.customerId,
-        orderDate: b.orderDate.slice(0, 10),
-        status: 'draft',
-        warehouseId: b.warehouseId ?? undefined,
-        salespersonId: b.salespersonId ?? undefined,
-        subtotal: totals.subtotal,
-        taxAmount: totals.taxAmount,
-        discountAmount: totals.discountAmount,
-        total: totals.total,
-        notes: b.notes ?? undefined,
-        createdBy: req.auth?.userId,
-      });
-      await manager.save(o);
+      o.subtotal = totals.subtotal;
+      o.taxAmount = totals.taxAmount;
+      o.discountAmount = totals.discountAmount;
+      o.total = totals.total;
       for (let i = 0; i < totals.lines.length; i++) {
         const l = totals.lines[i];
         const meta = linesWithBonus[i];
@@ -291,86 +363,50 @@ export async function createSalesOrder(req: Request, body: CreateSalesOrderInput
           })
         );
       }
-      return manager.findOneOrFail(SalesOrder, {
-        where: { id: o.id },
-        relations: ['lines', 'lines.product', 'customer', 'warehouse', 'salesperson'],
-      });
-    });
-    return created({
-      data: serializeSalesOrder(saved, saved.lines, {
-        hasInvoice: false,
-        lineCount: saved.lines?.length ?? 0,
-      }),
-    });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
-}
-
-export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput): Promise<ControllerResult> {
-  const b = body;
-  try {
-    const saved = await runInTransaction(async (manager) => {
-      const o = await manager.findOne(SalesOrder, {
-        where: { id: req.params.id },
-      });
-      if (!o) throw new HttpError(404, { error: 'Not found' });
-      if (o.status !== 'draft') throw new HttpError(400, { error: 'Only draft sales orders can be edited' });
-
-      if (b.customerId !== undefined) o.customerId = b.customerId;
-      if (b.orderDate !== undefined) o.orderDate = b.orderDate.slice(0, 10);
-      if (b.warehouseId !== undefined) o.warehouseId = b.warehouseId ?? undefined;
-      if (b.salespersonId !== undefined) o.salespersonId = b.salespersonId ?? undefined;
-      if (b.notes !== undefined) o.notes = b.notes ?? undefined;
-
-      if (b.lines) {
-        const linesWithBonus = await attachSalesOrderLineBonuses(manager, b.lines);
-        await assertSalesOrderLinesInStock(
-          manager,
-          o.warehouseId,
-          linesWithBonus.map((l) => ({
-            productId: l.productId,
-            quantity: stockQtyForLine(l.quantity, l.bonusQuantity),
-          }))
-        );
-        await manager.delete(SalesOrderLine, { salesOrderId: o.id });
-        const totals = await computeSalesDocumentTotals(
-          manager,
-          o.customerId,
-          linesWithBonus.map((l) => ({
+    } else if (b.discountAmount !== undefined) {
+      const dbLines = await manager.find(SalesOrderLine, { where: { salesOrderId: o.id } });
+      await assertSalesOrderLinesInStock(
+        manager,
+        o.warehouseId,
+        dbLines.map((l) => ({
+          productId: l.productId,
+          quantity: stockQtyForLine(parseFloat(l.quantity), l.bonusQuantity ?? '0'),
+        }))
+      );
+      const lines = dbLines.map((l) => ({
+        productId: l.productId,
+        quantity: parseFloat(l.quantity),
+        bonusQuantity: l.bonusQuantity ?? '0',
+        unitPrice: l.unitPrice,
+        discountAmount: l.discountAmount,
+        taxProfileId: l.taxProfileId,
+      }));
+      const totals = await computeSalesDocumentTotals(manager, o.customerId, lines, b.discountAmount);
+      o.subtotal = totals.subtotal;
+      o.taxAmount = totals.taxAmount;
+      o.discountAmount = totals.discountAmount;
+      o.total = totals.total;
+      await manager.delete(SalesOrderLine, { salesOrderId: o.id });
+      for (let i = 0; i < totals.lines.length; i++) {
+        const l = totals.lines[i];
+        const meta = lines[i];
+        await manager.save(
+          manager.create(SalesOrderLine, {
+            salesOrderId: o.id,
             productId: l.productId,
             quantity: l.quantity,
-            bonusQuantity: l.bonusQuantity,
+            bonusQuantity: meta.bonusQuantity,
             unitPrice: l.unitPrice,
+            taxAmount: l.taxAmount,
             discountAmount: l.discountAmount,
-            taxProfileId: l.taxProfileId,
-          })),
-          b.discountAmount !== undefined ? b.discountAmount : o.discountAmount
+            deliveredQuantity: '0.0000',
+            taxProfileId: l.taxProfileId ?? undefined,
+          })
         );
-        o.subtotal = totals.subtotal;
-        o.taxAmount = totals.taxAmount;
-        o.discountAmount = totals.discountAmount;
-        o.total = totals.total;
-        for (let i = 0; i < totals.lines.length; i++) {
-          const l = totals.lines[i];
-          const meta = linesWithBonus[i];
-          await manager.save(
-            manager.create(SalesOrderLine, {
-              salesOrderId: o.id,
-              productId: l.productId,
-              quantity: l.quantity,
-              bonusQuantity: meta.bonusQuantity,
-              unitPrice: l.unitPrice,
-              taxAmount: l.taxAmount,
-              discountAmount: l.discountAmount,
-              deliveredQuantity: '0.0000',
-              taxProfileId: l.taxProfileId ?? undefined,
-            })
-          );
-        }
-      } else if (b.discountAmount !== undefined) {
-        const dbLines = await manager.find(SalesOrderLine, { where: { salesOrderId: o.id } });
+      }
+    } else if (b.warehouseId !== undefined) {
+      const dbLines = await manager.find(SalesOrderLine, { where: { salesOrderId: o.id } });
+      if (dbLines.length > 0) {
         await assertSalesOrderLinesInStock(
           manager,
           o.warehouseId,
@@ -379,69 +415,23 @@ export async function updateSalesOrder(req: Request, body: UpdateSalesOrderInput
             quantity: stockQtyForLine(parseFloat(l.quantity), l.bonusQuantity ?? '0'),
           }))
         );
-        const lines = dbLines.map((l) => ({
-          productId: l.productId,
-          quantity: parseFloat(l.quantity),
-          bonusQuantity: l.bonusQuantity ?? '0',
-          unitPrice: l.unitPrice,
-          discountAmount: l.discountAmount,
-          taxProfileId: l.taxProfileId,
-        }));
-        const totals = await computeSalesDocumentTotals(manager, o.customerId, lines, b.discountAmount);
-        o.subtotal = totals.subtotal;
-        o.taxAmount = totals.taxAmount;
-        o.discountAmount = totals.discountAmount;
-        o.total = totals.total;
-        await manager.delete(SalesOrderLine, { salesOrderId: o.id });
-        for (let i = 0; i < totals.lines.length; i++) {
-          const l = totals.lines[i];
-          const meta = lines[i];
-          await manager.save(
-            manager.create(SalesOrderLine, {
-              salesOrderId: o.id,
-              productId: l.productId,
-              quantity: l.quantity,
-              bonusQuantity: meta.bonusQuantity,
-              unitPrice: l.unitPrice,
-              taxAmount: l.taxAmount,
-              discountAmount: l.discountAmount,
-              deliveredQuantity: '0.0000',
-              taxProfileId: l.taxProfileId ?? undefined,
-            })
-          );
-        }
-      } else if (b.warehouseId !== undefined) {
-        const dbLines = await manager.find(SalesOrderLine, { where: { salesOrderId: o.id } });
-        if (dbLines.length > 0) {
-          await assertSalesOrderLinesInStock(
-            manager,
-            o.warehouseId,
-            dbLines.map((l) => ({
-              productId: l.productId,
-              quantity: stockQtyForLine(parseFloat(l.quantity), l.bonusQuantity ?? '0'),
-            }))
-          );
-        }
       }
-      await manager.save(o);
-      return manager.findOneOrFail(SalesOrder, {
-        where: { id: o.id },
-        relations: ['lines', 'lines.product', 'customer', 'warehouse', 'salesperson'],
-      });
+    }
+    await manager.save(o);
+    return manager.findOneOrFail(SalesOrder, {
+      where: { id: o.id },
+      relations: ['lines', 'lines.product', 'customer', 'warehouse', 'salesperson'],
     });
-    const invCountSaved = await Invoice.count({
-      where: { salesOrderId: saved.id, deletedAt: IsNull() },
-    });
-    return ok({
-      data: serializeSalesOrder(saved, saved.lines, {
-        hasInvoice: invCountSaved > 0,
-        lineCount: saved.lines?.length ?? 0,
-      }),
-    });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+  });
+  const invCountSaved = await Invoice.count({
+    where: { salesOrderId: saved.id, deletedAt: IsNull() },
+  });
+  return ok({
+    data: serializeSalesOrder(saved, saved.lines, {
+      hasInvoice: invCountSaved > 0,
+      lineCount: saved.lines?.length ?? 0,
+    }),
+  });
 }
 
 export async function confirmSalesOrder(req: Request): Promise<ControllerResult> {
@@ -491,142 +481,137 @@ export async function convertSalesOrderToInvoice(
   const invoiceDate = b.invoiceDate?.slice(0, 10) || new Date().toISOString().slice(0, 10);
   const dueDateBody = b.dueDate;
 
-  try {
-    const inv = await runInTransaction(async (manager) => {
-      const o = await manager.findOne(SalesOrder, {
-        where: { id: req.params.id },
-        relations: ['lines'],
-      });
-      if (!o) throw new HttpError(404, { error: 'Not found' });
-      if (o.status === 'void') throw new HttpError(400, { error: 'Void order cannot invoice' });
-      await assertSalesOrderConfirmedForInvoice(manager, o.id);
-      await assertNoOtherInvoiceForSalesOrder(manager, o.id);
-
-      const lineInputs: Array<{
-        productId: string;
-        quantity: number;
-        unitPrice: string;
-        discountAmount: string;
-        taxProfileId?: string;
-        salesOrderLineId: string;
-      }> = [];
-
-      for (const pl of b.lines) {
-        const sol = o.lines?.find((x) => x.id === pl.salesOrderLineId);
-        if (!sol) throw new HttpError(400, { error: `Unknown sales order line ${pl.salesOrderLineId}` });
-        const qty = pl.quantity;
-        if (qty <= 0) throw new HttpError(400, { error: 'Invoice quantity must be positive' });
-        const remaining = parseFloat(sol.quantity) - parseFloat(sol.deliveredQuantity) + 1e-9;
-        if (qty > remaining)
-          throw new HttpError(400, { error: 'Quantity exceeds remaining on sales order line' });
-        lineInputs.push({
-          productId: sol.productId,
-          quantity: pl.quantity,
-          unitPrice: sol.unitPrice,
-          discountAmount: sol.discountAmount,
-          taxProfileId: sol.taxProfileId,
-          salesOrderLineId: sol.id,
-        });
-      }
-
-      const invDisc = b.discountAmount ?? '0.0000';
-      const linesWithBonus: Array<(typeof lineInputs)[number] & { bonusQuantity: string }> = [];
-      for (const line of lineInputs) {
-        linesWithBonus.push({
-          ...line,
-          bonusQuantity: await calculateBonus(manager, line.productId, line.quantity),
-        });
-      }
-      const totals = await computeSalesDocumentTotals(
-        manager,
-        o.customerId,
-        linesWithBonus.map((l) => ({
-          productId: l.productId,
-          quantity: l.quantity,
-          bonusQuantity: l.bonusQuantity,
-          unitPrice: l.unitPrice,
-          discountAmount: l.discountAmount,
-          taxProfileId: l.taxProfileId,
-        })),
-        invDisc
-      );
-
-      const due = await resolveInvoiceDueDate(
-        manager,
-        o.customerId,
-        invoiceDate,
-        paymentType,
-        dueDateBody ?? null
-      );
-
-      const invoice = manager.create(Invoice, {
-        customerId: o.customerId,
-        invoiceDate,
-        dueDate: due,
-        status: 'draft',
-        paymentType: paymentType === 'cash' ? 'cash' : 'credit',
-        warehouseId,
-        subtotal: totals.subtotal,
-        taxAmount: totals.taxAmount,
-        discountAmount: totals.discountAmount,
-        total: totals.total,
-        notes: o.notes,
-        salesOrderId: o.id,
-        salespersonId: o.salespersonId,
-        createdBy: req.auth?.userId,
-      });
-      await manager.save(invoice);
-
-      for (let i = 0; i < totals.lines.length; i++) {
-        const l = totals.lines[i];
-        const meta = linesWithBonus[i];
-        await manager.save(
-          manager.create(InvoiceLine, {
-            invoiceId: invoice.id,
-            productId: l.productId,
-            salesOrderLineId: meta.salesOrderLineId,
-            quantity: l.quantity,
-            bonusQuantity: meta.bonusQuantity,
-            unitPrice: l.unitPrice,
-            taxAmount: l.taxAmount,
-            discountAmount: l.discountAmount,
-            taxProfileId: l.taxProfileId ?? undefined,
-          })
-        );
-      }
-
-      return manager.findOneOrFail(Invoice, { where: { id: invoice.id }, relations: ['lines'] });
+  const inv = await runInTransaction(async (manager) => {
+    const o = await manager.findOne(SalesOrder, {
+      where: { id: req.params.id },
+      relations: ['lines'],
     });
+    if (!o) throw new HttpError(404, { error: 'Not found' });
+    if (o.status === 'void') throw new HttpError(400, { error: 'Void order cannot invoice' });
+    await assertSalesOrderConfirmedForInvoice(manager, o.id);
+    await assertNoOtherInvoiceForSalesOrder(manager, o.id);
 
-    return created({
-      data: {
-        id: inv.id,
-        customerId: inv.customerId,
-        invoiceDate: inv.invoiceDate,
-        dueDate: inv.dueDate,
-        status: inv.status,
-        paymentType: inv.paymentType,
-        warehouseId: inv.warehouseId,
-        salesOrderId: inv.salesOrderId,
-        salespersonId: inv.salespersonId,
-        subtotal: inv.subtotal,
-        taxAmount: inv.taxAmount,
-        discountAmount: inv.discountAmount,
-        total: inv.total,
-        lines: inv.lines?.map((l) => ({
-          id: l.id,
+    const lineInputs: Array<{
+      productId: string;
+      quantity: number;
+      unitPrice: string;
+      discountAmount: string;
+      taxProfileId?: string;
+      salesOrderLineId: string;
+    }> = [];
+
+    for (const pl of b.lines) {
+      const sol = o.lines?.find((x) => x.id === pl.salesOrderLineId);
+      if (!sol) throw new HttpError(400, { error: `Unknown sales order line ${pl.salesOrderLineId}` });
+      const qty = pl.quantity;
+      if (qty <= 0) throw new HttpError(400, { error: 'Invoice quantity must be positive' });
+      const remaining = parseFloat(sol.quantity) - parseFloat(sol.deliveredQuantity) + 1e-9;
+      if (qty > remaining)
+        throw new HttpError(400, { error: 'Quantity exceeds remaining on sales order line' });
+      lineInputs.push({
+        productId: sol.productId,
+        quantity: pl.quantity,
+        unitPrice: sol.unitPrice,
+        discountAmount: sol.discountAmount,
+        taxProfileId: sol.taxProfileId,
+        salesOrderLineId: sol.id,
+      });
+    }
+
+    const invDisc = b.discountAmount ?? '0.0000';
+    const linesWithBonus: Array<(typeof lineInputs)[number] & { bonusQuantity: string }> = [];
+    for (const line of lineInputs) {
+      linesWithBonus.push({
+        ...line,
+        bonusQuantity: await calculateBonus(manager, line.productId, line.quantity),
+      });
+    }
+    const totals = await computeSalesDocumentTotals(
+      manager,
+      o.customerId,
+      linesWithBonus.map((l) => ({
+        productId: l.productId,
+        quantity: l.quantity,
+        bonusQuantity: l.bonusQuantity,
+        unitPrice: l.unitPrice,
+        discountAmount: l.discountAmount,
+        taxProfileId: l.taxProfileId,
+      })),
+      invDisc
+    );
+
+    const due = await resolveInvoiceDueDate(
+      manager,
+      o.customerId,
+      invoiceDate,
+      paymentType,
+      dueDateBody ?? null
+    );
+
+    const invoice = manager.create(Invoice, {
+      customerId: o.customerId,
+      invoiceDate,
+      dueDate: due,
+      status: 'draft',
+      paymentType: paymentType === 'cash' ? 'cash' : 'credit',
+      warehouseId,
+      subtotal: totals.subtotal,
+      taxAmount: totals.taxAmount,
+      discountAmount: totals.discountAmount,
+      total: totals.total,
+      notes: o.notes,
+      salesOrderId: o.id,
+      salespersonId: o.salespersonId,
+      createdBy: req.auth?.userId,
+    });
+    await manager.save(invoice);
+
+    for (let i = 0; i < totals.lines.length; i++) {
+      const l = totals.lines[i];
+      const meta = linesWithBonus[i];
+      await manager.save(
+        manager.create(InvoiceLine, {
+          invoiceId: invoice.id,
           productId: l.productId,
-          salesOrderLineId: l.salesOrderLineId,
+          salesOrderLineId: meta.salesOrderLineId,
           quantity: l.quantity,
-          bonusQuantity: l.bonusQuantity,
+          bonusQuantity: meta.bonusQuantity,
           unitPrice: l.unitPrice,
           taxAmount: l.taxAmount,
           discountAmount: l.discountAmount,
-        })),
-      },
-    });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+          taxProfileId: l.taxProfileId ?? undefined,
+        })
+      );
+    }
+
+    return manager.findOneOrFail(Invoice, { where: { id: invoice.id }, relations: ['lines'] });
+  });
+
+  return created({
+    data: {
+      id: inv.id,
+      customerId: inv.customerId,
+      invoiceDate: inv.invoiceDate,
+      dueDate: inv.dueDate,
+      status: inv.status,
+      paymentType: inv.paymentType,
+      warehouseId: inv.warehouseId,
+      salesOrderId: inv.salesOrderId,
+      salespersonId: inv.salespersonId,
+      subtotal: inv.subtotal,
+      taxAmount: inv.taxAmount,
+      discountAmount: inv.discountAmount,
+      total: inv.total,
+      lines: inv.lines?.map((l) => ({
+        id: l.id,
+        productId: l.productId,
+        salesOrderLineId: l.salesOrderLineId,
+        quantity: l.quantity,
+        bonusQuantity: l.bonusQuantity,
+        unitPrice: l.unitPrice,
+        taxAmount: l.taxAmount,
+        discountAmount: l.discountAmount,
+      })),
+    },
+  });
 }

@@ -95,32 +95,27 @@ export async function getAccountBalance(req: Request): Promise<ControllerResult>
 }
 
 export async function createAccount(req: Request, body: CreateAccountInput): Promise<ControllerResult> {
-  try {
-    if (body.parentId) {
-      const parent = await Account.findOne({ where: { id: body.parentId } });
-      if (!parent) {
-        throw new HttpError(400, { error: 'Parent account not found' });
-      }
+  if (body.parentId) {
+    const parent = await Account.findOne({ where: { id: body.parentId } });
+    if (!parent) {
+      throw new HttpError(400, { error: 'Parent account not found' });
     }
-
-    const codeQb = Account.createQueryBuilder('a').where('a.code = :code', { code: body.code });
-    if (await codeQb.getOne()) {
-      throw new HttpError(409, { error: 'Account code already exists' });
-    }
-
-    const a = Account.create({
-      code: body.code,
-      name: body.name,
-      type: body.type,
-      parentId: body.parentId ?? undefined,
-      isSystem: false,
-    });
-    const saved = await Account.save(a);
-    return created({ data: serialize(saved) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: (e as Error).message });
   }
+
+  const codeQb = Account.createQueryBuilder('a').where('a.code = :code', { code: body.code });
+  if (await codeQb.getOne()) {
+    throw new HttpError(409, { error: 'Account code already exists' });
+  }
+
+  const a = Account.create({
+    code: body.code,
+    name: body.name,
+    type: body.type,
+    parentId: body.parentId ?? undefined,
+    isSystem: false,
+  });
+  const saved = await Account.save(a);
+  return created({ data: serialize(saved) });
 }
 
 export async function updateAccount(req: Request, body: UpdateAccountInput): Promise<ControllerResult> {
@@ -140,10 +135,6 @@ export async function updateAccount(req: Request, body: UpdateAccountInput): Pro
   if (body.type !== undefined) acc.type = body.type;
   if (body.parentId !== undefined) acc.parentId = body.parentId ?? undefined;
 
-  try {
-    const saved = await Account.save(acc);
-    return ok({ data: serialize(saved) });
-  } catch (e) {
-    throw new HttpError(400, { error: (e as Error).message });
-  }
+  const saved = await Account.save(acc);
+  return ok({ data: serialize(saved) });
 }

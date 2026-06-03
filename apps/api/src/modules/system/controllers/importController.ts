@@ -83,13 +83,9 @@ export async function importProducts(req: Request): Promise<ControllerResult> {
   if (!file?.buffer) {
     throw new HttpError(400, { error: 'file is required (multipart field: file)' });
   }
-  try {
-    const sheets = await parseUploadToSheets(file.buffer, file.mimetype, file.originalname);
-    const result = await importProductsFromSheets(sheets, undefined, undefined);
-    return ok(result);
-  } catch (e) {
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Import failed' });
-  }
+  const sheets = await parseUploadToSheets(file.buffer, file.mimetype, file.originalname);
+  const result = await importProductsFromSheets(sheets, undefined, undefined);
+  return ok(result);
 }
 
 export async function importCustomers(req: Request): Promise<ControllerResult> {
@@ -97,13 +93,9 @@ export async function importCustomers(req: Request): Promise<ControllerResult> {
   if (!file?.buffer) {
     throw new HttpError(400, { error: 'file is required (multipart field: file)' });
   }
-  try {
-    const sheets = await parseUploadToSheets(file.buffer, file.mimetype, file.originalname);
-    const result = await importCustomersFromSheets(sheets, undefined, undefined);
-    return ok(result);
-  } catch (e) {
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Import failed' });
-  }
+  const sheets = await parseUploadToSheets(file.buffer, file.mimetype, file.originalname);
+  const result = await importCustomersFromSheets(sheets, undefined, undefined);
+  return ok(result);
 }
 
 export async function importOpeningBalances(req: Request): Promise<ControllerResult> {
@@ -111,17 +103,13 @@ export async function importOpeningBalances(req: Request): Promise<ControllerRes
   if (!file?.buffer) {
     throw new HttpError(400, { error: 'file is required (multipart field: file)' });
   }
-  try {
-    const sheets = await parseUploadToSheets(file.buffer, file.mimetype, file.originalname);
-    const result = await importOpeningBalancesFromSheets(
-      sheets,
-      undefined,
-      undefined,
-      req.auth?.userId,
-      hasAccountingWrite(req)
-    );
-    return ok(result);
-  } catch (e) {
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Import failed' });
-  }
+  const sheets = await parseUploadToSheets(file.buffer, file.mimetype, file.originalname);
+  const result = await importOpeningBalancesFromSheets(
+    sheets,
+    undefined,
+    undefined,
+    req.auth?.userId,
+    hasAccountingWrite(req)
+  );
+  return ok(result);
 }

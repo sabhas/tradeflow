@@ -19,7 +19,6 @@ import { assertDateNotPeriodLocked } from '../../accounting/services/periodLock'
 import { postSupplierInvoiceJournal } from '../../accounting/services/accountingPosting';
 import { GL_ACCOUNT_CODES } from '../../../shared/constants/glAccounts';
 import { resolveSupplierDueDate } from '../services/supplierDueDateService';
-import { handleControllerError } from '../../../shared/utils/mapDbError';
 import { calculateBonus } from '../../sales/services/bonusService';
 import { parseDecimalStrict } from '../../../shared/utils/decimal';
 import { moneySub } from '../../../shared/utils/money';
@@ -196,92 +195,88 @@ export async function createSupplierInvoice(
   const b = body;
   const userId = req.auth?.userId;
 
-  try {
-    const row = await runInTransaction(async (manager) => {
-      if (!b.grnId) throw new Error('A posted GRN is required before creating a supplier invoice');
-      await assertGrnLinkableToInvoice(manager, b.grnId, b.supplierId);
-      for (const ln of b.lines) {
-        if (!ln.grnLineId) continue;
-        const gl = await manager.findOne(GrnLine, { where: { id: ln.grnLineId } });
-        if (!gl || gl.grnId !== b.grnId) throw new Error('GRN line does not belong to linked GRN');
+  const row = await runInTransaction(async (manager) => {
+    if (!b.grnId) throw new Error('A posted GRN is required before creating a supplier invoice');
+    await assertGrnLinkableToInvoice(manager, b.grnId, b.supplierId);
+    for (const ln of b.lines) {
+      if (!ln.grnLineId) continue;
+      const gl = await manager.findOne(GrnLine, { where: { id: ln.grnLineId } });
+      if (!gl || gl.grnId !== b.grnId) throw new Error('GRN line does not belong to linked GRN');
+    }
+
+    for (const line of b.lines) {
+      await assertProductInScope(line.productId, undefined);
+    }
+
+    const bonusQuantities: string[] = [];
+    for (const l of b.lines) {
+      if (l.bonusQuantity != null && l.bonusQuantity !== '') {
+        bonusQuantities.push(parseDecimalStrict(String(l.bonusQuantity)));
+      } else {
+        bonusQuantities.push(await calculateBonus(manager, l.productId, l.quantity));
       }
+    }
 
-      for (const line of b.lines) {
-        await assertProductInScope(line.productId, undefined);
-      }
+    const totals = await computePurchaseDocumentTotals(
+      manager,
+      b.supplierId,
+      b.lines.map((l, i) => ({
+        productId: l.productId,
+        quantity: l.quantity,
+        unitPrice: String(l.unitPrice),
+        bonusQuantity: bonusQuantities[i],
+        discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
+        taxProfileId: l.taxProfileId,
+      })),
+      b.discountAmount
+    );
 
-      const bonusQuantities: string[] = [];
-      for (const l of b.lines) {
-        if (l.bonusQuantity != null && l.bonusQuantity !== '') {
-          bonusQuantities.push(parseDecimalStrict(String(l.bonusQuantity)));
-        } else {
-          bonusQuantities.push(await calculateBonus(manager, l.productId, l.quantity));
-        }
-      }
+    const due =
+      b.dueDate && b.dueDate !== null
+        ? b.dueDate.slice(0, 10)
+        : await resolveSupplierDueDate(manager, b.supplierId, b.invoiceDate);
 
-      const totals = await computePurchaseDocumentTotals(
-        manager,
-        b.supplierId,
-        b.lines.map((l, i) => ({
-          productId: l.productId,
-          quantity: l.quantity,
-          unitPrice: String(l.unitPrice),
-          bonusQuantity: bonusQuantities[i],
-          discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
-          taxProfileId: l.taxProfileId,
-        })),
-        b.discountAmount
-      );
-
-      const due =
-        b.dueDate && b.dueDate !== null
-          ? b.dueDate.slice(0, 10)
-          : await resolveSupplierDueDate(manager, b.supplierId, b.invoiceDate);
-
-      const inv = manager.create(SupplierInvoice, {
-        supplierId: b.supplierId,
-        invoiceNumber: b.invoiceNumber.trim(),
-        invoiceDate: b.invoiceDate.slice(0, 10),
-        dueDate: due,
-        purchaseOrderId: b.purchaseOrderId ?? undefined,
-        grnId: b.grnId,
-        status: 'draft',
-        subtotal: totals.subtotal,
-        taxAmount: totals.taxAmount,
-        discountAmount: totals.discountAmount,
-        total: totals.total,
-        notes: b.notes ?? undefined,
-        createdBy: userId,
-      });
-      await manager.save(inv);
-
-      for (let i = 0; i < totals.lines.length; i++) {
-        const cmp = totals.lines[i];
-        const src = b.lines[i];
-        await manager.save(
-          manager.create(SupplierInvoiceLine, {
-            supplierInvoiceId: inv.id,
-            productId: cmp.productId,
-            quantity: parseDecimalStrict(String(src.quantity)),
-            bonusQuantity: bonusQuantities[i],
-            unitPrice: parseDecimalStrict(String(src.unitPrice)),
-            taxAmount: cmp.taxAmount,
-            discountAmount: cmp.discountAmount,
-            grnLineId: src.grnLineId ?? undefined,
-            taxProfileId: src.taxProfileId ?? undefined,
-          })
-        );
-      }
-
-      return manager.findOneOrFail(SupplierInvoice, {
-        where: { id: inv.id },
-        relations: ['lines', 'supplier'],
-      });
+    const inv = manager.create(SupplierInvoice, {
+      supplierId: b.supplierId,
+      invoiceNumber: b.invoiceNumber.trim(),
+      invoiceDate: b.invoiceDate.slice(0, 10),
+      dueDate: due,
+      purchaseOrderId: b.purchaseOrderId ?? undefined,
+      grnId: b.grnId,
+      status: 'draft',
+      subtotal: totals.subtotal,
+      taxAmount: totals.taxAmount,
+      discountAmount: totals.discountAmount,
+      total: totals.total,
+      notes: b.notes ?? undefined,
+      createdBy: userId,
     });
-    return created({ data: serialize(row, row.lines) });
-  } catch (e) {
-    handleControllerError(e, 'Create failed');
-  }
+    await manager.save(inv);
+
+    for (let i = 0; i < totals.lines.length; i++) {
+      const cmp = totals.lines[i];
+      const src = b.lines[i];
+      await manager.save(
+        manager.create(SupplierInvoiceLine, {
+          supplierInvoiceId: inv.id,
+          productId: cmp.productId,
+          quantity: parseDecimalStrict(String(src.quantity)),
+          bonusQuantity: bonusQuantities[i],
+          unitPrice: parseDecimalStrict(String(src.unitPrice)),
+          taxAmount: cmp.taxAmount,
+          discountAmount: cmp.discountAmount,
+          grnLineId: src.grnLineId ?? undefined,
+          taxProfileId: src.taxProfileId ?? undefined,
+        })
+      );
+    }
+
+    return manager.findOneOrFail(SupplierInvoice, {
+      where: { id: inv.id },
+      relations: ['lines', 'supplier'],
+    });
+  });
+  return created({ data: serialize(row, row.lines) });
 }
 
 export async function updateSupplierInvoice(
@@ -289,205 +284,197 @@ export async function updateSupplierInvoice(
   body: UpdateSupplierInvoiceInput
 ): Promise<ControllerResult> {
   const b = body;
-  try {
-    const row = await runInTransaction(async (manager) => {
-      const inv = await manager.findOne(SupplierInvoice, {
-        where: { id: req.params.id },
-      });
-      if (!inv) throw new Error('Not found');
-      if (inv.status !== 'draft') throw new Error('Only draft supplier invoices can be edited');
-
-      if (b.invoiceNumber !== undefined) inv.invoiceNumber = b.invoiceNumber.trim();
-      if (b.invoiceDate !== undefined) inv.invoiceDate = b.invoiceDate.slice(0, 10);
-      if (b.dueDate !== undefined && b.dueDate !== null) inv.dueDate = b.dueDate.slice(0, 10);
-      if (b.purchaseOrderId !== undefined) inv.purchaseOrderId = b.purchaseOrderId ?? undefined;
-      if (b.grnId !== undefined) inv.grnId = b.grnId ?? undefined;
-      if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
-      const nextSupplier = b.supplierId ?? inv.supplierId;
-
-      if (b.grnId !== undefined && b.grnId) {
-        await assertGrnLinkableToInvoice(manager, b.grnId, nextSupplier, inv.id);
-      } else if (
-        b.grnId === undefined &&
-        inv.grnId &&
-        b.supplierId !== undefined &&
-        b.supplierId !== inv.supplierId
-      ) {
-        const grn = await manager.findOne(Grn, { where: { id: inv.grnId } });
-        if (grn && grn.supplierId !== nextSupplier) throw new Error('GRN supplier mismatch');
-      }
-
-      const linesIn =
-        b.lines?.map((l) => ({
-          productId: l.productId,
-          quantity: l.quantity,
-          unitPrice: String(l.unitPrice),
-          bonusQuantity: l.bonusQuantity != null ? String(l.bonusQuantity) : undefined,
-          discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
-          taxProfileId: l.taxProfileId,
-          grnLineId: l.grnLineId,
-        })) ?? undefined;
-
-      if (linesIn) {
-        for (const line of linesIn) {
-          await assertProductInScope(line.productId, undefined);
-          if (inv.grnId && line.grnLineId) {
-            const gl = await manager.findOne(GrnLine, { where: { id: line.grnLineId } });
-            if (!gl || gl.grnId !== inv.grnId) throw new Error('GRN line does not belong to linked GRN');
-          }
-        }
-        const bonusQuantities: string[] = [];
-        for (const l of linesIn) {
-          if (l.bonusQuantity != null && l.bonusQuantity !== '') {
-            bonusQuantities.push(parseDecimalStrict(l.bonusQuantity));
-          } else {
-            bonusQuantities.push(await calculateBonus(manager, l.productId, l.quantity));
-          }
-        }
-        const totals = await computePurchaseDocumentTotals(
-          manager,
-          nextSupplier,
-          linesIn.map(({ grnLineId: _g, ...rest }, i) => ({
-            ...rest,
-            bonusQuantity: bonusQuantities[i],
-          })),
-          b.discountAmount ?? inv.discountAmount
-        );
-        inv.subtotal = totals.subtotal;
-        inv.taxAmount = totals.taxAmount;
-        inv.discountAmount = totals.discountAmount;
-        inv.total = totals.total;
-        if (b.supplierId !== undefined) inv.supplierId = b.supplierId;
-        await manager.delete(SupplierInvoiceLine, { supplierInvoiceId: inv.id });
-        for (let i = 0; i < totals.lines.length; i++) {
-          const cmp = totals.lines[i];
-          const src = linesIn[i];
-          await manager.insert(SupplierInvoiceLine, {
-            supplierInvoiceId: inv.id,
-            productId: cmp.productId,
-            quantity: parseDecimalStrict(String(src.quantity)),
-            bonusQuantity: bonusQuantities[i],
-            unitPrice: parseDecimalStrict(String(src.unitPrice)),
-            taxAmount: cmp.taxAmount,
-            discountAmount: cmp.discountAmount,
-            grnLineId: src.grnLineId ?? undefined,
-            taxProfileId: src.taxProfileId ?? undefined,
-          });
-        }
-      } else if (b.discountAmount !== undefined || b.supplierId !== undefined) {
-        const dbLines = await manager.find(SupplierInvoiceLine, { where: { supplierInvoiceId: inv.id } });
-        const existingLines = dbLines.map((l) => ({
-          productId: l.productId,
-          quantity: parseFloat(l.quantity),
-          unitPrice: l.unitPrice,
-          bonusQuantity: l.bonusQuantity ?? '0',
-          discountAmount: l.discountAmount,
-          taxProfileId: l.taxProfileId,
-        }));
-        const totals = await computePurchaseDocumentTotals(
-          manager,
-          nextSupplier,
-          existingLines,
-          b.discountAmount ?? inv.discountAmount
-        );
-        inv.subtotal = totals.subtotal;
-        inv.taxAmount = totals.taxAmount;
-        inv.discountAmount = totals.discountAmount;
-        inv.total = totals.total;
-        if (b.supplierId !== undefined) inv.supplierId = b.supplierId;
-        for (let i = 0; i < totals.lines.length; i++) {
-          dbLines[i].taxAmount = totals.lines[i].taxAmount;
-          dbLines[i].discountAmount = totals.lines[i].discountAmount ?? '0.0000';
-          await manager.save(dbLines[i]);
-        }
-      }
-
-      if (b.supplierId !== undefined) inv.supplierId = b.supplierId;
-      await persistSupplierInvoiceHeader(manager, inv);
-      return manager.findOneOrFail(SupplierInvoice, {
-        where: { id: inv.id },
-        relations: ['lines', 'supplier'],
-      });
+  const row = await runInTransaction(async (manager) => {
+    const inv = await manager.findOne(SupplierInvoice, {
+      where: { id: req.params.id },
     });
-    return ok({ data: serialize(row, row.lines) });
-  } catch (e) {
-    handleControllerError(e, 'Update failed');
-  }
-}
+    if (!inv) throw new Error('Not found');
+    if (inv.status !== 'draft') throw new Error('Only draft supplier invoices can be edited');
 
-export async function postSupplierInvoice(req: Request): Promise<ControllerResult> {
-  try {
-    await runInTransaction(async (manager) => {
-      const inv = await manager.findOne(SupplierInvoice, {
-        where: { id: req.params.id },
-        relations: ['lines'],
-      });
-      if (!inv) throw new Error('Not found');
-      if (inv.status !== 'draft') throw new Error('Only draft invoices can be posted');
-      await assertDateNotPeriodLocked(manager, inv.invoiceDate);
+    if (b.invoiceNumber !== undefined) inv.invoiceNumber = b.invoiceNumber.trim();
+    if (b.invoiceDate !== undefined) inv.invoiceDate = b.invoiceDate.slice(0, 10);
+    if (b.dueDate !== undefined && b.dueDate !== null) inv.dueDate = b.dueDate.slice(0, 10);
+    if (b.purchaseOrderId !== undefined) inv.purchaseOrderId = b.purchaseOrderId ?? undefined;
+    if (b.grnId !== undefined) inv.grnId = b.grnId ?? undefined;
+    if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
+    const nextSupplier = b.supplierId ?? inv.supplierId;
 
-      const linesForCalc =
-        inv.lines?.map((l) => ({
-          productId: l.productId,
-          quantity: parseFloat(l.quantity),
-          unitPrice: l.unitPrice,
-          bonusQuantity: l.bonusQuantity ?? '0',
-          discountAmount: l.discountAmount,
-          taxProfileId: l.taxProfileId,
-        })) ?? [];
+    if (b.grnId !== undefined && b.grnId) {
+      await assertGrnLinkableToInvoice(manager, b.grnId, nextSupplier, inv.id);
+    } else if (
+      b.grnId === undefined &&
+      inv.grnId &&
+      b.supplierId !== undefined &&
+      b.supplierId !== inv.supplierId
+    ) {
+      const grn = await manager.findOne(Grn, { where: { id: inv.grnId } });
+      if (grn && grn.supplierId !== nextSupplier) throw new Error('GRN supplier mismatch');
+    }
+
+    const linesIn =
+      b.lines?.map((l) => ({
+        productId: l.productId,
+        quantity: l.quantity,
+        unitPrice: String(l.unitPrice),
+        bonusQuantity: l.bonusQuantity != null ? String(l.bonusQuantity) : undefined,
+        discountAmount: l.discountAmount != null ? String(l.discountAmount) : '0',
+        taxProfileId: l.taxProfileId,
+        grnLineId: l.grnLineId,
+      })) ?? undefined;
+
+    if (linesIn) {
+      for (const line of linesIn) {
+        await assertProductInScope(line.productId, undefined);
+        if (inv.grnId && line.grnLineId) {
+          const gl = await manager.findOne(GrnLine, { where: { id: line.grnLineId } });
+          if (!gl || gl.grnId !== inv.grnId) throw new Error('GRN line does not belong to linked GRN');
+        }
+      }
+      const bonusQuantities: string[] = [];
+      for (const l of linesIn) {
+        if (l.bonusQuantity != null && l.bonusQuantity !== '') {
+          bonusQuantities.push(parseDecimalStrict(l.bonusQuantity));
+        } else {
+          bonusQuantities.push(await calculateBonus(manager, l.productId, l.quantity));
+        }
+      }
       const totals = await computePurchaseDocumentTotals(
         manager,
-        inv.supplierId,
-        linesForCalc,
-        inv.discountAmount
+        nextSupplier,
+        linesIn.map(({ grnLineId: _g, ...rest }, i) => ({
+          ...rest,
+          bonusQuantity: bonusQuantities[i],
+        })),
+        b.discountAmount ?? inv.discountAmount
       );
-      const inventoryDebit = moneySub(totals.subtotal, totals.discountAmount);
-
-      await postSupplierInvoiceJournal(manager, {
-        entryDate: inv.invoiceDate,
-        reference: inv.invoiceNumber,
-        description: `Supplier invoice ${inv.invoiceNumber}`,
-        userId: req.auth?.userId,
-        supplierInvoiceId: inv.id,
-        inventoryAmount: inventoryDebit,
-        taxAmount: totals.taxAmount,
-        total: totals.total,
-        baseDebitAccountCode: inv.grnId ? GL_ACCOUNT_CODES.ACCRUED_PURCHASES : GL_ACCOUNT_CODES.INVENTORY,
-      });
-
-      for (let i = 0; i < (inv.lines?.length ?? 0); i++) {
-        const line = inv.lines![i];
-        const cmp = totals.lines[i];
-        if (!line.grnLineId) continue;
-        const paidQty = cmp.quantity;
-        if (paidQty <= 0) continue;
-        const bonusQty = parseFloat(line.bonusQuantity ?? '0');
-        const totalQty = paidQty + bonusQty;
-        const unitCost = (parseFloat(cmp.lineBase) / totalQty).toFixed(4);
-        const uc = parseDecimalStrict(unitCost);
-        await manager.update(InventoryMovement, { grnLineId: line.grnLineId }, { unitCost: uc });
-        await manager.query(`UPDATE stock_layers SET unit_cost = $1::numeric WHERE grn_line_id = $2`, [
-          uc,
-          line.grnLineId,
-        ]);
-      }
-
       inv.subtotal = totals.subtotal;
       inv.taxAmount = totals.taxAmount;
       inv.discountAmount = totals.discountAmount;
       inv.total = totals.total;
-      inv.status = 'posted';
-      await manager.save(inv);
-    });
+      if (b.supplierId !== undefined) inv.supplierId = b.supplierId;
+      await manager.delete(SupplierInvoiceLine, { supplierInvoiceId: inv.id });
+      for (let i = 0; i < totals.lines.length; i++) {
+        const cmp = totals.lines[i];
+        const src = linesIn[i];
+        await manager.insert(SupplierInvoiceLine, {
+          supplierInvoiceId: inv.id,
+          productId: cmp.productId,
+          quantity: parseDecimalStrict(String(src.quantity)),
+          bonusQuantity: bonusQuantities[i],
+          unitPrice: parseDecimalStrict(String(src.unitPrice)),
+          taxAmount: cmp.taxAmount,
+          discountAmount: cmp.discountAmount,
+          grnLineId: src.grnLineId ?? undefined,
+          taxProfileId: src.taxProfileId ?? undefined,
+        });
+      }
+    } else if (b.discountAmount !== undefined || b.supplierId !== undefined) {
+      const dbLines = await manager.find(SupplierInvoiceLine, { where: { supplierInvoiceId: inv.id } });
+      const existingLines = dbLines.map((l) => ({
+        productId: l.productId,
+        quantity: parseFloat(l.quantity),
+        unitPrice: l.unitPrice,
+        bonusQuantity: l.bonusQuantity ?? '0',
+        discountAmount: l.discountAmount,
+        taxProfileId: l.taxProfileId,
+      }));
+      const totals = await computePurchaseDocumentTotals(
+        manager,
+        nextSupplier,
+        existingLines,
+        b.discountAmount ?? inv.discountAmount
+      );
+      inv.subtotal = totals.subtotal;
+      inv.taxAmount = totals.taxAmount;
+      inv.discountAmount = totals.discountAmount;
+      inv.total = totals.total;
+      if (b.supplierId !== undefined) inv.supplierId = b.supplierId;
+      for (let i = 0; i < totals.lines.length; i++) {
+        dbLines[i].taxAmount = totals.lines[i].taxAmount;
+        dbLines[i].discountAmount = totals.lines[i].discountAmount ?? '0.0000';
+        await manager.save(dbLines[i]);
+      }
+    }
 
-    const inv = await SupplierInvoice.findOne({
-      where: { id: req.params.id },
+    if (b.supplierId !== undefined) inv.supplierId = b.supplierId;
+    await persistSupplierInvoiceHeader(manager, inv);
+    return manager.findOneOrFail(SupplierInvoice, {
+      where: { id: inv.id },
       relations: ['lines', 'supplier'],
     });
-    return ok({ data: serialize(inv!, inv!.lines) });
-  } catch (e) {
-    handleControllerError(e, 'Post failed');
-  }
+  });
+  return ok({ data: serialize(row, row.lines) });
+}
+
+export async function postSupplierInvoice(req: Request): Promise<ControllerResult> {
+  await runInTransaction(async (manager) => {
+    const inv = await manager.findOne(SupplierInvoice, {
+      where: { id: req.params.id },
+      relations: ['lines'],
+    });
+    if (!inv) throw new Error('Not found');
+    if (inv.status !== 'draft') throw new Error('Only draft invoices can be posted');
+    await assertDateNotPeriodLocked(manager, inv.invoiceDate);
+
+    const linesForCalc =
+      inv.lines?.map((l) => ({
+        productId: l.productId,
+        quantity: parseFloat(l.quantity),
+        unitPrice: l.unitPrice,
+        bonusQuantity: l.bonusQuantity ?? '0',
+        discountAmount: l.discountAmount,
+        taxProfileId: l.taxProfileId,
+      })) ?? [];
+    const totals = await computePurchaseDocumentTotals(
+      manager,
+      inv.supplierId,
+      linesForCalc,
+      inv.discountAmount
+    );
+    const inventoryDebit = moneySub(totals.subtotal, totals.discountAmount);
+
+    await postSupplierInvoiceJournal(manager, {
+      entryDate: inv.invoiceDate,
+      reference: inv.invoiceNumber,
+      description: `Supplier invoice ${inv.invoiceNumber}`,
+      userId: req.auth?.userId,
+      supplierInvoiceId: inv.id,
+      inventoryAmount: inventoryDebit,
+      taxAmount: totals.taxAmount,
+      total: totals.total,
+      baseDebitAccountCode: inv.grnId ? GL_ACCOUNT_CODES.ACCRUED_PURCHASES : GL_ACCOUNT_CODES.INVENTORY,
+    });
+
+    for (let i = 0; i < (inv.lines?.length ?? 0); i++) {
+      const line = inv.lines![i];
+      const cmp = totals.lines[i];
+      if (!line.grnLineId) continue;
+      const paidQty = cmp.quantity;
+      if (paidQty <= 0) continue;
+      const bonusQty = parseFloat(line.bonusQuantity ?? '0');
+      const totalQty = paidQty + bonusQty;
+      const unitCost = (parseFloat(cmp.lineBase) / totalQty).toFixed(4);
+      const uc = parseDecimalStrict(unitCost);
+      await manager.update(InventoryMovement, { grnLineId: line.grnLineId }, { unitCost: uc });
+      await manager.query(`UPDATE stock_layers SET unit_cost = $1::numeric WHERE grn_line_id = $2`, [
+        uc,
+        line.grnLineId,
+      ]);
+    }
+
+    inv.subtotal = totals.subtotal;
+    inv.taxAmount = totals.taxAmount;
+    inv.discountAmount = totals.discountAmount;
+    inv.total = totals.total;
+    inv.status = 'posted';
+    await manager.save(inv);
+  });
+
+  const inv = await SupplierInvoice.findOne({
+    where: { id: req.params.id },
+    relations: ['lines', 'supplier'],
+  });
+  return ok({ data: serialize(inv!, inv!.lines) });
 }
 
 export async function deleteSupplierInvoice(req: Request): Promise<ControllerResult> {

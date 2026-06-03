@@ -333,57 +333,48 @@ export async function postOpeningBalance(
 ): Promise<ControllerResult> {
   const userId = req.auth?.userId;
 
-  try {
-    await assertWarehouseInScope(body.warehouseId, undefined);
-  } catch (e) {
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Bad request' });
-  }
+  await assertWarehouseInScope(body.warehouseId, undefined);
 
   const refId = newBatchRefId();
-  try {
-    const movements = await runInTransaction(async (manager) => {
-      const out: Awaited<ReturnType<typeof applyMovement>>[] = [];
-      for (const line of body.lines) {
-        await assertProductInScope(line.productId, undefined);
-        const qty = parseDecimalStrict(String(line.quantity));
-        const mov = await applyMovement(manager, {
-          productId: line.productId,
-          warehouseId: body.warehouseId,
-          quantityDelta: qty,
-          refType: 'opening_balance',
-          refId,
-          unitCost:
-            line.unitCost != null && line.unitCost !== ''
-              ? parseDecimalStrict(String(line.unitCost))
-              : undefined,
-          movementDate: body.movementDate,
-          userId,
-          batchCode: line.batchCode?.trim() || undefined,
-          expiryDate: line.expiryDate?.trim() ? line.expiryDate.slice(0, 10) : undefined,
-        });
-        out.push(mov);
-      }
-      return out;
-    });
-
-    const loaded = await InventoryMovement.find({
-      where: { id: In(movements.map((m) => m.id)) },
-      relations: ['product', 'warehouse'],
-    });
-    const byId = new Map(loaded.map((m) => [m.id, m]));
-    const ordered = movements.map((m) => byId.get(m.id) ?? m);
-
-    return created({
-      data: {
+  const movements = await runInTransaction(async (manager) => {
+    const out: Awaited<ReturnType<typeof applyMovement>>[] = [];
+    for (const line of body.lines) {
+      await assertProductInScope(line.productId, undefined);
+      const qty = parseDecimalStrict(String(line.quantity));
+      const mov = await applyMovement(manager, {
+        productId: line.productId,
+        warehouseId: body.warehouseId,
+        quantityDelta: qty,
+        refType: 'opening_balance',
         refId,
-        movementIds: movements.map((m) => m.id),
-        movements: ordered.map(serializeMovement),
-      },
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Failed to post opening balance';
-    throw new HttpError(400, { error: msg });
-  }
+        unitCost:
+          line.unitCost != null && line.unitCost !== ''
+            ? parseDecimalStrict(String(line.unitCost))
+            : undefined,
+        movementDate: body.movementDate,
+        userId,
+        batchCode: line.batchCode?.trim() || undefined,
+        expiryDate: line.expiryDate?.trim() ? line.expiryDate.slice(0, 10) : undefined,
+      });
+      out.push(mov);
+    }
+    return out;
+  });
+
+  const loaded = await InventoryMovement.find({
+    where: { id: In(movements.map((m) => m.id)) },
+    relations: ['product', 'warehouse'],
+  });
+  const byId = new Map(loaded.map((m) => [m.id, m]));
+  const ordered = movements.map((m) => byId.get(m.id) ?? m);
+
+  return created({
+    data: {
+      refId,
+      movementIds: movements.map((m) => m.id),
+      movements: ordered.map(serializeMovement),
+    },
+  });
 }
 
 export async function postStockAdjustment(
@@ -392,53 +383,44 @@ export async function postStockAdjustment(
 ): Promise<ControllerResult> {
   const userId = req.auth?.userId;
 
-  try {
-    await assertWarehouseInScope(body.warehouseId, undefined);
-  } catch (e) {
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Bad request' });
-  }
+  await assertWarehouseInScope(body.warehouseId, undefined);
 
   const movementDate = body.movementDate ?? new Date().toISOString().slice(0, 10);
   const refId = newBatchRefId();
   const reasonNote = body.reason.trim();
 
-  try {
-    const movements = await runInTransaction(async (manager) => {
-      const out: Awaited<ReturnType<typeof applyMovement>>[] = [];
-      for (const line of body.lines) {
-        await assertProductInScope(line.productId, undefined);
-        const delta = parseDecimalStrict(String(line.quantityDelta));
-        const mov = await applyMovement(manager, {
-          productId: line.productId,
-          warehouseId: body.warehouseId,
-          quantityDelta: delta,
-          refType: 'adjustment',
-          refId,
-          movementDate,
-          notes: reasonNote,
-          userId,
-        });
-        out.push(mov);
-      }
-      return out;
-    });
-
-    const loaded = await InventoryMovement.find({
-      where: { id: In(movements.map((m) => m.id)) },
-      relations: ['product', 'warehouse'],
-    });
-    const byId = new Map(loaded.map((m) => [m.id, m]));
-    const ordered = movements.map((m) => byId.get(m.id) ?? m);
-
-    return created({
-      data: {
+  const movements = await runInTransaction(async (manager) => {
+    const out: Awaited<ReturnType<typeof applyMovement>>[] = [];
+    for (const line of body.lines) {
+      await assertProductInScope(line.productId, undefined);
+      const delta = parseDecimalStrict(String(line.quantityDelta));
+      const mov = await applyMovement(manager, {
+        productId: line.productId,
+        warehouseId: body.warehouseId,
+        quantityDelta: delta,
+        refType: 'adjustment',
         refId,
-        movementIds: movements.map((m) => m.id),
-        movements: ordered.map(serializeMovement),
-      },
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Failed to post adjustment';
-    throw new HttpError(400, { error: msg });
-  }
+        movementDate,
+        notes: reasonNote,
+        userId,
+      });
+      out.push(mov);
+    }
+    return out;
+  });
+
+  const loaded = await InventoryMovement.find({
+    where: { id: In(movements.map((m) => m.id)) },
+    relations: ['product', 'warehouse'],
+  });
+  const byId = new Map(loaded.map((m) => [m.id, m]));
+  const ordered = movements.map((m) => byId.get(m.id) ?? m);
+
+  return created({
+    data: {
+      refId,
+      movementIds: movements.map((m) => m.id),
+      movements: ordered.map(serializeMovement),
+    },
+  });
 }

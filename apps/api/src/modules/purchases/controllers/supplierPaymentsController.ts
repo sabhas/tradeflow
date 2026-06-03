@@ -163,50 +163,45 @@ export async function createSupplierPayment(
     });
   }
 
-  try {
-    const row = await runInTransaction(async (manager) => {
-      await validateSupplierPaymentAllocations(manager, body.supplierId, body.allocations);
+  const row = await runInTransaction(async (manager) => {
+    await validateSupplierPaymentAllocations(manager, body.supplierId, body.allocations);
 
-      const p = manager.create(SupplierPayment, {
-        supplierId: body.supplierId,
-        paymentDate,
-        amount: parseDecimalStrict(String(payAmt)),
-        paymentMethod: body.paymentMethod,
-        reference: body.reference ?? undefined,
-        createdBy: userId,
-      });
-      await manager.save(p);
-
-      for (const a of body.allocations) {
-        await manager.save(
-          manager.create(SupplierPaymentAllocation, {
-            supplierPaymentId: p.id,
-            supplierInvoiceId: a.supplierInvoiceId,
-            amount: parseDecimalStrict(String(parseMoneyLike(a.amount))),
-          })
-        );
-      }
-
-      await assertDateNotPeriodLocked(manager, p.paymentDate);
-      if (payAmt > 0.00005) {
-        await postSupplierPaymentJournal(manager, {
-          entryDate: p.paymentDate,
-          reference: p.reference || `PAY-${p.id.slice(0, 8)}`,
-          userId,
-          supplierPaymentId: p.id,
-          amount: p.amount,
-          paymentMethod: p.paymentMethod,
-        });
-      }
-
-      return manager.findOneOrFail(SupplierPayment, {
-        where: { id: p.id },
-        relations: ['allocations', 'supplier'],
-      });
+    const p = manager.create(SupplierPayment, {
+      supplierId: body.supplierId,
+      paymentDate,
+      amount: parseDecimalStrict(String(payAmt)),
+      paymentMethod: body.paymentMethod,
+      reference: body.reference ?? undefined,
+      createdBy: userId,
     });
-    return created({ data: serialize(row, row.allocations) });
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Payment failed' });
-  }
+    await manager.save(p);
+
+    for (const a of body.allocations) {
+      await manager.save(
+        manager.create(SupplierPaymentAllocation, {
+          supplierPaymentId: p.id,
+          supplierInvoiceId: a.supplierInvoiceId,
+          amount: parseDecimalStrict(String(parseMoneyLike(a.amount))),
+        })
+      );
+    }
+
+    await assertDateNotPeriodLocked(manager, p.paymentDate);
+    if (payAmt > 0.00005) {
+      await postSupplierPaymentJournal(manager, {
+        entryDate: p.paymentDate,
+        reference: p.reference || `PAY-${p.id.slice(0, 8)}`,
+        userId,
+        supplierPaymentId: p.id,
+        amount: p.amount,
+        paymentMethod: p.paymentMethod,
+      });
+    }
+
+    return manager.findOneOrFail(SupplierPayment, {
+      where: { id: p.id },
+      relations: ['allocations', 'supplier'],
+    });
+  });
+  return created({ data: serialize(row, row.allocations) });
 }
