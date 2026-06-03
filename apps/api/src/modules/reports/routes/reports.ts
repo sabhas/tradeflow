@@ -1,6 +1,10 @@
 import { Router } from 'express';
-import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
-import { requireTaxSummaryAccess } from '../../../shared/middleware/reportsAccess';
+import {
+  authMiddleware,
+  loadUser,
+  requireAnyPermission,
+  requirePermission,
+} from '../../../shared/middleware/auth';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as reportsController from '../controllers/reportsController';
@@ -106,7 +110,7 @@ reportsRouter.get(
 
 reportsRouter.get(
   '/tax-summary',
-  requireTaxSummaryAccess,
+  requireAnyPermission('sales:read', 'purchases.reports:read'),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await reportsController.taxSummary(req));
   })
@@ -130,6 +134,7 @@ reportsRouter.get(
 
 reportsRouter.get(
   '/grn-invoice-reconciliation',
+  requireAnyPermission('purchases.reports:read', 'purchases.grn:read'),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await reportsController.grnInvoiceReconciliation(req));
   })
@@ -137,6 +142,7 @@ reportsRouter.get(
 
 reportsRouter.get(
   '/dashboard/kpis',
+  requireAnyPermission('sales:read', 'purchases.reports:read', 'purchases.grn:read'),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await reportsController.dashboardKpis(req));
   })

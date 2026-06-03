@@ -58,7 +58,7 @@ function permissionsFromUser(req: Request): string[] | null {
  * not loaded or empty join), fall back to JWT — same effective behavior as JWT-only checks
  * before DB-aware auth. Routes without `loadUser` use JWT only.
  */
-function effectivePermissions(req: Request): string[] {
+export function getEffectivePermissions(req: Request): string[] {
   const fromJwt = permissionsFromJwt(req);
   const fromDb = permissionsFromUser(req);
   if (fromDb === null) {
@@ -70,6 +70,11 @@ function effectivePermissions(req: Request): string[] {
   return fromJwt;
 }
 
+function hasPermission(req: Request, permission: string): boolean {
+  const perms = getEffectivePermissions(req);
+  return perms.includes(permission) || perms.includes('*');
+}
+
 export function requirePermission(resource: string, action: string) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.auth) {
@@ -77,11 +82,32 @@ export function requirePermission(resource: string, action: string) {
       return;
     }
     const permission = `${resource}:${action}`;
-    const perms = effectivePermissions(req);
-    if (!perms.includes(permission) && !perms.includes('*')) {
+    if (!hasPermission(req, permission)) {
       res.status(403).json(
         apiErrorBody('Forbidden', {
           message: `Permission ${permission} required`,
+          requestId: req.requestId,
+        })
+      );
+      return;
+    }
+    next();
+  };
+}
+
+/** Requires at least one of the given permission codes (or wildcard). */
+export function requireAnyPermission(...permissions: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.auth) {
+      res.status(401).json(apiErrorBody('Unauthorized', { requestId: req.requestId }));
+      return;
+    }
+    const perms = getEffectivePermissions(req);
+    const allowed = perms.includes('*') || permissions.some((p) => perms.includes(p));
+    if (!allowed) {
+      res.status(403).json(
+        apiErrorBody('Forbidden', {
+          message: `One of [${permissions.join(', ')}] required`,
           requestId: req.requestId,
         })
       );

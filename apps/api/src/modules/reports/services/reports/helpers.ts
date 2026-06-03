@@ -1,8 +1,9 @@
 import type { Request } from 'express';
+import { getEffectivePermissions } from '../../../../shared/middleware/auth';
 
 export function hasPerm(req: Request, code: string): boolean {
-  const p = req.auth?.permissions ?? [];
-  return p.includes('*') || p.includes(code);
+  const perms = getEffectivePermissions(req);
+  return perms.includes('*') || perms.includes(code);
 }
 
 export function queryDateFrom(req: Request, fallback = '1970-01-01'): string {
