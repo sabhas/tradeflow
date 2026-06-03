@@ -1,5 +1,6 @@
 node_modules
 dist
+apps/api/public
 apps/desktop/dist-react
 apps/desktop/dist-electron
 build

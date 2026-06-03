@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createProductSchema, replaceProductPricesSchema, updateProductSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as productsController from '../controllers/productsController';
@@ -43,13 +44,9 @@ productsRouter.put(
     getOldValue: (req) => productsController.loadProductPricesForAudit(req.params.id),
     getNewValue: (req) => req.body,
   }),
+  validateBody(replaceProductPricesSchema),
   asyncHandler(async (req, res) => {
-    const parsed = replaceProductPricesSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await productsController.replaceProductPrices(req, parsed.data));
+    sendControllerResult(res, await productsController.replaceProductPrices(req, getValidatedBody(req)));
   })
 );
 
@@ -68,13 +65,9 @@ productsRouter.post(
     entity: 'Product',
     getNewValue: (req) => req.body,
   }),
+  validateBody(createProductSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createProductSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await productsController.createProduct(req, parsed.data));
+    sendControllerResult(res, await productsController.createProduct(req, getValidatedBody(req)));
   })
 );
 
@@ -87,13 +80,9 @@ productsRouter.patch(
     getOldValue: (req) => productsController.getOldProductSnapshotForAudit(req),
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateProductSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateProductSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await productsController.updateProduct(req, parsed.data));
+    sendControllerResult(res, await productsController.updateProduct(req, getValidatedBody(req)));
   })
 );
 

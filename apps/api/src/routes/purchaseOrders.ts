@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createPurchaseOrderSchema, updatePurchaseOrderSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as purchaseOrdersController from '../controllers/purchaseOrdersController';
@@ -37,13 +38,9 @@ purchaseOrdersRouter.post(
   '/',
   requirePermission('purchases.orders', 'write'),
   auditMiddleware({ entity: 'PurchaseOrder', getNewValue: (req) => req.body }),
+  validateBody(createPurchaseOrderSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createPurchaseOrderSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await purchaseOrdersController.createPurchaseOrder(req, parsed.data));
+    sendControllerResult(res, await purchaseOrdersController.createPurchaseOrder(req, getValidatedBody(req)));
   })
 );
 
@@ -56,13 +53,9 @@ purchaseOrdersRouter.patch(
     getOldValue: async (req) => purchaseOrdersController.getPurchaseOrderSnapshotForAudit(req.params.id),
     getNewValue: (req) => req.body,
   }),
+  validateBody(updatePurchaseOrderSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updatePurchaseOrderSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await purchaseOrdersController.updatePurchaseOrder(req, parsed.data));
+    sendControllerResult(res, await purchaseOrdersController.updatePurchaseOrder(req, getValidatedBody(req)));
   })
 );
 

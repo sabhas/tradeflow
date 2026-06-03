@@ -1,5 +1,6 @@
 import type { EntityManager } from 'typeorm';
 import { dataSource, Grn, SupplierInvoice } from '@tradeflow/db';
+import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
 
 export type InvoiceSettlement = 'not_applicable' | 'awaiting_invoice' | 'invoice_draft' | 'invoice_posted';
 
@@ -40,12 +41,15 @@ export function settlementFields(
 }
 
 /** Latest supplier invoice per GRN (by created_at). */
-export async function loadLinkedInvoicesByGrnIds(grnIds: string[]): Promise<Map<string, LinkedSupplierInvoice>> {
+export async function loadLinkedInvoicesByGrnIds(
+  grnIds: string[]
+): Promise<Map<string, LinkedSupplierInvoice>> {
   const map = new Map<string, LinkedSupplierInvoice>();
   if (grnIds.length === 0) return map;
 
-  const rows: Array<{ grnId: string; id: string; invoiceNumber: string; status: string }> = await dataSource.query(
-    `
+  const rows: Array<{ grnId: string; id: string; invoiceNumber: string; status: string }> =
+    await dataSource.query(
+      `
     SELECT DISTINCT ON (si.grn_id)
       si.grn_id AS "grnId",
       si.id,
@@ -55,8 +59,8 @@ export async function loadLinkedInvoicesByGrnIds(grnIds: string[]): Promise<Map<
     WHERE si.grn_id = ANY($1::uuid[])
     ORDER BY si.grn_id, si.created_at DESC
     `,
-    [grnIds]
-  );
+      [grnIds]
+    );
 
   for (const r of rows) {
     map.set(r.grnId, { id: r.id, invoiceNumber: r.invoiceNumber, status: r.status });
@@ -142,7 +146,7 @@ export async function getUnsettledGrnsForPeriodLock(lockedThrough: string): Prom
         WHERE je.source_type = 'grn_posting'
           AND je.source_id = g.id
           AND je.status = 'posted'
-          AND a.code = '2050'
+          AND a.code = $2
       ), '0.0000') AS "accruedAmount"
     FROM grns g
     JOIN suppliers s ON s.id = g.supplier_id
@@ -158,7 +162,7 @@ export async function getUnsettledGrnsForPeriodLock(lockedThrough: string): Prom
       AND (si.id IS NULL OR si.status != 'posted')
     ORDER BY g.grn_date, g.created_at
     `,
-    [through]
+    [through, GL_ACCOUNT_CODES.ACCRUED_PURCHASES]
   );
 
   let total = 0;

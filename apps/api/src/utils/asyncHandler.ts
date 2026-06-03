@@ -15,7 +15,10 @@ export function asyncHandler(
             res.setHeader(k, v);
           }
         }
-        res.status(err.statusCode).json(err.body);
+        res.status(err.statusCode).json({
+          ...err.body,
+          requestId: req.requestId,
+        });
         return;
       }
       next(err);

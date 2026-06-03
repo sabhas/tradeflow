@@ -1,9 +1,9 @@
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
-import { Account, dataSource, Supplier } from '@tradeflow/db';
+import { dataSource, Supplier } from '@tradeflow/db';
 import { createSupplierSchema, updateSupplierSchema } from '@tradeflow/shared';
-import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
+import { createSupplierPayableAccount } from '../services/glAccountService';
 import { getPagination } from '../utils/pagination';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -34,9 +34,7 @@ export async function listSuppliers(req: Request): Promise<ControllerResult> {
   const { limit, offset } = getPagination(req);
   const search = (req.query.search as string | undefined)?.trim();
 
-  const qb = Supplier
-    .createQueryBuilder('s')
-    .where('s.deleted_at IS NULL');
+  const qb = Supplier.createQueryBuilder('s').where('s.deleted_at IS NULL');
   if (search) {
     qb.andWhere('LOWER(s.name) LIKE :term', { term: `%${search.toLowerCase()}%` });
   }
@@ -244,23 +242,9 @@ export async function getSupplier(req: Request): Promise<ControllerResult> {
 export async function createSupplier(req: Request, body: CreateSupplierInput): Promise<ControllerResult> {
   const b = body;
   const row = await dataSource.transaction(async (tx) => {
-    const accountRepo = tx.getRepository(Account);
     const supplierRepo = tx.getRepository(Supplier);
 
-    const ap = await accountRepo.findOne({ where: { code: GL_ACCOUNT_CODES.AP_TRADE } });
-    if (!ap) {
-      throw new HttpError(500, { error: `Accounts Payable parent (${GL_ACCOUNT_CODES.AP_TRADE}) is missing` });
-    }
-
-    const suppAccount = await accountRepo.save(
-      accountRepo.create({
-        code: `${GL_ACCOUNT_CODES.AP_TRADE}-SUPP-${crypto.randomUUID()}`,
-        name: b.name.slice(0, 255),
-        type: 'liability',
-        parentId: ap.id,
-        isSystem: false,
-      })
-    );
+    const suppAccount = await createSupplierPayableAccount(tx, b.name);
 
     const createdSupplier = supplierRepo.create({
       name: b.name,

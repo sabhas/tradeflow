@@ -6,14 +6,39 @@
     "dev:api": "pnpm --filter @tradeflow/shared build && pnpm --filter @tradeflow/db build && pnpm --filter api dev",
     "dev:desktop": "pnpm --filter desktop dev",
     "build": "pnpm --filter '@tradeflow/*' -r run build",
+    "lint": "eslint \"apps/**/*.ts\" \"packages/**/*.ts\"",
+    "lint:fix": "eslint \"apps/**/*.ts\" \"packages/**/*.ts\" --fix",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,json}\" \"packages/**/*.{ts,tsx,json}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,json}\" \"packages/**/*.{ts,json}\"",
+    "prepare": "husky",
     "db:migrate": "pnpm --filter @tradeflow/db migrate",
     "db:migrate:revert": "pnpm --filter @tradeflow/db migrate:revert",
     "db:seed": "pnpm --filter @tradeflow/db seed"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.4.2",
+    "typescript-eslint": "^8.18.2"
   },
   "engines": {
     "node": ">=18"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["electron", "esbuild"]
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild"
+    ]
   }
 }

@@ -6,6 +6,7 @@ import {
 } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as companySettingsController from '../controllers/companySettingsController';
@@ -25,13 +26,9 @@ companySettingsRouter.patch(
   '/',
   requirePermission('settings', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
+  validateBody(patchGeneralSettingsSchema),
   asyncHandler(async (req, res) => {
-    const parsed = patchGeneralSettingsSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await companySettingsController.patchGeneral(req, parsed.data));
+    sendControllerResult(res, await companySettingsController.patchGeneral(req, getValidatedBody(req)));
   })
 );
 
@@ -47,13 +44,12 @@ companySettingsRouter.patch(
   '/company',
   requirePermission('settings', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
+  validateBody(patchCompanyProfileSchema),
   asyncHandler(async (req, res) => {
-    const parsed = patchCompanyProfileSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await companySettingsController.patchCompanyProfile(req, parsed.data));
+    sendControllerResult(
+      res,
+      await companySettingsController.patchCompanyProfile(req, getValidatedBody(req))
+    );
   })
 );
 
@@ -77,12 +73,8 @@ companySettingsRouter.patch(
   '/accounting',
   requirePermission('accounting', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
+  validateBody(patchCompanyAccountingSettingsSchema),
   asyncHandler(async (req, res) => {
-    const parsed = patchCompanyAccountingSettingsSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await companySettingsController.patchAccounting(req, parsed.data));
+    sendControllerResult(res, await companySettingsController.patchAccounting(req, getValidatedBody(req)));
   })
 );

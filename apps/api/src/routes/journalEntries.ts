@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createJournalEntrySchema, updateJournalEntrySchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as journalEntriesController from '../controllers/journalEntriesController';
@@ -30,13 +31,9 @@ journalEntriesRouter.post(
   '/',
   requirePermission('accounting', 'write'),
   auditMiddleware({ entity: 'JournalEntry', getNewValue: (req) => req.body }),
+  validateBody(createJournalEntrySchema),
   asyncHandler(async (req, res) => {
-    const parsed = createJournalEntrySchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await journalEntriesController.createJournalEntry(req, parsed.data));
+    sendControllerResult(res, await journalEntriesController.createJournalEntry(req, getValidatedBody(req)));
   })
 );
 
@@ -48,13 +45,9 @@ journalEntriesRouter.patch(
     getEntityId: (req) => req.params.id,
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateJournalEntrySchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateJournalEntrySchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await journalEntriesController.updateJournalEntry(req, parsed.data));
+    sendControllerResult(res, await journalEntriesController.updateJournalEntry(req, getValidatedBody(req)));
   })
 );
 
@@ -92,9 +85,6 @@ journalEntriesRouter.post(
       res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
       return;
     }
-    sendControllerResult(
-      res,
-      await journalEntriesController.reverseJournalEntry(req, parsed.data.entryDate)
-    );
+    sendControllerResult(res, await journalEntriesController.reverseJournalEntry(req, parsed.data.entryDate));
   })
 );

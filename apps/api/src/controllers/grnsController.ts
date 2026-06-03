@@ -1,6 +1,14 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { Grn, GrnLine, Product, PurchaseOrder, PurchaseOrderLine, SupplierInvoice, SupplierInvoiceLine } from '@tradeflow/db';
+import {
+  Grn,
+  GrnLine,
+  Product,
+  PurchaseOrder,
+  PurchaseOrderLine,
+  SupplierInvoice,
+  SupplierInvoiceLine,
+} from '@tradeflow/db';
 import { createGrnSchema, updateGrnSchema } from '@tradeflow/shared';
 import { getPagination } from '../utils/pagination';
 import {
@@ -14,7 +22,10 @@ import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { postGrnJournal } from '../services/accountingPosting';
 import { enforceProductBatchControls } from '../services/productBatchControls';
 import { computePurchaseDocumentTotals } from '../services/purchaseTotals';
-import { addDaysIso } from '../services/salesTotals';
+import { resolveSupplierDueDate } from '../services/supplierDueDateService';
+import { validateGrnAgainstPurchaseOrder } from '../services/grnPoValidation';
+import { GrnStatus, SupplierInvoiceStatus } from '@tradeflow/shared';
+import { handleControllerError } from '../utils/mapDbError';
 import {
   loadLinkedInvoicesByGrnIds,
   settlementFields,
@@ -57,7 +68,10 @@ function serializeGrn(g: Grn, lines?: GrnLine[], linked?: LinkedSupplierInvoice 
   };
 }
 
-function applyInvoiceSettlementFilter(qb: ReturnType<typeof Grn.createQueryBuilder>, settlement: string): void {
+function applyInvoiceSettlementFilter(
+  qb: ReturnType<typeof Grn.createQueryBuilder>,
+  settlement: string
+): void {
   if (settlement === 'awaiting_invoice') {
     qb.andWhere(`g.status = 'posted'`).andWhere(
       `NOT EXISTS (SELECT 1 FROM supplier_invoices si WHERE si.grn_id = g.id)`
@@ -133,7 +147,7 @@ export async function createSupplierInvoiceDraftFromGrn(req: Request): Promise<C
       if (grnLines.length === 0) throw new Error('GRN has no lines');
 
       const invoiceDate = new Date().toISOString().slice(0, 10);
-      const dueDate = addDaysIso(invoiceDate, 30);
+      const dueDate = await resolveSupplierDueDate(manager, grn.supplierId, invoiceDate);
       const placeholderNumber = `PENDING-${grn.id.slice(0, 8).toUpperCase()}`;
 
       const totals = await computePurchaseDocumentTotals(
@@ -156,7 +170,7 @@ export async function createSupplierInvoiceDraftFromGrn(req: Request): Promise<C
         dueDate,
         purchaseOrderId: grn.purchaseOrderId ?? undefined,
         grnId: grn.id,
-        status: 'draft',
+        status: SupplierInvoiceStatus.DRAFT,
         subtotal: totals.subtotal,
         taxAmount: totals.taxAmount,
         discountAmount: totals.discountAmount,
@@ -187,12 +201,7 @@ export async function createSupplierInvoiceDraftFromGrn(req: Request): Promise<C
     });
     return created({ data: result });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Create draft failed';
-    if (msg === 'Not found') throw new HttpError(404, { error: msg });
-    if (msg.includes('UQ_supplier_invoice') || msg.includes('UQ_supplier_invoices_grn_id')) {
-      throw new HttpError(400, { error: 'A supplier invoice is already linked to this GRN' });
-    }
-    throw new HttpError(400, { error: msg });
+    handleControllerError(e, 'Create draft failed');
   }
 }
 
@@ -210,24 +219,14 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
 
   try {
     const row = await runInTransaction(async (manager) => {
-      let purchaseOrderId: string | undefined = b.purchaseOrderId ?? undefined;
+      const purchaseOrderId: string | undefined = b.purchaseOrderId ?? undefined;
       if (purchaseOrderId) {
-        const po = await manager.findOne(PurchaseOrder, {
-          where: { id: purchaseOrderId },
-          relations: ['lines'],
+        await validateGrnAgainstPurchaseOrder(manager, {
+          purchaseOrderId,
+          supplierId: b.supplierId,
+          warehouseId: b.warehouseId,
+          lines: b.lines,
         });
-        if (!po) throw new Error('Purchase order not found');
-        if (po.supplierId !== b.supplierId) throw new Error('Supplier must match purchase order');
-        if (po.warehouseId !== b.warehouseId) throw new Error('Warehouse must match purchase order');
-        for (const ln of b.lines) {
-          if (!ln.purchaseOrderLineId) continue;
-          const pol = po.lines?.find((p) => p.id === ln.purchaseOrderLineId);
-          if (!pol) throw new Error('Invalid purchase order line');
-          if (pol.productId !== ln.productId) throw new Error('Product does not match PO line');
-          const rem = parseFloat(pol.quantity) - parseFloat(pol.receivedQuantity);
-          const q = parseFloat(String(ln.quantity));
-          if (q > rem + 0.0001) throw new Error('Receive quantity exceeds open PO quantity');
-        }
       }
       await enforceProductBatchControls(manager, b.lines);
 
@@ -236,7 +235,7 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
         supplierId: b.supplierId,
         grnDate: b.grnDate.slice(0, 10),
         warehouseId: b.warehouseId,
-        status: 'draft',
+        status: GrnStatus.DRAFT,
         createdBy: userId,
       });
       await manager.save(grn);
@@ -249,7 +248,10 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
           unitPriceStr = pol.unitPrice;
         }
         if (ln.unitPrice != null && ln.unitPrice !== '') unitPriceStr = String(ln.unitPrice);
-        const bonusQty = ln.bonusQuantity != null && ln.bonusQuantity !== '' ? parseDecimalStrict(String(ln.bonusQuantity)) : '0.0000';
+        const bonusQty =
+          ln.bonusQuantity != null && ln.bonusQuantity !== ''
+            ? parseDecimalStrict(String(ln.bonusQuantity))
+            : '0.0000';
         await manager.save(
           manager.create(GrnLine, {
             grnId: grn.id,
@@ -257,9 +259,14 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
             quantity: parseDecimalStrict(String(ln.quantity)),
             bonusQuantity: bonusQty,
             unitPrice: parseDecimalStrict(unitPriceStr),
-            tradePrice: ln.tradePrice != null && ln.tradePrice !== '' ? parseDecimalStrict(String(ln.tradePrice)) : undefined,
+            tradePrice:
+              ln.tradePrice != null && ln.tradePrice !== ''
+                ? parseDecimalStrict(String(ln.tradePrice))
+                : undefined,
             retailPrice:
-              ln.retailPrice != null && ln.retailPrice !== '' ? parseDecimalStrict(String(ln.retailPrice)) : undefined,
+              ln.retailPrice != null && ln.retailPrice !== ''
+                ? parseDecimalStrict(String(ln.retailPrice))
+                : undefined,
             purchaseOrderLineId: ln.purchaseOrderLineId ?? undefined,
             batchCode: ln.batchCode?.trim() || undefined,
             expiryDate: ln.expiryDate?.trim() ? ln.expiryDate.slice(0, 10) : undefined,
@@ -275,7 +282,7 @@ export async function createGrn(req: Request, body: CreateGrnInput): Promise<Con
     const linkedMap = await loadLinkedInvoicesByGrnIds([row.id]);
     return created({ data: serializeGrn(row, row.lines, linkedMap.get(row.id)) });
   } catch (e) {
-    throw new HttpError(400, { error: e instanceof Error ? e.message : 'Failed to create GRN' });
+    handleControllerError(e, 'Failed to create GRN');
   }
 }
 
@@ -287,7 +294,8 @@ export async function updateGrn(req: Request, body: UpdateGrnInput): Promise<Con
         relations: ['lines'],
       });
       if (!grn) throw new Error('Not found');
-      if (grn.status !== 'draft') throw new Error('Only draft GRNs can be edited');
+      if (grn.status !== GrnStatus.DRAFT)
+        throw new HttpError(400, { error: 'Only draft GRNs can be edited' });
 
       const supplierId = body.supplierId ?? grn.supplierId;
       const warehouseId = body.warehouseId ?? grn.warehouseId;
@@ -306,25 +314,13 @@ export async function updateGrn(req: Request, body: UpdateGrnInput): Promise<Con
         throw new Error(e instanceof Error ? e.message : 'Bad request');
       }
 
-      if (purchaseOrderId) {
-        const po = await manager.findOne(PurchaseOrder, {
-          where: { id: purchaseOrderId },
-          relations: ['lines'],
+      if (purchaseOrderId && body.lines) {
+        await validateGrnAgainstPurchaseOrder(manager, {
+          purchaseOrderId,
+          supplierId,
+          warehouseId,
+          lines: body.lines,
         });
-        if (!po) throw new Error('Purchase order not found');
-        if (po.supplierId !== supplierId) throw new Error('Supplier must match purchase order');
-        if (po.warehouseId !== warehouseId) throw new Error('Warehouse must match purchase order');
-        if (body.lines) {
-          for (const ln of body.lines) {
-            if (!ln.purchaseOrderLineId) continue;
-            const pol = po.lines?.find((p) => p.id === ln.purchaseOrderLineId);
-            if (!pol) throw new Error('Invalid purchase order line');
-            if (pol.productId !== ln.productId) throw new Error('Product does not match PO line');
-            const rem = parseFloat(pol.quantity) - parseFloat(pol.receivedQuantity);
-            const q = parseFloat(String(ln.quantity));
-            if (q > rem + 0.0001) throw new Error('Receive quantity exceeds open PO quantity');
-          }
-        }
       }
 
       grn.supplierId = supplierId;
@@ -344,7 +340,10 @@ export async function updateGrn(req: Request, body: UpdateGrnInput): Promise<Con
             unitPriceStr = pol.unitPrice;
           }
           if (ln.unitPrice != null && ln.unitPrice !== '') unitPriceStr = String(ln.unitPrice);
-          const bonusQty = ln.bonusQuantity != null && ln.bonusQuantity !== '' ? parseDecimalStrict(String(ln.bonusQuantity)) : '0.0000';
+          const bonusQty =
+            ln.bonusQuantity != null && ln.bonusQuantity !== ''
+              ? parseDecimalStrict(String(ln.bonusQuantity))
+              : '0.0000';
           await manager.save(
             manager.create(GrnLine, {
               grnId: grn.id,
@@ -352,9 +351,14 @@ export async function updateGrn(req: Request, body: UpdateGrnInput): Promise<Con
               quantity: parseDecimalStrict(String(ln.quantity)),
               bonusQuantity: bonusQty,
               unitPrice: parseDecimalStrict(unitPriceStr),
-              tradePrice: ln.tradePrice != null && ln.tradePrice !== '' ? parseDecimalStrict(String(ln.tradePrice)) : undefined,
+              tradePrice:
+                ln.tradePrice != null && ln.tradePrice !== ''
+                  ? parseDecimalStrict(String(ln.tradePrice))
+                  : undefined,
               retailPrice:
-                ln.retailPrice != null && ln.retailPrice !== '' ? parseDecimalStrict(String(ln.retailPrice)) : undefined,
+                ln.retailPrice != null && ln.retailPrice !== ''
+                  ? parseDecimalStrict(String(ln.retailPrice))
+                  : undefined,
               purchaseOrderLineId: ln.purchaseOrderLineId ?? undefined,
               batchCode: ln.batchCode?.trim() || undefined,
               expiryDate: ln.expiryDate?.trim() ? ln.expiryDate.slice(0, 10) : undefined,
@@ -385,7 +389,8 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
         relations: ['lines'],
       });
       if (!grn) throw new Error('Not found');
-      if (grn.status !== 'draft') throw new Error('Only draft GRNs can be posted');
+      if (grn.status !== GrnStatus.DRAFT)
+        throw new HttpError(400, { error: 'Only draft GRNs can be posted' });
       await assertDateNotPeriodLocked(manager, grn.grnDate);
       await enforceProductBatchControls(manager, grn.lines ?? []);
 
@@ -398,9 +403,10 @@ export async function postGrn(req: Request): Promise<ControllerResult> {
         const bonusQty = parseFloat(line.bonusQuantity ?? '0');
         const totalQty = paidQty + bonusQty;
         const stockDelta = parseDecimalStrict(totalQty.toFixed(4));
-        const unitCost = totalQty > 0
-          ? parseDecimalStrict(((paidQty * parseFloat(line.unitPrice)) / totalQty).toFixed(4))
-          : line.unitPrice;
+        const unitCost =
+          totalQty > 0
+            ? parseDecimalStrict(((paidQty * parseFloat(line.unitPrice)) / totalQty).toFixed(4))
+            : line.unitPrice;
         await applyMovement(manager, {
           productId: line.productId,
           warehouseId: grn.warehouseId,

@@ -7,6 +7,7 @@ import {
 } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as salesOrdersController from '../controllers/salesOrdersController';
@@ -34,13 +35,9 @@ salesOrdersRouter.post(
   '/',
   requirePermission('sales', 'create'),
   auditMiddleware({ entity: 'SalesOrder', getNewValue: (req) => req.body }),
+  validateBody(createSalesOrderSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createSalesOrderSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await salesOrdersController.createSalesOrder(req, parsed.data));
+    sendControllerResult(res, await salesOrdersController.createSalesOrder(req, getValidatedBody(req)));
   })
 );
 
@@ -48,13 +45,9 @@ salesOrdersRouter.post(
   '/bulk',
   requirePermission('sales', 'update'),
   auditMiddleware({ entity: 'SalesOrder', getNewValue: (req) => req.body }),
+  validateBody(bulkSalesOrdersSchema),
   asyncHandler(async (req, res) => {
-    const parsed = bulkSalesOrdersSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await salesOrdersController.bulkSalesOrders(req, parsed.data));
+    sendControllerResult(res, await salesOrdersController.bulkSalesOrders(req, getValidatedBody(req)));
   })
 );
 
@@ -66,13 +59,9 @@ salesOrdersRouter.patch(
     getEntityId: (req) => req.params.id,
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateSalesOrderSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateSalesOrderSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await salesOrdersController.updateSalesOrder(req, parsed.data));
+    sendControllerResult(res, await salesOrdersController.updateSalesOrder(req, getValidatedBody(req)));
   })
 );
 
@@ -98,12 +87,11 @@ salesOrdersRouter.post(
   '/:id/convert-to-invoice',
   requirePermission('sales', 'update'),
   auditMiddleware({ entity: 'SalesOrder', getEntityId: (req) => req.params.id }),
+  validateBody(convertOrderToInvoiceSchema),
   asyncHandler(async (req, res) => {
-    const parsed = convertOrderToInvoiceSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await salesOrdersController.convertSalesOrderToInvoice(req, parsed.data));
+    sendControllerResult(
+      res,
+      await salesOrdersController.convertSalesOrderToInvoice(req, getValidatedBody(req))
+    );
   })
 );

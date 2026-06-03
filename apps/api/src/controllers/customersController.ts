@@ -1,9 +1,9 @@
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
-import { Account, Area, Customer, CustomerType, dataSource, Town } from '@tradeflow/db';
+import { Area, Customer, CustomerType, dataSource, Town } from '@tradeflow/db';
 import { createCustomerSchema, updateCustomerSchema } from '@tradeflow/shared';
-import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
+import { createCustomerReceivableAccount } from '../services/glAccountService';
 import { getPagination } from '../utils/pagination';
 import { created, ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
@@ -88,9 +88,7 @@ export async function listCustomers(req: Request): Promise<ControllerResult> {
   const { limit, offset } = getPagination(req);
   const search = (req.query.search as string | undefined)?.trim();
 
-  const qb = Customer
-    .createQueryBuilder('c')
-    .where('c.deleted_at IS NULL');
+  const qb = Customer.createQueryBuilder('c').where('c.deleted_at IS NULL');
   if (search) {
     const term = `%${search.toLowerCase()}%`;
     const raw = `%${search}%`;
@@ -226,23 +224,9 @@ export async function createCustomer(req: Request, body: CreateCustomerInput): P
   }
   const [geo, type] = await Promise.all([resolveTownAndAreaIds(t0, a0), ensureCustomerTypeExists(b.type)]);
   const row = await dataSource.transaction(async (tx) => {
-    const accountRepo = tx.getRepository(Account);
     const customerRepo = tx.getRepository(Customer);
 
-    const ar = await accountRepo.findOne({ where: { code: GL_ACCOUNT_CODES.AR_TRADE } });
-    if (!ar) {
-      throw new HttpError(500, { error: `Accounts Receivable parent (${GL_ACCOUNT_CODES.AR_TRADE}) is missing` });
-    }
-
-    const custAccount = await accountRepo.save(
-      accountRepo.create({
-        code: `${GL_ACCOUNT_CODES.AR_TRADE}-CUST-${crypto.randomUUID()}`,
-        name: b.name.slice(0, 255),
-        type: 'asset',
-        parentId: ar.id,
-        isSystem: false,
-      })
-    );
+    const custAccount = await createCustomerReceivableAccount(tx, b.name);
 
     const createdCustomer = customerRepo.create({
       name: b.name,
@@ -299,17 +283,13 @@ export async function updateCustomer(req: Request, body: UpdateCustomerInput): P
     throw new HttpError(404, { error: 'Not found' });
   }
   const b = body;
-  const effTown = b.townId !== undefined ? b.townId : row.townId ?? null;
-  const effArea = b.areaId !== undefined ? b.areaId : row.areaId ?? null;
+  const effTown = b.townId !== undefined ? b.townId : (row.townId ?? null);
+  const effArea = b.areaId !== undefined ? b.areaId : (row.areaId ?? null);
   if (!effTown || !effArea) {
     throw new HttpError(400, { error: 'Town and area are required' });
   }
   const effectiveAddress = (
-    b.address !== undefined
-      ? typeof b.address === 'string'
-        ? b.address
-        : ''
-      : (row.address ?? '')
+    b.address !== undefined ? (typeof b.address === 'string' ? b.address : '') : (row.address ?? '')
   ).trim();
   if (!effectiveAddress) {
     throw new HttpError(400, { error: 'Address is required' });

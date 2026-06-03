@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createInvoiceTemplateSchema, updateInvoiceTemplateSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as invoiceTemplatesController from '../controllers/invoiceTemplatesController';
@@ -29,13 +30,12 @@ invoiceTemplatesRouter.post(
   '/',
   requirePermission('settings', 'write'),
   auditMiddleware({ entity: 'InvoiceTemplate', getNewValue: (req) => req.body }),
+  validateBody(createInvoiceTemplateSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createInvoiceTemplateSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await invoiceTemplatesController.createInvoiceTemplate(req, parsed.data));
+    sendControllerResult(
+      res,
+      await invoiceTemplatesController.createInvoiceTemplate(req, getValidatedBody(req))
+    );
   })
 );
 
@@ -47,12 +47,11 @@ invoiceTemplatesRouter.patch(
     getEntityId: (req) => req.params.id,
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateInvoiceTemplateSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateInvoiceTemplateSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await invoiceTemplatesController.updateInvoiceTemplate(req, parsed.data));
+    sendControllerResult(
+      res,
+      await invoiceTemplatesController.updateInvoiceTemplate(req, getValidatedBody(req))
+    );
   })
 );

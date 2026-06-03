@@ -1,29 +1,22 @@
-import 'dotenv/config';
-import * as path from 'path';
-import * as dotenv from 'dotenv';
-import { app } from './app';
-
-const repoRoot = path.resolve(__dirname, '../../..');
-console.log('repoRoot', repoRoot);
-dotenv.config({ path: path.join(repoRoot, '.env') });
-dotenv.config({ path: path.join(repoRoot, 'apps/api/.env') });
-
+import './loadEnv';
 import { BaseEntity } from 'typeorm';
 import { dataSource } from '@tradeflow/db';
-
-const PORT = process.env.PORT || 3001;
+import { app } from './app';
+import { config } from './config';
+import { logger } from './logger';
 
 async function main() {
   try {
     await dataSource.initialize();
     BaseEntity.useDataSource(dataSource);
-    console.log('Database connected');
+    logger.info('Database connected');
 
-    app.listen(PORT, () => {
-      console.log(`API listening on http://localhost:${PORT}`);
+    app.listen(config.PORT, () => {
+      logger.info({ port: config.PORT }, `API listening on http://localhost:${config.PORT}`);
+      logger.info(`Swagger UI: http://localhost:${config.PORT}/api-docs`);
     });
   } catch (err) {
-    console.error('Failed to start:', err);
+    logger.error({ err }, 'Failed to start');
     process.exit(1);
   }
 }

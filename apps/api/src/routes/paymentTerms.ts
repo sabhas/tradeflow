@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createPaymentTermsSchema, updatePaymentTermsSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as paymentTermsController from '../controllers/paymentTermsController';
@@ -21,13 +22,9 @@ paymentTermsRouter.post(
   '/',
   requirePermission('masters.payment_terms', 'write'),
   auditMiddleware({ entity: 'PaymentTerms', getNewValue: (req) => req.body }),
+  validateBody(createPaymentTermsSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createPaymentTermsSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await paymentTermsController.createPaymentTerms(req, parsed.data));
+    sendControllerResult(res, await paymentTermsController.createPaymentTerms(req, getValidatedBody(req)));
   })
 );
 
@@ -40,13 +37,9 @@ paymentTermsRouter.patch(
     getOldValue: async (req) => paymentTermsController.getPaymentTermsSnapshotForAudit(req.params.id),
     getNewValue: (req) => req.body,
   }),
+  validateBody(updatePaymentTermsSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updatePaymentTermsSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await paymentTermsController.updatePaymentTerms(req, parsed.data));
+    sendControllerResult(res, await paymentTermsController.updatePaymentTerms(req, getValidatedBody(req)));
   })
 );
 

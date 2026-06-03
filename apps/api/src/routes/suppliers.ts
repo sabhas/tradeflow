@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createSupplierSchema, updateSupplierSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as suppliersController from '../controllers/suppliersController';
@@ -45,13 +46,9 @@ suppliersRouter.post(
   '/',
   requirePermission('masters.suppliers', 'write'),
   auditMiddleware({ entity: 'Supplier', getNewValue: (req) => req.body }),
+  validateBody(createSupplierSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createSupplierSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await suppliersController.createSupplier(req, parsed.data));
+    sendControllerResult(res, await suppliersController.createSupplier(req, getValidatedBody(req)));
   })
 );
 
@@ -64,13 +61,9 @@ suppliersRouter.patch(
     getOldValue: async (req) => suppliersController.getSupplierSnapshotForAudit(req.params.id),
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateSupplierSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateSupplierSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await suppliersController.updateSupplier(req, parsed.data));
+    sendControllerResult(res, await suppliersController.updateSupplier(req, getValidatedBody(req)));
   })
 );
 

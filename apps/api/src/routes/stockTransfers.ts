@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createStockTransferSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as stockTransfersController from '../controllers/stockTransfersController';
@@ -29,13 +30,9 @@ stockTransfersRouter.post(
   '/',
   requirePermission('inventory', 'write'),
   auditMiddleware({ entity: 'StockTransfer', getNewValue: (req) => req.body }),
+  validateBody(createStockTransferSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createStockTransferSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await stockTransfersController.createStockTransfer(req, parsed.data));
+    sendControllerResult(res, await stockTransfersController.createStockTransfer(req, getValidatedBody(req)));
   })
 );
 

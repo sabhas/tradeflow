@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { postOpeningBalanceSchema, postStockAdjustmentSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as inventoryController from '../controllers/inventoryController';
@@ -48,13 +49,9 @@ inventoryRouter.post(
     entity: 'InventoryOpeningBalance',
     getNewValue: (req) => req.body,
   }),
+  validateBody(postOpeningBalanceSchema),
   asyncHandler(async (req, res) => {
-    const parsed = postOpeningBalanceSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await inventoryController.postOpeningBalance(req, parsed.data));
+    sendControllerResult(res, await inventoryController.postOpeningBalance(req, getValidatedBody(req)));
   })
 );
 
@@ -65,12 +62,8 @@ inventoryRouter.post(
     entity: 'StockAdjustment',
     getNewValue: (req) => req.body,
   }),
+  validateBody(postStockAdjustmentSchema),
   asyncHandler(async (req, res) => {
-    const parsed = postStockAdjustmentSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await inventoryController.postStockAdjustment(req, parsed.data));
+    sendControllerResult(res, await inventoryController.postStockAdjustment(req, getValidatedBody(req)));
   })
 );

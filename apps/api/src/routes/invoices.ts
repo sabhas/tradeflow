@@ -1,11 +1,8 @@
 import { Router } from 'express';
-import {
-  createInvoiceSchema,
-  printInvoicesBatchSchema,
-  updateInvoiceSchema,
-} from '@tradeflow/shared';
+import { createInvoiceSchema, printInvoicesBatchSchema, updateInvoiceSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as invoicesController from '../controllers/invoicesController';
@@ -25,26 +22,18 @@ invoicesRouter.post(
   '/',
   requirePermission('sales', 'create'),
   auditMiddleware({ entity: 'Invoice', getNewValue: (req) => req.body }),
+  validateBody(createInvoiceSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createInvoiceSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await invoicesController.createInvoice(req, parsed.data));
+    sendControllerResult(res, await invoicesController.createInvoice(req, getValidatedBody(req)));
   })
 );
 
 invoicesRouter.post(
   '/print-batch',
   requirePermission('sales', 'read'),
+  validateBody(printInvoicesBatchSchema),
   asyncHandler(async (req, res) => {
-    const parsed = printInvoicesBatchSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await invoicesController.printInvoicesBatch(req, parsed.data));
+    sendControllerResult(res, await invoicesController.printInvoicesBatch(req, getValidatedBody(req)));
   })
 );
 
@@ -81,13 +70,9 @@ invoicesRouter.patch(
     getEntityId: (req) => req.params.id,
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateInvoiceSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateInvoiceSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await invoicesController.updateInvoice(req, parsed.data));
+    sendControllerResult(res, await invoicesController.updateInvoice(req, getValidatedBody(req)));
   })
 );
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as approvalsController from '../controllers/approvalsController';
@@ -23,25 +24,17 @@ approvalsRouter.get(
 approvalsRouter.post(
   '/:id/approve',
   requirePermission('accounting', 'write'),
+  validateBody(reviewBodySchema),
   asyncHandler(async (req, res) => {
-    const parsed = reviewBodySchema.safeParse(req.body ?? {});
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await approvalsController.approveApprovalRequest(req, parsed.data));
+    sendControllerResult(res, await approvalsController.approveApprovalRequest(req, getValidatedBody(req)));
   })
 );
 
 approvalsRouter.post(
   '/:id/reject',
   requirePermission('accounting', 'write'),
+  validateBody(reviewBodySchema),
   asyncHandler(async (req, res) => {
-    const parsed = reviewBodySchema.safeParse(req.body ?? {});
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await approvalsController.rejectApprovalRequest(req, parsed.data));
+    sendControllerResult(res, await approvalsController.rejectApprovalRequest(req, getValidatedBody(req)));
   })
 );

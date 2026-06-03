@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createTaxProfileSchema, updateTaxProfileSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as taxProfilesController from '../controllers/taxProfilesController';
@@ -21,13 +22,9 @@ taxProfilesRouter.post(
   '/',
   requirePermission('masters.tax', 'write'),
   auditMiddleware({ entity: 'TaxProfile', getNewValue: (req) => req.body }),
+  validateBody(createTaxProfileSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createTaxProfileSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await taxProfilesController.createTaxProfile(req, parsed.data));
+    sendControllerResult(res, await taxProfilesController.createTaxProfile(req, getValidatedBody(req)));
   })
 );
 
@@ -40,13 +37,9 @@ taxProfilesRouter.patch(
     getOldValue: async (req) => taxProfilesController.getTaxProfileSnapshotForAudit(req.params.id),
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateTaxProfileSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateTaxProfileSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await taxProfilesController.updateTaxProfile(req, parsed.data));
+    sendControllerResult(res, await taxProfilesController.updateTaxProfile(req, getValidatedBody(req)));
   })
 );
 

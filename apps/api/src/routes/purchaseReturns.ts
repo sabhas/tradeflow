@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createPurchaseReturnSchema, updatePurchaseReturnSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as purchaseReturnsController from '../controllers/purchaseReturnsController';
@@ -29,13 +30,12 @@ purchaseReturnsRouter.post(
   '/',
   requirePermission('purchases.grn', 'write'),
   auditMiddleware({ entity: 'PurchaseReturn', getNewValue: (req) => req.body }),
+  validateBody(createPurchaseReturnSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createPurchaseReturnSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await purchaseReturnsController.createPurchaseReturn(req, parsed.data));
+    sendControllerResult(
+      res,
+      await purchaseReturnsController.createPurchaseReturn(req, getValidatedBody(req))
+    );
   })
 );
 
@@ -47,13 +47,12 @@ purchaseReturnsRouter.patch(
     getEntityId: (req) => req.params.id,
     getNewValue: (req) => req.body,
   }),
+  validateBody(updatePurchaseReturnSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updatePurchaseReturnSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await purchaseReturnsController.updatePurchaseReturn(req, parsed.data));
+    sendControllerResult(
+      res,
+      await purchaseReturnsController.updatePurchaseReturn(req, getValidatedBody(req))
+    );
   })
 );
 

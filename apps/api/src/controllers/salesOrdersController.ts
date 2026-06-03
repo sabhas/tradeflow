@@ -8,6 +8,7 @@ import {
   createSalesOrderSchema,
   convertOrderToInvoiceSchema,
   updateSalesOrderSchema,
+  SalesOrderStatus,
 } from '@tradeflow/shared';
 import { getPagination } from '../utils/pagination';
 import { computeSalesDocumentTotals } from '../services/salesTotals';
@@ -58,8 +59,7 @@ export function serializeSalesOrder(
   lines?: Array<SalesOrderLine & { product?: Product }>,
   opts?: { hasInvoice?: boolean; lineCount?: number }
 ) {
-  const lineCount =
-    opts?.lineCount !== undefined ? opts.lineCount : (lines?.length ?? 0);
+  const lineCount = opts?.lineCount !== undefined ? opts.lineCount : (lines?.length ?? 0);
   return {
     id: o.id,
     customerId: o.customerId,
@@ -129,9 +129,7 @@ export async function listSalesOrders(req: Request): Promise<ControllerResult> {
     });
   }
   if (req.query.hasInvoice === 'true') {
-    qb.andWhere(
-      `EXISTS (SELECT 1 FROM invoices i WHERE i.sales_order_id = o.id AND i.deleted_at IS NULL)`
-    );
+    qb.andWhere(`EXISTS (SELECT 1 FROM invoices i WHERE i.sales_order_id = o.id AND i.deleted_at IS NULL)`);
   } else if (req.query.hasInvoice === 'false') {
     qb.andWhere(
       `NOT EXISTS (SELECT 1 FROM invoices i WHERE i.sales_order_id = o.id AND i.deleted_at IS NULL)`
@@ -141,7 +139,7 @@ export async function listSalesOrders(req: Request): Promise<ControllerResult> {
   const [rows, total] = await qb.getManyAndCount();
 
   let invoicedOrderIds = new Set<string>();
-  let lineCountById = new Map<string, number>();
+  const lineCountById = new Map<string, number>();
   if (rows.length > 0) {
     const ids = rows.map((o) => o.id);
     const links = await Invoice.createQueryBuilder('i')
@@ -221,7 +219,7 @@ export async function bulkSalesOrders(req: Request, body: BulkSalesOrdersInput):
           results.push({ id, ok: false, error: 'Not found' });
           continue;
         }
-        if (o.status !== 'draft') {
+        if (o.status !== SalesOrderStatus.DRAFT) {
           results.push({ id, ok: false, error: 'Only draft orders can be deleted' });
           continue;
         }
@@ -451,10 +449,10 @@ export async function confirmSalesOrder(req: Request): Promise<ControllerResult>
   if (!o) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  if (o.status === 'void') {
+  if (o.status === SalesOrderStatus.VOID) {
     throw new HttpError(400, { error: 'Order is void' });
   }
-  o.status = 'confirmed';
+  o.status = SalesOrderStatus.CONFIRMED;
   await SalesOrder.save(o);
   const row = await SalesOrder.findOne({
     where: { id: o.id },
@@ -476,7 +474,7 @@ export async function deleteSalesOrder(req: Request): Promise<ControllerResult> 
   if (!o) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  if (o.status !== 'draft') {
+  if (o.status !== SalesOrderStatus.DRAFT) {
     throw new HttpError(400, { error: 'Only draft orders can be deleted' });
   }
   await SalesOrder.delete({ id: o.id });
@@ -519,7 +517,8 @@ export async function convertSalesOrderToInvoice(
         const qty = pl.quantity;
         if (qty <= 0) throw new HttpError(400, { error: 'Invoice quantity must be positive' });
         const remaining = parseFloat(sol.quantity) - parseFloat(sol.deliveredQuantity) + 1e-9;
-        if (qty > remaining) throw new HttpError(400, { error: 'Quantity exceeds remaining on sales order line' });
+        if (qty > remaining)
+          throw new HttpError(400, { error: 'Quantity exceeds remaining on sales order line' });
         lineInputs.push({
           productId: sol.productId,
           quantity: pl.quantity,

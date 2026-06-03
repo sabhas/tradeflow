@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createCustomerSchema, updateCustomerSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as customersController from '../controllers/customersController';
@@ -37,13 +38,9 @@ customersRouter.post(
   '/',
   requirePermission('masters.customers', 'write'),
   auditMiddleware({ entity: 'Customer', getNewValue: (req) => req.body }),
+  validateBody(createCustomerSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createCustomerSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await customersController.createCustomer(req, parsed.data));
+    sendControllerResult(res, await customersController.createCustomer(req, getValidatedBody(req)));
   })
 );
 
@@ -56,13 +53,9 @@ customersRouter.patch(
     getOldValue: async (req) => customersController.getCustomerSnapshotForAudit(req.params.id),
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateCustomerSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateCustomerSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await customersController.updateCustomer(req, parsed.data));
+    sendControllerResult(res, await customersController.updateCustomer(req, getValidatedBody(req)));
   })
 );
 

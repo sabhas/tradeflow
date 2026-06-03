@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createProductCategorySchema, updateProductCategorySchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as productCategoriesController from '../controllers/productCategoriesController';
@@ -25,13 +26,12 @@ productCategoriesRouter.post(
     entity: 'ProductCategory',
     getNewValue: (req) => req.body,
   }),
+  validateBody(createProductCategorySchema),
   asyncHandler(async (req, res) => {
-    const parsed = createProductCategorySchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await productCategoriesController.createProductCategory(req, parsed.data));
+    sendControllerResult(
+      res,
+      await productCategoriesController.createProductCategory(req, getValidatedBody(req))
+    );
   })
 );
 
@@ -41,17 +41,15 @@ productCategoriesRouter.patch(
   auditMiddleware({
     entity: 'ProductCategory',
     getEntityId: (req) => req.params.id,
-    getOldValue: async (req) =>
-      productCategoriesController.getProductCategorySnapshotForAudit(req.params.id),
+    getOldValue: async (req) => productCategoriesController.getProductCategorySnapshotForAudit(req.params.id),
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateProductCategorySchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateProductCategorySchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await productCategoriesController.updateProductCategory(req, parsed.data));
+    sendControllerResult(
+      res,
+      await productCategoriesController.updateProductCategory(req, getValidatedBody(req))
+    );
   })
 );
 
@@ -61,8 +59,7 @@ productCategoriesRouter.delete(
   auditMiddleware({
     entity: 'ProductCategory',
     getEntityId: (req) => req.params.id,
-    getOldValue: async (req) =>
-      productCategoriesController.getProductCategorySnapshotForAudit(req.params.id),
+    getOldValue: async (req) => productCategoriesController.getProductCategorySnapshotForAudit(req.params.id),
   }),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await productCategoriesController.deleteProductCategory(req));

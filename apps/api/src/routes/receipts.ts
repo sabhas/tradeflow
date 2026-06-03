@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createReceiptSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as receiptsController from '../controllers/receiptsController';
@@ -29,12 +30,8 @@ receiptsRouter.post(
   '/',
   requirePermission('sales', 'post'),
   auditMiddleware({ entity: 'Receipt', getNewValue: (req) => req.body }),
+  validateBody(createReceiptSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createReceiptSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await receiptsController.createReceipt(req, parsed.data));
+    sendControllerResult(res, await receiptsController.createReceipt(req, getValidatedBody(req)));
   })
 );

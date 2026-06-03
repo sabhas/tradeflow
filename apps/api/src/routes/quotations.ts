@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createQuotationSchema, updateQuotationSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as quotationsController from '../controllers/quotationsController';
@@ -29,13 +30,9 @@ quotationsRouter.post(
   '/',
   requirePermission('sales', 'create'),
   auditMiddleware({ entity: 'Quotation', getNewValue: (req) => req.body }),
+  validateBody(createQuotationSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createQuotationSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await quotationsController.createQuotation(req, parsed.data));
+    sendControllerResult(res, await quotationsController.createQuotation(req, getValidatedBody(req)));
   })
 );
 
@@ -47,13 +44,9 @@ quotationsRouter.patch(
     getEntityId: (req) => req.params.id,
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateQuotationSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateQuotationSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await quotationsController.updateQuotation(req, parsed.data));
+    sendControllerResult(res, await quotationsController.updateQuotation(req, getValidatedBody(req)));
   })
 );
 

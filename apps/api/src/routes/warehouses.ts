@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createWarehouseSchema, updateWarehouseSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as warehousesController from '../controllers/warehousesController';
@@ -29,13 +30,9 @@ warehousesRouter.post(
   '/',
   requirePermission('masters.warehouses', 'write'),
   auditMiddleware({ entity: 'Warehouse', getNewValue: (req) => req.body }),
+  validateBody(createWarehouseSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createWarehouseSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await warehousesController.createWarehouse(req, parsed.data));
+    sendControllerResult(res, await warehousesController.createWarehouse(req, getValidatedBody(req)));
   })
 );
 
@@ -48,12 +45,8 @@ warehousesRouter.patch(
     getOldValue: async (req) => warehousesController.getWarehouseSnapshotForAudit(req.params.id),
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateWarehouseSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateWarehouseSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await warehousesController.updateWarehouse(req, parsed.data));
+    sendControllerResult(res, await warehousesController.updateWarehouse(req, getValidatedBody(req)));
   })
 );

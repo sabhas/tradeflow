@@ -4,6 +4,7 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import type { z } from 'zod';
 import { User } from '@tradeflow/db';
 import { loginSchema, patchAuthMeSchema } from '@tradeflow/shared';
+import { config } from '../config';
 import { ok, type ControllerResult } from '../utils/controllerResult';
 import { HttpError } from '../utils/httpError';
 
@@ -87,11 +88,14 @@ export async function login(body: LoginInput): Promise<ControllerResult> {
 
   const permissions = permissionsForUser(user);
 
-  const secret = process.env.JWT_SECRET || 'dev-secret-change-in-production';
   const signOptions: SignOptions = {
-    expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn'],
+    expiresIn: config.JWT_EXPIRES_IN as SignOptions['expiresIn'],
   };
-  const accessToken = jwt.sign({ userId: user.id, email: user.email, permissions }, secret, signOptions);
+  const accessToken = jwt.sign(
+    { userId: user.id, email: user.email, permissions },
+    config.JWT_SECRET,
+    signOptions
+  );
 
   return ok({
     accessToken,

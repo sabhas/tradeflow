@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createAccountSchema, updateAccountSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as accountsController from '../controllers/accountsController';
@@ -29,13 +30,9 @@ accountsRouter.post(
   '/',
   requirePermission('accounting', 'write'),
   auditMiddleware({ entity: 'Account', getNewValue: (req) => req.body }),
+  validateBody(createAccountSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createAccountSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await accountsController.createAccount(req, parsed.data));
+    sendControllerResult(res, await accountsController.createAccount(req, getValidatedBody(req)));
   })
 );
 
@@ -47,12 +44,8 @@ accountsRouter.patch(
     getEntityId: (req) => req.params.id,
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateAccountSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateAccountSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await accountsController.updateAccount(req, parsed.data));
+    sendControllerResult(res, await accountsController.updateAccount(req, getValidatedBody(req)));
   })
 );

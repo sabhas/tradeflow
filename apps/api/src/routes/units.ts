@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createUnitSchema, updateUnitSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../middleware/auth';
 import { auditMiddleware } from '../middleware/audit';
+import { getValidatedBody, validateBody } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendControllerResult } from '../utils/controllerResult';
 import * as unitsController from '../controllers/unitsController';
@@ -21,13 +22,9 @@ unitsRouter.post(
   '/',
   requirePermission('masters.products', 'write'),
   auditMiddleware({ entity: 'UnitOfMeasure', getNewValue: (req) => req.body }),
+  validateBody(createUnitSchema),
   asyncHandler(async (req, res) => {
-    const parsed = createUnitSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await unitsController.createUnit(req, parsed.data));
+    sendControllerResult(res, await unitsController.createUnit(req, getValidatedBody(req)));
   })
 );
 
@@ -40,13 +37,9 @@ unitsRouter.patch(
     getOldValue: async (req) => unitsController.getUnitSnapshotForAudit(req.params.id),
     getNewValue: (req) => req.body,
   }),
+  validateBody(updateUnitSchema),
   asyncHandler(async (req, res) => {
-    const parsed = updateUnitSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
-    }
-    sendControllerResult(res, await unitsController.updateUnit(req, parsed.data));
+    sendControllerResult(res, await unitsController.updateUnit(req, getValidatedBody(req)));
   })
 );
 

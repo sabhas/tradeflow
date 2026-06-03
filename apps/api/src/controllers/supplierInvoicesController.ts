@@ -18,7 +18,8 @@ import { runInTransaction, assertProductInScope } from '../services/inventorySer
 import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { postSupplierInvoiceJournal } from '../services/accountingPosting';
 import { GL_ACCOUNT_CODES } from '../constants/glAccounts';
-import { addDaysIso } from '../services/salesTotals';
+import { resolveSupplierDueDate } from '../services/supplierDueDateService';
+import { handleControllerError } from '../utils/mapDbError';
 import { calculateBonus } from '../services/bonusService';
 import { parseDecimalStrict } from '../utils/decimal';
 import { moneySub } from '../utils/money';
@@ -28,14 +29,6 @@ import { HttpError } from '../utils/httpError';
 
 type CreateSupplierInvoiceInput = z.infer<typeof createSupplierInvoiceSchema>;
 type UpdateSupplierInvoiceInput = z.infer<typeof updateSupplierInvoiceSchema>;
-
-async function resolveSupplierDueDate(manager: EntityManager, supplierId: string, invoiceDate: string): Promise<string> {
-  const s = await manager.findOne(Supplier, {
-    where: { id: supplierId, deletedAt: IsNull() },
-  });
-  if (!s) throw new Error('Supplier not found');
-  return addDaysIso(invoiceDate, 30);
-}
 
 /** Persist header fields only — avoids TypeORM orphaning line FKs when lines were replaced via query builder. */
 async function persistSupplierInvoiceHeader(manager: EntityManager, inv: SupplierInvoice): Promise<void> {
@@ -95,10 +88,7 @@ function serialize(inv: SupplierInvoice, lines?: SupplierInvoiceLine[]) {
 
 export async function listSupplierInvoices(req: Request): Promise<ControllerResult> {
   const { limit, offset } = getPagination(req);
-  const qb = SupplierInvoice
-    .createQueryBuilder('si')
-    .leftJoinAndSelect('si.supplier', 's')
-    .where('1=1');
+  const qb = SupplierInvoice.createQueryBuilder('si').leftJoinAndSelect('si.supplier', 's').where('1=1');
   if (req.query.supplierId) qb.andWhere('si.supplierId = :sid', { sid: req.query.supplierId });
   if (req.query.status) qb.andWhere('si.status = :st', { st: req.query.status });
   qb.orderBy('si.invoiceDate', 'DESC').addOrderBy('si.createdAt', 'DESC').take(limit).skip(offset);
@@ -108,7 +98,9 @@ export async function listSupplierInvoices(req: Request): Promise<ControllerResu
 
 export async function listOpenSupplierInvoices(req: Request): Promise<ControllerResult> {
   const supplierId = req.query.supplierId as string | undefined;
-  const paymentDate = ((req.query.paymentDate as string | undefined) ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const paymentDate = (
+    (req.query.paymentDate as string | undefined) ?? new Date().toISOString().slice(0, 10)
+  ).slice(0, 10);
   const paymentMethod = ((req.query.paymentMethod as string | undefined) ?? 'bank').trim() || 'bank';
   if (!supplierId) {
     throw new HttpError(400, { error: 'supplierId required' });
@@ -197,7 +189,10 @@ export async function getSupplierInvoice(req: Request): Promise<ControllerResult
   return ok({ data: serialize(inv, inv.lines) });
 }
 
-export async function createSupplierInvoice(req: Request, body: CreateSupplierInvoiceInput): Promise<ControllerResult> {
+export async function createSupplierInvoice(
+  req: Request,
+  body: CreateSupplierInvoiceInput
+): Promise<ControllerResult> {
   const b = body;
   const userId = req.auth?.userId;
 
@@ -239,7 +234,9 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
       );
 
       const due =
-        b.dueDate && b.dueDate !== null ? b.dueDate.slice(0, 10) : await resolveSupplierDueDate(manager, b.supplierId, b.invoiceDate);
+        b.dueDate && b.dueDate !== null
+          ? b.dueDate.slice(0, 10)
+          : await resolveSupplierDueDate(manager, b.supplierId, b.invoiceDate);
 
       const inv = manager.create(SupplierInvoice, {
         supplierId: b.supplierId,
@@ -283,19 +280,14 @@ export async function createSupplierInvoice(req: Request, body: CreateSupplierIn
     });
     return created({ data: serialize(row, row.lines) });
   } catch (e) {
-    if (e instanceof HttpError) throw e;
-    const msg = e instanceof Error ? e.message : 'Create failed';
-    if (msg.includes('UQ_supplier_invoice_number')) {
-      throw new HttpError(400, { error: 'Invoice number already exists for this supplier' });
-    }
-    if (msg.includes('UQ_supplier_invoices_grn_id') || msg.includes('UQ_supplier_invoice')) {
-      throw new HttpError(400, { error: 'A supplier invoice is already linked to this GRN' });
-    }
-    throw new HttpError(400, { error: msg });
+    handleControllerError(e, 'Create failed');
   }
 }
 
-export async function updateSupplierInvoice(req: Request, body: UpdateSupplierInvoiceInput): Promise<ControllerResult> {
+export async function updateSupplierInvoice(
+  req: Request,
+  body: UpdateSupplierInvoiceInput
+): Promise<ControllerResult> {
   const b = body;
   try {
     const row = await runInTransaction(async (manager) => {
@@ -311,11 +303,16 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
       if (b.purchaseOrderId !== undefined) inv.purchaseOrderId = b.purchaseOrderId ?? undefined;
       if (b.grnId !== undefined) inv.grnId = b.grnId ?? undefined;
       if (b.notes !== undefined) inv.notes = b.notes ?? undefined;
-            const nextSupplier = b.supplierId ?? inv.supplierId;
+      const nextSupplier = b.supplierId ?? inv.supplierId;
 
       if (b.grnId !== undefined && b.grnId) {
         await assertGrnLinkableToInvoice(manager, b.grnId, nextSupplier, inv.id);
-      } else if (b.grnId === undefined && inv.grnId && b.supplierId !== undefined && b.supplierId !== inv.supplierId) {
+      } else if (
+        b.grnId === undefined &&
+        inv.grnId &&
+        b.supplierId !== undefined &&
+        b.supplierId !== inv.supplierId
+      ) {
         const grn = await manager.findOne(Grn, { where: { id: inv.grnId } });
         if (grn && grn.supplierId !== nextSupplier) throw new Error('GRN supplier mismatch');
       }
@@ -414,13 +411,7 @@ export async function updateSupplierInvoice(req: Request, body: UpdateSupplierIn
     });
     return ok({ data: serialize(row, row.lines) });
   } catch (e) {
-    if (e instanceof HttpError) throw e;
-    const msg = e instanceof Error ? e.message : 'Update failed';
-    if (msg === 'Not found') throw new HttpError(404, { error: msg });
-    if (msg.includes('UQ_supplier_invoices_grn_id') || msg.includes('already linked to this GRN')) {
-      throw new HttpError(400, { error: 'A supplier invoice is already linked to this GRN' });
-    }
-    throw new HttpError(400, { error: msg });
+    handleControllerError(e, 'Update failed');
   }
 }
 
@@ -444,7 +435,12 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
           discountAmount: l.discountAmount,
           taxProfileId: l.taxProfileId,
         })) ?? [];
-      const totals = await computePurchaseDocumentTotals(manager, inv.supplierId, linesForCalc, inv.discountAmount);
+      const totals = await computePurchaseDocumentTotals(
+        manager,
+        inv.supplierId,
+        linesForCalc,
+        inv.discountAmount
+      );
       const inventoryDebit = moneySub(totals.subtotal, totals.discountAmount);
 
       await postSupplierInvoiceJournal(manager, {
@@ -469,11 +465,7 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
         const totalQty = paidQty + bonusQty;
         const unitCost = (parseFloat(cmp.lineBase) / totalQty).toFixed(4);
         const uc = parseDecimalStrict(unitCost);
-        await manager.update(
-          InventoryMovement,
-          { grnLineId: line.grnLineId },
-          { unitCost: uc }
-        );
+        await manager.update(InventoryMovement, { grnLineId: line.grnLineId }, { unitCost: uc });
         await manager.query(`UPDATE stock_layers SET unit_cost = $1::numeric WHERE grn_line_id = $2`, [
           uc,
           line.grnLineId,
@@ -494,10 +486,7 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
     });
     return ok({ data: serialize(inv!, inv!.lines) });
   } catch (e) {
-    if (e instanceof HttpError) throw e;
-    const msg = e instanceof Error ? e.message : 'Post failed';
-    if (msg === 'Not found') throw new HttpError(404, { error: msg });
-    throw new HttpError(400, { error: msg });
+    handleControllerError(e, 'Post failed');
   }
 }
 

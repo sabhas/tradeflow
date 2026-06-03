@@ -1,5 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+import pinoHttp from 'pino-http';
 import { healthRouter } from './routes/health';
 import { authRouter } from './routes/auth';
 import { auditRouter } from './routes/audit';
@@ -38,17 +42,41 @@ import { importRouter } from './routes/import';
 import { exportRouter } from './routes/export';
 import { notificationsRouter } from './routes/notifications';
 import { approvalsRouter } from './routes/approvals';
+import { requestIdMiddleware } from './middleware/requestId';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { logger } from './logger';
+import { mountSwagger } from './swagger';
 
 export const app = express();
 
+app.use(requestIdMiddleware);
+app.use(
+  pinoHttp({
+    logger,
+    customProps: (req) => ({ requestId: req.requestId }),
+  })
+);
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(compression());
 app.use(
   cors({
     origin: true,
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
   })
 );
 app.use(express.json());
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests', message: 'Rate limit exceeded' },
+  })
+);
+
+mountSwagger(app);
 
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
@@ -88,3 +116,6 @@ app.use('/import', importRouter);
 app.use('/export', exportRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/approvals', approvalsRouter);
+
+app.use(notFoundHandler);
+app.use(errorHandler);

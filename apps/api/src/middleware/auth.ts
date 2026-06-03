@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '@tradeflow/db';
+import { config } from '../config';
+import { apiErrorBody } from '../utils/apiError';
 
 export interface AuthPayload {
   userId: string;
@@ -8,27 +10,23 @@ export interface AuthPayload {
   permissions: string[];
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      auth?: AuthPayload;
-      user?: User;
-    }
-  }
-}
-
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   if (!token) {
-    res.status(401).json({ error: 'Unauthorized', message: 'Token required' });
+    res
+      .status(401)
+      .json(apiErrorBody('Unauthorized', { message: 'Token required', requestId: req.requestId }));
     return;
   }
 
-  const secret = process.env.JWT_SECRET || 'dev-secret-change-in-production';
   try {
-    const decoded = jwt.verify(token, secret) as { userId: string; email: string; permissions: string[] };
+    const decoded = jwt.verify(token, config.JWT_SECRET) as {
+      userId: string;
+      email: string;
+      permissions: string[];
+    };
     req.auth = {
       userId: decoded.userId,
       email: decoded.email,
@@ -36,7 +34,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     };
     next();
   } catch {
-    res.status(401).json({ error: 'Unauthorized', message: 'Invalid or expired token' });
+    res
+      .status(401)
+      .json(apiErrorBody('Unauthorized', { message: 'Invalid or expired token', requestId: req.requestId }));
   }
 }
 
@@ -49,9 +49,7 @@ function permissionsFromJwt(req: Request): string[] {
 function permissionsFromUser(req: Request): string[] | null {
   const user = req.user;
   if (!user?.roles?.length) return null;
-  return [
-    ...new Set((user.roles || []).flatMap((r) => (r.permissions || []).map((p) => p.code))),
-  ];
+  return [...new Set((user.roles || []).flatMap((r) => (r.permissions || []).map((p) => p.code)))];
 }
 
 /**
@@ -75,13 +73,18 @@ function effectivePermissions(req: Request): string[] {
 export function requirePermission(resource: string, action: string) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.auth) {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json(apiErrorBody('Unauthorized', { requestId: req.requestId }));
       return;
     }
     const permission = `${resource}:${action}`;
     const perms = effectivePermissions(req);
     if (!perms.includes(permission) && !perms.includes('*')) {
-      res.status(403).json({ error: 'Forbidden', message: `Permission ${permission} required` });
+      res.status(403).json(
+        apiErrorBody('Forbidden', {
+          message: `Permission ${permission} required`,
+          requestId: req.requestId,
+        })
+      );
       return;
     }
     next();
