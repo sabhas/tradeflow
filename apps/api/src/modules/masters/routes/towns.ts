@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createTownSchema, updateTownSchema } from '@tradeflow/shared';
+import { createTownSchema, listTownsQuerySchema, updateTownSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as townsController from '../controllers/townsController';
@@ -13,6 +13,7 @@ townsRouter.use(authMiddleware, loadUser);
 townsRouter.get(
   '/',
   requirePermission('masters.customers', 'read'),
+  validateQuery(listTownsQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await townsController.listTowns(req));
   })

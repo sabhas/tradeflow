@@ -1,8 +1,14 @@
 import { Router } from 'express';
-import { createSupplierSchema, updateSupplierSchema } from '@tradeflow/shared';
+import {
+  createSupplierSchema,
+  listSuppliersQuerySchema,
+  supplierLedgerQuerySchema,
+  supplierStatementQuerySchema,
+  updateSupplierSchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as suppliersController from '../controllers/suppliersController';
@@ -13,6 +19,7 @@ suppliersRouter.use(authMiddleware, loadUser);
 suppliersRouter.get(
   '/',
   requirePermission('masters.suppliers', 'read'),
+  validateQuery(listSuppliersQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await suppliersController.listSuppliers(req));
   })
@@ -21,6 +28,7 @@ suppliersRouter.get(
 suppliersRouter.get(
   '/:id/statement',
   requirePermission('purchases.reports', 'read'),
+  validateQuery(supplierStatementQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await suppliersController.getSupplierStatement(req));
   })
@@ -29,6 +37,7 @@ suppliersRouter.get(
 suppliersRouter.get(
   '/:id/pricing-history',
   requirePermission('purchases.reports', 'read'),
+  validateQuery(supplierLedgerQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await suppliersController.getSupplierPricingHistory(req));
   })

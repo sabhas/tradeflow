@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { importTemplateQuerySchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { importUpload } from '../../../shared/middleware/upload';
+import { validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as importController from '../controllers/importController';
@@ -11,6 +13,7 @@ importRouter.use(authMiddleware, loadUser);
 importRouter.get(
   '/products/template',
   requirePermission('masters.products', 'write'),
+  validateQuery(importTemplateQuerySchema),
   asyncHandler(async (req, res) => {
     const r = await importController.downloadProductsTemplate(req);
     res.setHeader('Content-Type', r.contentType);
@@ -22,6 +25,7 @@ importRouter.get(
 importRouter.get(
   '/customers/template',
   requirePermission('masters.customers', 'write'),
+  validateQuery(importTemplateQuerySchema),
   asyncHandler(async (req, res) => {
     const r = await importController.downloadCustomersTemplate(req);
     res.setHeader('Content-Type', r.contentType);
@@ -33,6 +37,7 @@ importRouter.get(
 importRouter.get(
   '/opening-balances/template',
   requirePermission('inventory', 'write'),
+  validateQuery(importTemplateQuerySchema),
   asyncHandler(async (req, res) => {
     const r = await importController.downloadOpeningBalancesTemplate(req);
     res.setHeader('Content-Type', r.contentType);

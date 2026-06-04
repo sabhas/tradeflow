@@ -2,8 +2,13 @@ import type { Request } from 'express';
 import type { EntityManager } from 'typeorm';
 import type { z } from 'zod';
 import { Grn, PurchaseReturn, PurchaseReturnLine } from '@tradeflow/db';
-import { createPurchaseReturnSchema, updatePurchaseReturnSchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import {
+  createPurchaseReturnSchema,
+  listPurchaseReturnsQuerySchema,
+  updatePurchaseReturnSchema,
+} from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { computePurchaseDocumentTotals } from '../services/purchaseTotals';
 import {
   applyMovement,
@@ -65,8 +70,11 @@ async function assertGrnMatchesIfPresent(
   if (grn.warehouseId !== warehouseId) throw new Error('GRN warehouse must match purchase return');
 }
 
+type ListPurchaseReturnsQuery = z.infer<typeof listPurchaseReturnsQuerySchema>;
+
 export async function listPurchaseReturns(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListPurchaseReturnsQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = PurchaseReturn.createQueryBuilder('r')
     .leftJoinAndSelect('r.supplier', 's')
     .leftJoinAndSelect('r.warehouse', 'w')
@@ -74,8 +82,8 @@ export async function listPurchaseReturns(req: Request): Promise<ControllerResul
     .addOrderBy('r.createdAt', 'DESC')
     .take(limit)
     .skip(offset);
-  if (req.query.supplierId) qb.andWhere('r.supplierId = :sid', { sid: req.query.supplierId });
-  if (req.query.status) qb.andWhere('r.status = :st', { st: req.query.status });
+  if (q.supplierId) qb.andWhere('r.supplierId = :sid', { sid: q.supplierId });
+  if (q.status) qb.andWhere('r.status = :st', { st: q.status });
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
 }

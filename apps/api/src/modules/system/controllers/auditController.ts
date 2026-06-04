@@ -1,30 +1,29 @@
 import type { Request } from 'express';
+import type { z } from 'zod';
+import { listAuditLogsQuerySchema } from '@tradeflow/shared';
 import { AuditLog } from '@tradeflow/db';
-import { getPagination } from '../../../shared/utils/pagination';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 
 export async function listAuditLogs(req: Request): Promise<ControllerResult> {
-  const { entity, entityId, userId, from, to, dateFrom, dateTo } = req.query;
+  const q = getValidatedQuery<z.infer<typeof listAuditLogsQuerySchema>>(req);
 
-  const fromDate =
-    (typeof from === 'string' && from.trim()) ||
-    (typeof dateFrom === 'string' && dateFrom.trim()) ||
-    undefined;
-  const toDate =
-    (typeof to === 'string' && to.trim()) || (typeof dateTo === 'string' && dateTo.trim()) || undefined;
+  const fromDate = q.from?.trim() || q.dateFrom?.trim() || undefined;
+  const toDate = q.to?.trim() || q.dateTo?.trim() || undefined;
 
-  const { limit, offset } = getPagination(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const repo = AuditLog.getRepository();
 
   const qb = repo.createQueryBuilder('a');
-  if (typeof entity === 'string' && entity.trim()) {
-    qb.andWhere('a.entity = :entity', { entity: entity.trim() });
+  if (q.entity?.trim()) {
+    qb.andWhere('a.entity = :entity', { entity: q.entity.trim() });
   }
-  if (typeof entityId === 'string' && entityId.trim()) {
-    qb.andWhere('a.entityId = :entityId', { entityId: entityId.trim() });
+  if (q.entityId?.trim()) {
+    qb.andWhere('a.entityId = :entityId', { entityId: q.entityId.trim() });
   }
-  if (typeof userId === 'string' && userId.trim()) {
-    qb.andWhere('a.userId = :userId', { userId: userId.trim() });
+  if (q.userId?.trim()) {
+    qb.andWhere('a.userId = :userId', { userId: q.userId.trim() });
   }
   if (fromDate) {
     qb.andWhere('a.createdAt >= :fromDate', { fromDate });

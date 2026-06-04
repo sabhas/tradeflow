@@ -1,7 +1,8 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Area, Customer, Town } from '@tradeflow/db';
-import { createTownSchema, updateTownSchema } from '@tradeflow/shared';
+import { createTownSchema, listTownsQuerySchema, updateTownSchema } from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { IsNull } from 'typeorm';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
@@ -22,7 +23,8 @@ export function serializeTown(t: Town) {
 }
 
 export async function listTowns(req: Request): Promise<ControllerResult> {
-  const areaId = (req.query.areaId as string | undefined)?.trim();
+  const q = getValidatedQuery<z.infer<typeof listTownsQuerySchema>>(req);
+  const areaId = q.areaId?.trim();
   const qb = Town.createQueryBuilder('t').leftJoinAndSelect('t.area', 'a').where('t.deleted_at IS NULL');
   if (areaId) {
     qb.andWhere('t.area_id = :aid', { aid: areaId });

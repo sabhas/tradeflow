@@ -1,7 +1,10 @@
 import type { Request } from 'express';
+import type { z } from 'zod';
 import { IsNull } from 'typeorm';
 import { dataSource, UserNotification } from '@tradeflow/db';
-import { getPagination } from '../../../shared/utils/pagination';
+import { paginationQuerySchema } from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 
@@ -20,7 +23,8 @@ export async function listNotifications(req: Request): Promise<ControllerResult>
   if (!req.auth?.userId) {
     throw new HttpError(401, { error: 'Unauthorized' });
   }
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<z.infer<typeof paginationQuerySchema>>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const [rows, total] = await UserNotification.findAndCount({
     where: { userId: req.auth.userId },
     order: { createdAt: 'DESC' },

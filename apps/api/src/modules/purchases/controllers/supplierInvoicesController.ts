@@ -1,8 +1,14 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { SupplierInvoice, type SupplierInvoiceLine } from '@tradeflow/db';
-import { createSupplierInvoiceSchema, updateSupplierInvoiceSchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import {
+  createSupplierInvoiceSchema,
+  listOpenSupplierInvoicesQuerySchema,
+  listSupplierInvoicesQuerySchema,
+  updateSupplierInvoiceSchema,
+} from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 import {
@@ -49,27 +55,27 @@ function serialize(inv: SupplierInvoice, lines?: SupplierInvoiceLine[]) {
   };
 }
 
+type ListSupplierInvoicesQuery = z.infer<typeof listSupplierInvoicesQuerySchema>;
+
 export async function listSupplierInvoices(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListSupplierInvoicesQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = SupplierInvoice.createQueryBuilder('si').leftJoinAndSelect('si.supplier', 's').where('1=1');
-  if (req.query.supplierId) qb.andWhere('si.supplierId = :sid', { sid: req.query.supplierId });
-  if (req.query.status) qb.andWhere('si.status = :st', { st: req.query.status });
+  if (q.supplierId) qb.andWhere('si.supplierId = :sid', { sid: q.supplierId });
+  if (q.status) qb.andWhere('si.status = :st', { st: q.status });
   qb.orderBy('si.invoiceDate', 'DESC').addOrderBy('si.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
 }
 
+type ListOpenSupplierInvoicesQuery = z.infer<typeof listOpenSupplierInvoicesQuerySchema>;
+
 export async function listOpenSupplierInvoices(req: Request): Promise<ControllerResult> {
-  const supplierId = req.query.supplierId as string | undefined;
-  const paymentDate = (
-    (req.query.paymentDate as string | undefined) ?? new Date().toISOString().slice(0, 10)
-  ).slice(0, 10);
-  const paymentMethod = ((req.query.paymentMethod as string | undefined) ?? 'bank').trim() || 'bank';
-  if (!supplierId) {
-    throw new HttpError(400, { error: 'supplierId required' });
-  }
+  const q = getValidatedQuery<ListOpenSupplierInvoicesQuery>(req);
+  const paymentDate = (q.paymentDate ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const paymentMethod = (q.paymentMethod ?? 'bank').trim() || 'bank';
   const { rows, availableDebitAmount, availableLiquidAmount, asOfDate } =
-    await listOpenSupplierInvoicesService(supplierId, paymentDate, paymentMethod);
+    await listOpenSupplierInvoicesService(q.supplierId, paymentDate, paymentMethod);
   return ok({ data: rows, meta: { availableDebitAmount, availableLiquidAmount, asOfDate } });
 }
 

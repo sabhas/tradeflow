@@ -1,5 +1,8 @@
 import type { Request } from 'express';
+import type { z } from 'zod';
+import { listApprovalsQuerySchema } from '@tradeflow/shared';
 import { ApprovalRequest } from '@tradeflow/db';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { getPagination } from '../../../shared/utils/pagination';
 import { ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
@@ -23,7 +26,8 @@ function serialize(a: ApprovalRequest) {
 }
 
 export async function listApprovalRequests(req: Request): Promise<ControllerResult> {
-  const status = (req.query.status as string | undefined)?.trim() || 'pending';
+  const q = getValidatedQuery<z.infer<typeof listApprovalsQuerySchema>>(req);
+  const status = q.status ?? 'pending';
   const { limit, offset } = getPagination(req);
 
   const qb = ApprovalRequest.createQueryBuilder('a')
@@ -31,9 +35,7 @@ export async function listApprovalRequests(req: Request): Promise<ControllerResu
     .orderBy('a.created_at', 'DESC')
     .take(limit)
     .skip(offset);
-  if (status !== 'all') {
-    qb.andWhere('a.status = :st', { st: status });
-  }
+  qb.andWhere('a.status = :st', { st: status });
 
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map(serialize), meta: { total, limit, offset } });

@@ -1,9 +1,16 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
-import { calculateBonusSchema, createBonusRuleSchema, updateBonusRuleSchema } from '@tradeflow/shared';
+import {
+  calculateBonusQuerySchema,
+  calculateBonusSchema,
+  createBonusRuleSchema,
+  listBonusRulesQuerySchema,
+  updateBonusRuleSchema,
+} from '@tradeflow/shared';
 import { BonusRule, Product } from '@tradeflow/db';
-import { getPagination } from '../../../shared/utils/pagination';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { parseDecimalStrict } from '../../../shared/utils/decimal';
 import { HttpError } from '../../../shared/utils/httpError';
@@ -27,8 +34,11 @@ function serialize(rule: BonusRule, product?: Product) {
   };
 }
 
+type ListBonusRulesQuery = z.infer<typeof listBonusRulesQuerySchema>;
+
 export async function listBonusRules(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListBonusRulesQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = BonusRule.createQueryBuilder('r')
     .leftJoinAndSelect('r.product', 'product')
     .orderBy('product.name', 'ASC')
@@ -36,11 +46,11 @@ export async function listBonusRules(req: Request): Promise<ControllerResult> {
     .take(limit)
     .skip(offset);
 
-  if (req.query.productId) {
-    qb.andWhere('r.productId = :pid', { pid: req.query.productId });
+  if (q.productId) {
+    qb.andWhere('r.productId = :pid', { pid: q.productId });
   }
-  if (req.query.isActive === 'true') qb.andWhere('r.isActive = true');
-  if (req.query.isActive === 'false') qb.andWhere('r.isActive = false');
+  if (q.isActive === 'true') qb.andWhere('r.isActive = true');
+  if (q.isActive === 'false') qb.andWhere('r.isActive = false');
 
   const [rows, total] = await qb.getManyAndCount();
   return ok({
@@ -106,10 +116,9 @@ export async function deleteBonusRule(req: Request): Promise<ControllerResult> {
 }
 
 export async function calculateBonusAction(req: Request): Promise<ControllerResult> {
-  const parsed = calculateBonusSchema.safeParse({
-    productId: req.query.productId,
-    quantity: req.query.quantity != null ? Number(req.query.quantity) : undefined,
-  });
+  const parsed = calculateBonusSchema.safeParse(
+    getValidatedQuery<z.infer<typeof calculateBonusQuerySchema>>(req)
+  );
   if (!parsed.success) {
     throw new HttpError(400, { error: 'Invalid input', details: parsed.error.flatten() });
   }

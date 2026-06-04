@@ -1,8 +1,12 @@
 import { Router } from 'express';
-import { createPurchaseOrderSchema, updatePurchaseOrderSchema } from '@tradeflow/shared';
+import {
+  createPurchaseOrderSchema,
+  listPurchaseOrdersQuerySchema,
+  updatePurchaseOrderSchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as purchaseOrdersController from '../controllers/purchaseOrdersController';
@@ -13,6 +17,7 @@ purchaseOrdersRouter.use(authMiddleware, loadUser);
 purchaseOrdersRouter.get(
   '/',
   requirePermission('purchases.orders', 'read'),
+  validateQuery(listPurchaseOrdersQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await purchaseOrdersController.listPurchaseOrders(req));
   })

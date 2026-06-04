@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import { createSupplierInvoiceSchema, updateSupplierInvoiceSchema } from '@tradeflow/shared';
+import {
+  createSupplierInvoiceSchema,
+  listOpenSupplierInvoicesQuerySchema,
+  listSupplierInvoicesQuerySchema,
+  updateSupplierInvoiceSchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as supplierInvoicesController from '../controllers/supplierInvoicesController';
@@ -13,6 +18,7 @@ supplierInvoicesRouter.use(authMiddleware, loadUser);
 supplierInvoicesRouter.get(
   '/',
   requirePermission('purchases.supplier_invoices', 'read'),
+  validateQuery(listSupplierInvoicesQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await supplierInvoicesController.listSupplierInvoices(req));
   })
@@ -21,6 +27,7 @@ supplierInvoicesRouter.get(
 supplierInvoicesRouter.get(
   '/open',
   requirePermission('purchases.supplier_invoices', 'read'),
+  validateQuery(listOpenSupplierInvoicesQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await supplierInvoicesController.listOpenSupplierInvoices(req));
   })

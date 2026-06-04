@@ -1,6 +1,19 @@
 import { z } from 'zod';
+import { asOfQuerySchema, optionalDateOnlyQuery, paginationQuerySchema } from './queryCommon';
 
 const accountType = z.enum(['asset', 'liability', 'equity', 'income', 'expense']);
+
+export const listAccountsQuerySchema = z.object({
+  format: z.enum(['flat', 'tree']).optional(),
+});
+
+export const accountBalanceQuerySchema = asOfQuerySchema;
+
+export const listJournalEntriesQuerySchema = paginationQuerySchema.extend({
+  status: z.enum(['draft', 'posted', 'reversed']).optional(),
+  dateFrom: optionalDateOnlyQuery,
+  dateTo: optionalDateOnlyQuery,
+});
 
 export const createAccountSchema = z.object({
   code: z.string().min(1).max(32),

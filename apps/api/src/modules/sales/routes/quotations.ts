@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createQuotationSchema, updateQuotationSchema } from '@tradeflow/shared';
+import { createQuotationSchema, listQuotationsQuerySchema, updateQuotationSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as quotationsController from '../controllers/quotationsController';
@@ -13,6 +13,7 @@ quotationsRouter.use(authMiddleware, loadUser);
 quotationsRouter.get(
   '/',
   requirePermission('sales', 'read'),
+  validateQuery(listQuotationsQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await quotationsController.listQuotations(req));
   })

@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import { createInvoiceSchema, printInvoicesBatchSchema, updateInvoiceSchema } from '@tradeflow/shared';
+import {
+  createInvoiceSchema,
+  listInvoicesQuerySchema,
+  printInvoicesBatchSchema,
+  updateInvoiceSchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as invoicesController from '../controllers/invoicesController';
@@ -13,6 +18,7 @@ invoicesRouter.use(authMiddleware, loadUser);
 invoicesRouter.get(
   '/',
   requirePermission('sales', 'read'),
+  validateQuery(listInvoicesQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await invoicesController.listInvoices(req));
   })

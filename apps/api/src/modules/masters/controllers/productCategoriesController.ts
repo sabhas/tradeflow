@@ -1,8 +1,13 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { IsNull } from 'typeorm';
-import { createProductCategorySchema, updateProductCategorySchema } from '@tradeflow/shared';
+import {
+  createProductCategorySchema,
+  listProductCategoriesQuerySchema,
+  updateProductCategorySchema,
+} from '@tradeflow/shared';
 import { ProductCategory } from '@tradeflow/db';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 
@@ -36,7 +41,8 @@ export async function getProductCategorySnapshotForAudit(id: string) {
 }
 
 export async function listProductCategories(req: Request): Promise<ControllerResult> {
-  const tree = req.query.tree === 'true' || req.query.tree === '1';
+  const q = getValidatedQuery<z.infer<typeof listProductCategoriesQuerySchema>>(req);
+  const tree = q.tree === 'true';
   const repo = ProductCategory.getRepository();
   const flat = await repo.find({
     order: { name: 'ASC' },

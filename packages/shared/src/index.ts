@@ -11,4 +11,7 @@ export * from './validation/accounting';
 export * from './validation/importExport';
 export * from './validation/settings';
 export * from './validation/auth';
+export * from './validation/queryCommon';
+export * from './validation/reports';
+export * from './validation/system';
 export * from './openapi';

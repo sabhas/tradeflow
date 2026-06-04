@@ -2,8 +2,14 @@ import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
 import { Customer } from '@tradeflow/db';
-import { createCustomerSchema, updateCustomerSchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import {
+  createCustomerSchema,
+  customerStatementQuerySchema,
+  listCustomersQuerySchema,
+  updateCustomerSchema,
+} from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 import {
@@ -53,9 +59,12 @@ export function serializeCustomer(c: Customer) {
   };
 }
 
+type ListCustomersQuery = z.infer<typeof listCustomersQuerySchema>;
+
 export async function listCustomers(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
-  const search = (req.query.search as string | undefined)?.trim();
+  const q = getValidatedQuery<ListCustomersQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
+  const search = q.search?.trim();
 
   const qb = Customer.createQueryBuilder('c').where('c.deleted_at IS NULL');
   if (search) {
@@ -75,8 +84,9 @@ export async function listCustomers(req: Request): Promise<ControllerResult> {
 
 export async function getCustomerStatement(req: Request): Promise<ControllerResult> {
   const { id } = req.params;
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const q = getValidatedQuery<z.infer<typeof customerStatementQuerySchema>>(req);
+  const dateFrom = (q.dateFrom || '1970-01-01').slice(0, 10);
+  const dateTo = (q.dateTo || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const data = await getCustomerStatementService(id, dateFrom, dateTo);
   return ok({ data });
 }

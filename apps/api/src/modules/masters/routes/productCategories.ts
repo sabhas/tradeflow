@@ -1,8 +1,12 @@
 import { Router } from 'express';
-import { createProductCategorySchema, updateProductCategorySchema } from '@tradeflow/shared';
+import {
+  createProductCategorySchema,
+  listProductCategoriesQuerySchema,
+  updateProductCategorySchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as productCategoriesController from '../controllers/productCategoriesController';
@@ -14,6 +18,7 @@ productCategoriesRouter.use(authMiddleware, loadUser);
 productCategoriesRouter.get(
   '/',
   requirePermission('masters.products', 'read'),
+  validateQuery(listProductCategoriesQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await productCategoriesController.listProductCategories(req));
   })

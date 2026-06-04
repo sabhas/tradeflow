@@ -1,8 +1,9 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { createReceiptSchema } from '@tradeflow/shared';
+import { createReceiptSchema, listReceiptsQuerySchema } from '@tradeflow/shared';
 import { Receipt, ReceiptAllocation } from '@tradeflow/db';
-import { getPagination } from '../../../shared/utils/pagination';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 import { createReceipt as createReceiptService } from '../services/receiptService';
@@ -28,12 +29,15 @@ function serialize(r: Receipt, allocations?: ReceiptAllocation[]) {
   };
 }
 
+type ListReceiptsQuery = z.infer<typeof listReceiptsQuerySchema>;
+
 export async function listReceipts(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListReceiptsQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = Receipt.createQueryBuilder('r').orderBy('r.receipt_date', 'DESC').take(limit).skip(offset);
-  if (req.query.customerId) qb.andWhere('r.customer_id = :cid', { cid: req.query.customerId });
-  if (req.query.dateFrom) qb.andWhere('r.receipt_date >= :df', { df: req.query.dateFrom });
-  if (req.query.dateTo) qb.andWhere('r.receipt_date <= :dt', { dt: req.query.dateTo });
+  if (q.customerId) qb.andWhere('r.customer_id = :cid', { cid: q.customerId });
+  if (q.dateFrom) qb.andWhere('r.receipt_date >= :df', { df: q.dateFrom });
+  if (q.dateTo) qb.andWhere('r.receipt_date <= :dt', { dt: q.dateTo });
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
 }

@@ -2,8 +2,9 @@ import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
 import { Invoice, type InvoiceLine } from '@tradeflow/db';
-import { printInvoicesBatchSchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import { listInvoicesQuerySchema, printInvoicesBatchSchema } from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { postInvoice } from '../services/invoicePosting';
 import { buildInvoicePrintHtml } from '../services/invoiceHtml';
 import * as invoiceService from '../services/invoiceService';
@@ -53,8 +54,11 @@ export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
   };
 }
 
+type ListInvoicesQuery = z.infer<typeof listInvoicesQuerySchema>;
+
 export async function listInvoices(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListInvoicesQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = Invoice.createQueryBuilder('i')
     .leftJoinAndSelect('i.customer', 'customer')
     .where('i.deletedAt IS NULL')
@@ -62,11 +66,11 @@ export async function listInvoices(req: Request): Promise<ControllerResult> {
     .addOrderBy('i.createdAt', 'DESC')
     .take(limit)
     .skip(offset);
-  if (req.query.customerId) qb.andWhere('i.customerId = :cid', { cid: req.query.customerId });
-  if (req.query.status) qb.andWhere('i.status = :st', { st: req.query.status });
-  if (req.query.documentKind) qb.andWhere('i.documentKind = :dk', { dk: req.query.documentKind });
-  if (req.query.dateFrom) qb.andWhere('i.invoiceDate >= :df', { df: req.query.dateFrom });
-  if (req.query.dateTo) qb.andWhere('i.invoiceDate <= :dt', { dt: req.query.dateTo });
+  if (q.customerId) qb.andWhere('i.customerId = :cid', { cid: q.customerId });
+  if (q.status) qb.andWhere('i.status = :st', { st: q.status });
+  if (q.documentKind) qb.andWhere('i.documentKind = :dk', { dk: q.documentKind });
+  if (q.dateFrom) qb.andWhere('i.invoiceDate >= :df', { df: q.dateFrom });
+  if (q.dateTo) qb.andWhere('i.invoiceDate <= :dt', { dt: q.dateTo });
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((i) => serializeInvoice(i)), meta: { total, limit, offset } });
 }

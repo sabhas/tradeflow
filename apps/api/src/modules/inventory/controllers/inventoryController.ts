@@ -2,8 +2,15 @@ import type { Request } from 'express';
 import { In } from 'typeorm';
 import { dataSource, InventoryMovement, StockBalance } from '@tradeflow/db';
 import type { z } from 'zod';
-import { postOpeningBalanceSchema, postStockAdjustmentSchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import {
+  listInventoryMovementsQuerySchema,
+  listStockLayersQuerySchema,
+  listStockSummaryQuerySchema,
+  postOpeningBalanceSchema,
+  postStockAdjustmentSchema,
+} from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import {
   applyMovement,
   assertProductInScope,
@@ -83,9 +90,10 @@ function serializeBalance(sb: StockBalance) {
 }
 
 export async function listBalances(req: Request): Promise<ControllerResult> {
-  const warehouseId = req.query.warehouseId as string | undefined;
-  const productId = req.query.productId as string | undefined;
-  const supplierId = req.query.supplierId as string | undefined;
+  const q = getValidatedQuery<z.infer<typeof listStockSummaryQuerySchema>>(req);
+  const warehouseId = q.warehouseId;
+  const productId = q.productId;
+  const supplierId = q.supplierId;
 
   const qb = StockBalance.createQueryBuilder('sb')
     .leftJoinAndSelect('sb.product', 'p')
@@ -135,17 +143,16 @@ export async function listBalances(req: Request): Promise<ControllerResult> {
 }
 
 export async function listBatchBalances(req: Request): Promise<ControllerResult> {
-  const warehouseId = req.query.warehouseId as string | undefined;
-  const productId = req.query.productId as string | undefined;
-  const supplierId = req.query.supplierId as string | undefined;
-  const batchQuery = ((req.query.batch as string | undefined) ?? '').trim();
-  const expiryBefore = (req.query.expiryBefore as string | undefined)?.trim();
-  const orderByParam = (req.query.orderBy as string | undefined)?.toLowerCase();
-  const limitParam = req.query.limit as string | undefined;
+  const q = getValidatedQuery<z.infer<typeof listStockLayersQuerySchema>>(req);
+  const warehouseId = q.warehouseId;
+  const productId = q.productId;
+  const supplierId = q.supplierId;
+  const batchQuery = (q.batch ?? '').trim();
+  const expiryBefore = q.expiryBefore?.trim();
+  const orderByParam = q.orderBy?.toLowerCase();
+  const limitParam = q.limit;
 
-  const includeDepleted =
-    (req.query.includeDepleted as string | undefined)?.toLowerCase() === 'true' ||
-    (req.query.includeDepleted as string | undefined) === '1';
+  const includeDepleted = q.includeDepleted === 'true';
   const where: string[] = ['p.deleted_at IS NULL'];
   if (!includeDepleted) {
     where.push('l.quantity_remaining::numeric > 0');
@@ -182,9 +189,8 @@ export async function listBatchBalances(req: Request): Promise<ControllerResult>
       : "p.name ASC, w.name ASC, l.expiry_date ASC NULLS LAST, COALESCE(NULLIF(l.batch_code, ''), 'Unspecified') ASC";
 
   let limitClause = '';
-  const parsedLimit = limitParam != null ? Number(limitParam) : NaN;
-  if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
-    const safeLimit = Math.min(Math.trunc(parsedLimit), 500);
+  if (limitParam != null && limitParam > 0) {
+    const safeLimit = Math.min(Math.trunc(limitParam), 500);
     limitClause = ` LIMIT ${safeLimit}`;
   }
 
@@ -300,12 +306,13 @@ export async function listLowStock(req: Request): Promise<ControllerResult> {
 }
 
 export async function listMovements(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
-  const warehouseId = req.query.warehouseId as string | undefined;
-  const productId = req.query.productId as string | undefined;
-  const refType = req.query.refType as string | undefined;
-  const dateFrom = req.query.dateFrom as string | undefined;
-  const dateTo = req.query.dateTo as string | undefined;
+  const q = getValidatedQuery<z.infer<typeof listInventoryMovementsQuerySchema>>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
+  const warehouseId = q.warehouseId;
+  const productId = q.productId;
+  const refType = q.refType;
+  const dateFrom = q.dateFrom;
+  const dateTo = q.dateTo;
 
   const qb = InventoryMovement.createQueryBuilder('m')
     .leftJoinAndSelect('m.product', 'p')

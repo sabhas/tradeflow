@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import { createAccountSchema, updateAccountSchema } from '@tradeflow/shared';
+import {
+  accountBalanceQuerySchema,
+  createAccountSchema,
+  listAccountsQuerySchema,
+  updateAccountSchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as accountsController from '../controllers/accountsController';
@@ -13,6 +18,7 @@ accountsRouter.use(authMiddleware, loadUser);
 accountsRouter.get(
   '/',
   requirePermission('accounting', 'read'),
+  validateQuery(listAccountsQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await accountsController.listAccounts(req));
   })
@@ -21,6 +27,7 @@ accountsRouter.get(
 accountsRouter.get(
   '/:id/balance',
   requirePermission('accounting', 'read'),
+  validateQuery(accountBalanceQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await accountsController.getAccountBalance(req));
   })

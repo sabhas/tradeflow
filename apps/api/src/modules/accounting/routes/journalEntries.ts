@@ -1,9 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { createJournalEntrySchema, updateJournalEntrySchema } from '@tradeflow/shared';
+import {
+  createJournalEntrySchema,
+  listJournalEntriesQuerySchema,
+  updateJournalEntrySchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as journalEntriesController from '../controllers/journalEntriesController';
@@ -14,6 +18,7 @@ journalEntriesRouter.use(authMiddleware, loadUser);
 journalEntriesRouter.get(
   '/',
   requirePermission('accounting', 'read'),
+  validateQuery(listJournalEntriesQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await journalEntriesController.listJournalEntries(req));
   })

@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createUnitSchema, updateUnitSchema } from '@tradeflow/shared';
+import { createUnitSchema, paginationQuerySchema, updateUnitSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as unitsController from '../controllers/unitsController';
@@ -13,6 +13,7 @@ unitsRouter.use(authMiddleware, loadUser);
 unitsRouter.get(
   '/',
   requirePermission('masters.products', 'read'),
+  validateQuery(paginationQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await unitsController.listUnits(req));
   })

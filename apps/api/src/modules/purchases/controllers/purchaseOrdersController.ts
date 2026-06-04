@@ -1,8 +1,13 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
-import { createPurchaseOrderSchema, updatePurchaseOrderSchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import {
+  createPurchaseOrderSchema,
+  listPurchaseOrdersQuerySchema,
+  updatePurchaseOrderSchema,
+} from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 import {
@@ -50,14 +55,17 @@ export async function getPurchaseOrderSnapshotForAudit(id: string) {
   return po ? serializePurchaseOrder(po) : undefined;
 }
 
+type ListPurchaseOrdersQuery = z.infer<typeof listPurchaseOrdersQuerySchema>;
+
 export async function listPurchaseOrders(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListPurchaseOrdersQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = PurchaseOrder.createQueryBuilder('po')
     .leftJoinAndSelect('po.supplier', 's')
     .leftJoinAndSelect('po.warehouse', 'w')
     .where('1=1');
-  if (req.query.supplierId) qb.andWhere('po.supplierId = :sid', { sid: req.query.supplierId });
-  if (req.query.status) qb.andWhere('po.status = :st', { st: req.query.status });
+  if (q.supplierId) qb.andWhere('po.supplierId = :sid', { sid: q.supplierId });
+  if (q.status) qb.andWhere('po.status = :st', { st: q.status });
 
   qb.orderBy('po.orderDate', 'DESC').addOrderBy('po.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();

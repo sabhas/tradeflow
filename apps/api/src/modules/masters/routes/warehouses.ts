@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createWarehouseSchema, updateWarehouseSchema } from '@tradeflow/shared';
+import { paginationQuerySchema, createWarehouseSchema, updateWarehouseSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as warehousesController from '../controllers/warehousesController';
@@ -13,6 +13,7 @@ warehousesRouter.use(authMiddleware, loadUser);
 warehousesRouter.get(
   '/',
   requirePermission('masters.warehouses', 'read'),
+  validateQuery(paginationQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await warehousesController.listWarehouses(req));
   })
@@ -21,6 +22,7 @@ warehousesRouter.get(
 warehousesRouter.get(
   '/:id',
   requirePermission('masters.warehouses', 'read'),
+  validateQuery(paginationQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await warehousesController.getWarehouse(req));
   })

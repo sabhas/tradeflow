@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import { createBonusRuleSchema, updateBonusRuleSchema } from '@tradeflow/shared';
+import {
+  calculateBonusQuerySchema,
+  createBonusRuleSchema,
+  listBonusRulesQuerySchema,
+  updateBonusRuleSchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as bonusRulesController from '../controllers/bonusRulesController';
@@ -13,6 +18,7 @@ bonusRulesRouter.use(authMiddleware, loadUser);
 bonusRulesRouter.get(
   '/calculate',
   requirePermission('sales', 'read'),
+  validateQuery(calculateBonusQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await bonusRulesController.calculateBonusAction(req));
   })
@@ -21,6 +27,7 @@ bonusRulesRouter.get(
 bonusRulesRouter.get(
   '/',
   requirePermission('masters.products', 'read'),
+  validateQuery(listBonusRulesQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await bonusRulesController.listBonusRules(req));
   })

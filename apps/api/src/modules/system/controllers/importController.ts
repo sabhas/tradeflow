@@ -1,4 +1,7 @@
 import type { Request } from 'express';
+import type { z } from 'zod';
+import { importTemplateQuerySchema } from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { parseUploadToSheets } from '../../../shared/utils/tabularFile';
 import {
   customerImportTemplateBuffer,
@@ -28,7 +31,8 @@ function hasAccountingWrite(req: Request): boolean {
 }
 
 export async function downloadProductsTemplate(req: Request): Promise<TemplateFileDownload> {
-  const fmt = ((req.query.format as string) || 'xlsx').toLowerCase();
+  const q = getValidatedQuery<z.infer<typeof importTemplateQuerySchema>>(req);
+  const fmt = (q.format ?? 'xlsx').toLowerCase();
   if (fmt === 'csv') {
     return {
       data: '\uFEFF' + productImportTemplateCsv(),
@@ -45,7 +49,8 @@ export async function downloadProductsTemplate(req: Request): Promise<TemplateFi
 }
 
 export async function downloadCustomersTemplate(req: Request): Promise<TemplateFileDownload> {
-  const fmt = ((req.query.format as string) || 'xlsx').toLowerCase();
+  const q = getValidatedQuery<z.infer<typeof importTemplateQuerySchema>>(req);
+  const fmt = (q.format ?? 'xlsx').toLowerCase();
   if (fmt === 'csv') {
     return {
       data: '\uFEFF' + customerImportTemplateCsv(),
@@ -62,7 +67,8 @@ export async function downloadCustomersTemplate(req: Request): Promise<TemplateF
 }
 
 export async function downloadOpeningBalancesTemplate(req: Request): Promise<TemplateFileDownload> {
-  const fmt = ((req.query.format as string) || 'xlsx').toLowerCase();
+  const q = getValidatedQuery<z.infer<typeof importTemplateQuerySchema>>(req);
+  const fmt = (q.format ?? 'xlsx').toLowerCase();
   if (fmt === 'csv') {
     return {
       data: '\uFEFF' + openingInventoryTemplateCsv(),

@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createTaxProfileSchema, updateTaxProfileSchema } from '@tradeflow/shared';
+import { paginationQuerySchema, createTaxProfileSchema, updateTaxProfileSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as taxProfilesController from '../controllers/taxProfilesController';
@@ -13,6 +13,7 @@ taxProfilesRouter.use(authMiddleware, loadUser);
 taxProfilesRouter.get(
   '/',
   requirePermission('masters.tax', 'read'),
+  validateQuery(paginationQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await taxProfilesController.listTaxProfiles(req));
   })

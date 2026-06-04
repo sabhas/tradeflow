@@ -7,9 +7,11 @@ import {
   createSalesOrderSchema,
   convertOrderToInvoiceSchema,
   updateSalesOrderSchema,
+  listSalesOrdersQuerySchema,
   SalesOrderStatus,
 } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import * as salesOrderService from '../services/salesOrderService';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
@@ -61,8 +63,11 @@ export function serializeSalesOrder(
   };
 }
 
+type ListSalesOrdersQuery = z.infer<typeof listSalesOrdersQuerySchema>;
+
 export async function listSalesOrders(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListSalesOrdersQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = SalesOrder.createQueryBuilder('o')
     .leftJoinAndSelect('o.customer', 'customer')
     .leftJoinAndSelect('o.warehouse', 'warehouse')
@@ -72,30 +77,30 @@ export async function listSalesOrders(req: Request): Promise<ControllerResult> {
     .take(limit)
     .skip(offset);
 
-  if (req.query.customerId) {
-    qb.andWhere('o.customerId = :cid', { cid: req.query.customerId });
+  if (q.customerId) {
+    qb.andWhere('o.customerId = :cid', { cid: q.customerId });
   }
-  if (req.query.status) {
-    qb.andWhere('o.status = :st', { st: req.query.status });
+  if (q.status) {
+    qb.andWhere('o.status = :st', { st: q.status });
   }
-  if (req.query.dateFrom) {
-    qb.andWhere('o.orderDate >= :df', { df: req.query.dateFrom });
+  if (q.dateFrom) {
+    qb.andWhere('o.orderDate >= :df', { df: q.dateFrom });
   }
-  if (req.query.dateTo) {
-    qb.andWhere('o.orderDate <= :dt', { dt: req.query.dateTo });
+  if (q.dateTo) {
+    qb.andWhere('o.orderDate <= :dt', { dt: q.dateTo });
   }
-  if (req.query.warehouseId) {
-    qb.andWhere('o.warehouseId = :wid', { wid: req.query.warehouseId });
+  if (q.warehouseId) {
+    qb.andWhere('o.warehouseId = :wid', { wid: q.warehouseId });
   }
-  const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-  if (q) {
+  const search = q.q?.trim() ?? '';
+  if (search) {
     qb.andWhere('(customer.name ILIKE :search OR customer.longName ILIKE :search)', {
-      search: `%${q}%`,
+      search: `%${search}%`,
     });
   }
-  if (req.query.hasInvoice === 'true') {
+  if (q.hasInvoice === 'true') {
     qb.andWhere(`EXISTS (SELECT 1 FROM invoices i WHERE i.sales_order_id = o.id AND i.deleted_at IS NULL)`);
-  } else if (req.query.hasInvoice === 'false') {
+  } else if (q.hasInvoice === 'false') {
     qb.andWhere(
       `NOT EXISTS (SELECT 1 FROM invoices i WHERE i.sales_order_id = o.id AND i.deleted_at IS NULL)`
     );

@@ -6,6 +6,10 @@ export function getValidatedBody<T>(req: Request): T {
   return req.validatedBody as T;
 }
 
+export function getValidatedQuery<T>(req: Request): T {
+  return req.validatedQuery as T;
+}
+
 export function validateBody<T extends ZodSchema>(schema: T) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const parsed = schema.safeParse(req.body);

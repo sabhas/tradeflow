@@ -6,7 +6,9 @@ import {
   patchCompanyAccountingSettingsSchema,
   patchCompanyProfileSchema,
   patchGeneralSettingsSchema,
+  periodLockQuerySchema,
 } from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { computeFinancialYearLabel } from '../../../shared/utils/financialYear';
 import { getUnsettledGrnsForPeriodLock } from '../../purchases/services/grnInvoiceSettlement';
 import { ok, type ControllerResult } from '../../../shared/utils/controllerResult';
@@ -186,7 +188,8 @@ export async function patchCompanyProfile(
 }
 
 export async function getPeriodLockWarnings(req: Request): Promise<ControllerResult> {
-  const lockedThrough = (req.query.lockedThrough as string | undefined)?.trim();
+  const q = getValidatedQuery<z.infer<typeof periodLockQuerySchema>>(req);
+  const lockedThrough = q.lockedThrough?.trim();
   if (!lockedThrough || lockedThrough.length !== 10) {
     throw new HttpError(400, { error: 'lockedThrough query param required (YYYY-MM-DD)' });
   }

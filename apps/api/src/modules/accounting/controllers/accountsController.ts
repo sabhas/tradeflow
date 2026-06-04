@@ -1,6 +1,12 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { createAccountSchema, updateAccountSchema } from '@tradeflow/shared';
+import {
+  accountBalanceQuerySchema,
+  createAccountSchema,
+  listAccountsQuerySchema,
+  updateAccountSchema,
+} from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { dataSource, Account, JournalEntry, JournalLine } from '@tradeflow/db';
 
 type CreateAccountInput = z.infer<typeof createAccountSchema>;
@@ -31,7 +37,8 @@ async function accountHasPostedLines(accountId: string): Promise<boolean> {
 }
 
 export async function listAccounts(req: Request): Promise<ControllerResult> {
-  const format = (req.query.format as string) || 'flat';
+  const q = getValidatedQuery<z.infer<typeof listAccountsQuerySchema>>(req);
+  const format = q.format ?? 'flat';
 
   const qb = Account.createQueryBuilder('a').orderBy('a.code', 'ASC');
 
@@ -58,7 +65,8 @@ export async function listAccounts(req: Request): Promise<ControllerResult> {
 }
 
 export async function getAccountBalance(req: Request): Promise<ControllerResult> {
-  const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const q = getValidatedQuery<z.infer<typeof accountBalanceQuerySchema>>(req);
+  const asOf = (q.asOf || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
   const acc = await Account.findOne({ where: { id: req.params.id } });
   if (!acc) {

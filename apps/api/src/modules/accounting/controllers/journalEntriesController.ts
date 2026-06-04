@@ -2,8 +2,13 @@ import type { Request } from 'express';
 import { Between, EntityManager, FindOptionsWhere, IsNull, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import type { z } from 'zod';
 import { Account, JournalEntry, JournalLine } from '@tradeflow/db';
-import { createJournalEntrySchema, updateJournalEntrySchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import {
+  createJournalEntrySchema,
+  listJournalEntriesQuerySchema,
+  updateJournalEntrySchema,
+} from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { parseDecimalStrict } from '../../../shared/utils/decimal';
 import { runInTransaction } from '../../inventory/services/inventoryService';
 import { assertDateNotPeriodLocked } from '../services/periodLock';
@@ -85,10 +90,11 @@ function normalizeLines(
 }
 
 export async function listJournalEntries(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
-  const status = (req.query.status as string | undefined)?.trim();
-  const dateFrom = (req.query.dateFrom as string | undefined)?.slice(0, 10);
-  const dateTo = (req.query.dateTo as string | undefined)?.slice(0, 10);
+  const q = getValidatedQuery<z.infer<typeof listJournalEntriesQuerySchema>>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
+  const status = q.status?.trim();
+  const dateFrom = q.dateFrom?.slice(0, 10);
+  const dateTo = q.dateTo?.slice(0, 10);
 
   const where: FindOptionsWhere<JournalEntry> = {
     deletedAt: IsNull(),

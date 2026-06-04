@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import { paginationQuerySchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser } from '../../../shared/middleware/auth';
+import { validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as notificationsController from '../controllers/notificationsController';
@@ -9,6 +11,7 @@ notificationsRouter.use(authMiddleware, loadUser);
 
 notificationsRouter.get(
   '/',
+  validateQuery(paginationQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await notificationsController.listNotifications(req));
   })

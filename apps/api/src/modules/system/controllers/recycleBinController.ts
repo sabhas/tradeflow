@@ -1,7 +1,10 @@
 import type { Request } from 'express';
+import type { z } from 'zod';
 import { EntityTarget, IsNull, Not } from 'typeorm';
 import { dataSource, Product, Customer, Supplier, Invoice, JournalEntry, AuditLog } from '@tradeflow/db';
-import { getPagination } from '../../../shared/utils/pagination';
+import { listRecycleBinQuerySchema } from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 
@@ -23,14 +26,9 @@ async function clearDeletedAtColumn<E extends object>(entity: EntityTarget<E>, i
 }
 
 export async function listRecycleBin(req: Request): Promise<ControllerResult> {
-  const entity = parseEntityType(req.query.entity);
-  if (!entity) {
-    throw new HttpError(400, {
-      error: 'Invalid entity',
-      message: `Query "entity" must be one of: ${ENTITY_TYPES.join(', ')}`,
-    });
-  }
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<z.infer<typeof listRecycleBinQuerySchema>>(req);
+  const entity = q.entity;
+  const { limit, offset } = getPaginationFromQuery(q);
 
   switch (entity) {
     case 'Product': {

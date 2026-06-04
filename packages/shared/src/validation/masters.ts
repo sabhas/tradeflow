@@ -1,18 +1,61 @@
 import { z } from 'zod';
+import {
+  optionalBooleanStringQuery,
+  optionalDateOnlyQuery,
+  optionalUuidQuery,
+  paginationQuerySchema,
+  searchQuerySchema,
+} from './queryCommon';
 
 const optionalUuid = z.union([z.string().uuid(), z.null()]).optional();
+
+export const listCustomersQuerySchema = paginationQuerySchema.merge(searchQuerySchema);
+
+export const listProductsQuerySchema = paginationQuerySchema.extend({
+  categoryId: optionalUuidQuery,
+  search: z.string().optional(),
+  activeOnly: optionalBooleanStringQuery,
+});
+
+export const listSuppliersQuerySchema = paginationQuerySchema.merge(searchQuerySchema);
+
+export const supplierStatementQuerySchema = z.object({
+  dateFrom: optionalDateOnlyQuery,
+  dateTo: optionalDateOnlyQuery,
+});
+
+export const listTownsQuerySchema = paginationQuerySchema.extend({
+  areaId: optionalUuidQuery,
+});
+
+export const listBonusRulesQuerySchema = paginationQuerySchema.extend({
+  productId: optionalUuidQuery,
+  isActive: optionalBooleanStringQuery,
+});
+
+export const calculateBonusQuerySchema = z.object({
+  productId: z.string().uuid(),
+  quantity: z.coerce.number().finite().positive(),
+});
+
+export const listProductCategoriesQuerySchema = z.object({
+  tree: optionalBooleanStringQuery,
+});
 const decimal = z.union([z.number(), z.string()]).transform((v) => String(v));
 
 export const customerTypeSchema = z.string().trim().min(1).max(128);
 
 export const salesTaxStatusSchema = z.enum(['unregistered', 'registered', 'exempt']);
 
-const optionalDateOnly = z.preprocess((v) => {
-  if (v === undefined) return undefined;
-  if (v === null) return null;
-  if (typeof v === 'string' && v.trim() === '') return null;
-  return v;
-}, z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()]).optional());
+const optionalDateOnly = z.preprocess(
+  (v) => {
+    if (v === undefined) return undefined;
+    if (v === null) return null;
+    if (typeof v === 'string' && v.trim() === '') return null;
+    return v;
+  },
+  z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()]).optional()
+);
 
 export const contactSchema = z
   .object({
@@ -52,15 +95,18 @@ const productPriceRowSchema = z.object({
 export const costingMethodSchema = z.enum(['fifo', 'lifo']).nullable().optional();
 
 const optionalProductStr = (max: number) =>
-  z.preprocess((v) => {
-    if (v === undefined) return undefined;
-    if (v === null) return null;
-    if (typeof v === 'string') {
-      const t = v.trim();
-      return t === '' ? null : t;
-    }
-    return v;
-  }, z.union([z.string().max(max), z.null()]).optional());
+  z.preprocess(
+    (v) => {
+      if (v === undefined) return undefined;
+      if (v === null) return null;
+      if (typeof v === 'string') {
+        const t = v.trim();
+        return t === '' ? null : t;
+      }
+      return v;
+    },
+    z.union([z.string().max(max), z.null()]).optional()
+  );
 
 export const createProductSchema = z.object({
   supplierId: z.string().uuid(),

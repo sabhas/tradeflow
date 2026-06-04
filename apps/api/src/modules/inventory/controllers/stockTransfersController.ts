@@ -1,8 +1,9 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { createStockTransferSchema } from '@tradeflow/shared';
+import { createStockTransferSchema, listStockTransfersQuerySchema } from '@tradeflow/shared';
 import { StockTransfer, StockTransferLine } from '@tradeflow/db';
-import { getPagination } from '../../../shared/utils/pagination';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { assertProductInScope, assertWarehouseInScope, runInTransaction } from '../services/inventoryService';
 import { postStockTransferTx } from '../services/stockTransferPosting';
 import { parseDecimalStrict } from '../../../shared/utils/decimal';
@@ -38,10 +39,12 @@ function serialize(t: StockTransfer, lines?: StockTransferLine[]) {
 }
 
 export async function listStockTransfers(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<z.infer<typeof listStockTransfersQuerySchema>>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = StockTransfer.createQueryBuilder('t')
     .leftJoinAndSelect('t.fromWarehouse', 'fw')
     .leftJoinAndSelect('t.toWarehouse', 'tw');
+  if (q.status) qb.andWhere('t.status = :st', { st: q.status });
   qb.orderBy('t.transfer_date', 'DESC').addOrderBy('t.created_at', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });

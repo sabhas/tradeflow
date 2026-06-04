@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { listApprovalsQuerySchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as approvalsController from '../controllers/approvalsController';
@@ -16,6 +17,7 @@ const reviewBodySchema = z.object({
 approvalsRouter.get(
   '/',
   requirePermission('accounting', 'read'),
+  validateQuery(listApprovalsQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await approvalsController.listApprovalRequests(req));
   })

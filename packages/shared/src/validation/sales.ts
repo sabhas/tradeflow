@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import {
+  booleanStringQuery,
+  dateRangeQuerySchema,
+  optionalDateOnlyQuery,
+  optionalUuidQuery,
+  paginationQuerySchema,
+} from './queryCommon';
 
 const decimal = z.union([z.number(), z.string()]).transform((v) => String(v));
 const optionalUuid = z.union([z.string().uuid(), z.null()]).optional();
@@ -54,9 +61,7 @@ const invoiceLineInputSchema = documentLineInputSchema.extend({
   bonusQuantity: decimal.optional(),
   originalInvoiceLineId: z.union([z.string().uuid(), z.null()]).optional(),
   batchCode: z.string().max(128).optional().nullable(),
-  expiryDate: z
-    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()])
-    .optional(),
+  expiryDate: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()]).optional(),
 });
 
 const invoiceFormFieldsSchema = z.object({
@@ -143,6 +148,36 @@ export const printInvoicesBatchSchema = z.discriminatedUnion('mode', [
     limit: z.number().int().positive().max(100).optional(),
   }),
 ]);
+
+export const listSalesOrdersQuerySchema = paginationQuerySchema.extend({
+  customerId: optionalUuidQuery,
+  status: z.enum(['draft', 'confirmed', 'void']).optional(),
+  dateFrom: optionalDateOnlyQuery,
+  dateTo: optionalDateOnlyQuery,
+  warehouseId: optionalUuidQuery,
+  q: z.string().optional(),
+  hasInvoice: booleanStringQuery.optional(),
+});
+
+export const listInvoicesQuerySchema = paginationQuerySchema.extend({
+  customerId: optionalUuidQuery,
+  status: z.enum(['draft', 'posted', 'void']).optional(),
+  documentKind: z.enum(['invoice', 'credit_note']).optional(),
+  dateFrom: optionalDateOnlyQuery,
+  dateTo: optionalDateOnlyQuery,
+});
+
+export const listQuotationsQuerySchema = paginationQuerySchema.extend({
+  customerId: optionalUuidQuery,
+});
+
+export const listReceiptsQuerySchema = paginationQuerySchema.extend({
+  customerId: optionalUuidQuery,
+  dateFrom: optionalDateOnlyQuery,
+  dateTo: optionalDateOnlyQuery,
+});
+
+export const customerStatementQuerySchema = dateRangeQuerySchema;
 
 export const createReceiptSchema = z.object({
   customerId: z.string().uuid(),

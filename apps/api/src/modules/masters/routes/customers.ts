@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import { createCustomerSchema, updateCustomerSchema } from '@tradeflow/shared';
+import {
+  createCustomerSchema,
+  customerStatementQuerySchema,
+  listCustomersQuerySchema,
+  updateCustomerSchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as customersController from '../controllers/customersController';
@@ -13,6 +18,7 @@ customersRouter.use(authMiddleware, loadUser);
 customersRouter.get(
   '/',
   requirePermission('masters.customers', 'read'),
+  validateQuery(listCustomersQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await customersController.listCustomers(req));
   })
@@ -21,6 +27,7 @@ customersRouter.get(
 customersRouter.get(
   '/:id/statement',
   requirePermission('sales', 'read'),
+  validateQuery(customerStatementQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await customersController.getCustomerStatement(req));
   })

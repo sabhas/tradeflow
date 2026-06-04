@@ -10,8 +10,14 @@ import {
   UnitOfMeasure,
   PriceLevel,
 } from '@tradeflow/db';
-import { createProductSchema, replaceProductPricesSchema, updateProductSchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import {
+  createProductSchema,
+  listProductsQuerySchema,
+  replaceProductPricesSchema,
+  updateProductSchema,
+} from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 
@@ -85,11 +91,14 @@ async function loadProductPrices(productId: string) {
   });
 }
 
+type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
+
 export async function listProducts(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
-  const categoryId = req.query.categoryId as string | undefined;
-  const search = (req.query.search as string | undefined)?.trim();
-  const activeOnly = ['true', '1', 'yes'].includes(String(req.query.activeOnly ?? '').toLowerCase());
+  const q = getValidatedQuery<ListProductsQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
+  const categoryId = q.categoryId;
+  const search = q.search?.trim();
+  const activeOnly = q.activeOnly === 'true';
 
   const qb = Product.createQueryBuilder('p')
     .leftJoinAndSelect('p.supplier', 'supplier')

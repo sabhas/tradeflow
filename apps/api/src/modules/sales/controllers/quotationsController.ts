@@ -1,8 +1,9 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Quotation, QuotationLine, SalesOrder, SalesOrderLine } from '@tradeflow/db';
-import { createQuotationSchema, updateQuotationSchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import { createQuotationSchema, listQuotationsQuerySchema, updateQuotationSchema } from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { computeSalesDocumentTotals } from '../services/salesTotals';
 import { runInTransaction } from '../../inventory/services/inventoryService';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
@@ -39,14 +40,17 @@ export function serializeQuotation(q: Quotation, lines?: QuotationLine[]) {
   };
 }
 
+type ListQuotationsQuery = z.infer<typeof listQuotationsQuerySchema>;
+
 export async function listQuotations(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListQuotationsQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = Quotation.createQueryBuilder('q')
     .orderBy('q.quotation_date', 'DESC')
     .addOrderBy('q.created_at', 'DESC')
     .take(limit)
     .skip(offset);
-  if (req.query.customerId) qb.andWhere('q.customer_id = :cid', { cid: req.query.customerId });
+  if (q.customerId) qb.andWhere('q.customer_id = :cid', { cid: q.customerId });
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((q) => serializeQuotation(q)), meta: { total, limit, offset } });
 }

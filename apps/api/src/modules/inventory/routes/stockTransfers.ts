@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createStockTransferSchema } from '@tradeflow/shared';
+import { createStockTransferSchema, listStockTransfersQuerySchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as stockTransfersController from '../controllers/stockTransfersController';
@@ -13,6 +13,7 @@ stockTransfersRouter.use(authMiddleware, loadUser);
 stockTransfersRouter.get(
   '/',
   requirePermission('inventory', 'read'),
+  validateQuery(listStockTransfersQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await stockTransfersController.listStockTransfers(req));
   })

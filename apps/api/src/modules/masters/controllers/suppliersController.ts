@@ -2,9 +2,16 @@ import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
 import { dataSource, Supplier } from '@tradeflow/db';
-import { createSupplierSchema, updateSupplierSchema } from '@tradeflow/shared';
+import {
+  createSupplierSchema,
+  listSuppliersQuerySchema,
+  supplierLedgerQuerySchema,
+  supplierStatementQuerySchema,
+  updateSupplierSchema,
+} from '@tradeflow/shared';
 import { createSupplierPayableAccount } from '../../accounting/services/glAccountService';
-import { getPagination } from '../../../shared/utils/pagination';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 
@@ -30,9 +37,12 @@ export function serializeSupplier(s: Supplier) {
   };
 }
 
+type ListSuppliersQuery = z.infer<typeof listSuppliersQuerySchema>;
+
 export async function listSuppliers(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
-  const search = (req.query.search as string | undefined)?.trim();
+  const q = getValidatedQuery<ListSuppliersQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
+  const search = q.search?.trim();
 
   const qb = Supplier.createQueryBuilder('s').where('s.deleted_at IS NULL');
   if (search) {
@@ -57,8 +67,9 @@ function normalizeDateText(value: unknown): string {
 
 export async function getSupplierStatement(req: Request): Promise<ControllerResult> {
   const { id } = req.params;
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const q = getValidatedQuery<z.infer<typeof supplierStatementQuerySchema>>(req);
+  const dateFrom = (q.dateFrom || '1970-01-01').slice(0, 10);
+  const dateTo = (q.dateTo || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const supplier = await Supplier.findOne({ where: { id, deletedAt: IsNull() } });
   if (!supplier) {
     throw new HttpError(404, { error: 'Not found' });
@@ -205,7 +216,8 @@ export async function getSupplierStatement(req: Request): Promise<ControllerResu
 
 export async function getSupplierPricingHistory(req: Request): Promise<ControllerResult> {
   const { id } = req.params;
-  const limit = Math.min(parseInt(String(req.query.limit || '200'), 10) || 200, 500);
+  const q = getValidatedQuery<z.infer<typeof supplierLedgerQuerySchema>>(req);
+  const limit = Math.min(q.limit ?? 200, 500);
   const rows = await dataSource.query(
     `
     SELECT * FROM (

@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createPaymentTermsSchema, updatePaymentTermsSchema } from '@tradeflow/shared';
+import { paginationQuerySchema, createPaymentTermsSchema, updatePaymentTermsSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as paymentTermsController from '../controllers/paymentTermsController';
@@ -13,6 +13,7 @@ paymentTermsRouter.use(authMiddleware, loadUser);
 paymentTermsRouter.get(
   '/',
   requirePermission('masters.payment_terms', 'read'),
+  validateQuery(paginationQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await paymentTermsController.listPaymentTerms(req));
   })

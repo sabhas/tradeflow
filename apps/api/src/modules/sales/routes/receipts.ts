@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createReceiptSchema } from '@tradeflow/shared';
+import { createReceiptSchema, listReceiptsQuerySchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as receiptsController from '../controllers/receiptsController';
@@ -13,6 +13,7 @@ receiptsRouter.use(authMiddleware, loadUser);
 receiptsRouter.get(
   '/',
   requirePermission('sales', 'read'),
+  validateQuery(listReceiptsQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await receiptsController.listReceipts(req));
   })

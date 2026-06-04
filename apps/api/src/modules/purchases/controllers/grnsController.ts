@@ -1,8 +1,9 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { Grn, GrnLine } from '@tradeflow/db';
-import { createGrnSchema, updateGrnSchema } from '@tradeflow/shared';
-import { getPagination } from '../../../shared/utils/pagination';
+import { createGrnSchema, listGrnsQuerySchema, updateGrnSchema } from '@tradeflow/shared';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import {
   loadLinkedInvoicesByGrnIds,
   settlementFields,
@@ -50,16 +51,18 @@ function serializeGrn(g: Grn, lines?: GrnLine[], linked?: LinkedSupplierInvoice 
   };
 }
 
+type ListGrnsQuery = z.infer<typeof listGrnsQuerySchema>;
+
 export async function listGrns(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListGrnsQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = Grn.createQueryBuilder('g')
     .leftJoinAndSelect('g.supplier', 's')
     .leftJoinAndSelect('g.warehouse', 'w')
     .where('1=1');
-  if (req.query.supplierId) qb.andWhere('g.supplierId = :sid', { sid: req.query.supplierId });
-  if (req.query.status) qb.andWhere('g.status = :st', { st: req.query.status });
-  const invoiceSettlement = (req.query.invoiceSettlement as string | undefined)?.trim();
-  if (invoiceSettlement) applyInvoiceSettlementFilter(qb, invoiceSettlement);
+  if (q.supplierId) qb.andWhere('g.supplierId = :sid', { sid: q.supplierId });
+  if (q.status) qb.andWhere('g.status = :st', { st: q.status });
+  if (q.invoiceSettlement) applyInvoiceSettlementFilter(qb, q.invoiceSettlement);
   qb.orderBy('g.grnDate', 'DESC').addOrderBy('g.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
   const linkedMap = await loadLinkedInvoicesByGrnIds(rows.map((r) => r.id));

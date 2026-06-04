@@ -3,10 +3,11 @@ import {
   patchCompanyAccountingSettingsSchema,
   patchCompanyProfileSchema,
   patchGeneralSettingsSchema,
+  periodLockQuerySchema,
 } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as companySettingsController from '../controllers/companySettingsController';
@@ -56,6 +57,7 @@ companySettingsRouter.patch(
 companySettingsRouter.get(
   '/accounting/period-lock-warnings',
   requirePermission('accounting', 'read'),
+  validateQuery(periodLockQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await companySettingsController.getPeriodLockWarnings(req));
   })

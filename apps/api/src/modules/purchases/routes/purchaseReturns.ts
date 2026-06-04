@@ -1,8 +1,12 @@
 import { Router } from 'express';
-import { createPurchaseReturnSchema, updatePurchaseReturnSchema } from '@tradeflow/shared';
+import {
+  createPurchaseReturnSchema,
+  listPurchaseReturnsQuerySchema,
+  updatePurchaseReturnSchema,
+} from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
+import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
 import { sendControllerResult } from '../../../shared/utils/controllerResult';
 import * as purchaseReturnsController from '../controllers/purchaseReturnsController';
@@ -13,6 +17,7 @@ purchaseReturnsRouter.use(authMiddleware, loadUser);
 purchaseReturnsRouter.get(
   '/',
   requirePermission('purchases.grn', 'read'),
+  validateQuery(listPurchaseReturnsQuerySchema),
   asyncHandler(async (req, res) => {
     sendControllerResult(res, await purchaseReturnsController.listPurchaseReturns(req));
   })

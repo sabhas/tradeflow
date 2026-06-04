@@ -1,8 +1,9 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { createSupplierPaymentSchema } from '@tradeflow/shared';
+import { createSupplierPaymentSchema, listSupplierPaymentsQuerySchema } from '@tradeflow/shared';
 import { dataSource, Supplier, SupplierPayment, SupplierPaymentAllocation } from '@tradeflow/db';
-import { getPagination } from '../../../shared/utils/pagination';
+import { getValidatedQuery } from '../../../shared/middleware/validate';
+import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { postSupplierPaymentJournal } from '../../accounting/services/accountingPosting';
 import { resolveLiquidAccountId } from '../../settings/services/companySettings';
 import { validateSupplierPaymentAllocations } from '../services/supplierPayables';
@@ -106,10 +107,13 @@ function serialize(p: SupplierPayment, allocations?: SupplierPaymentAllocation[]
   };
 }
 
+type ListSupplierPaymentsQuery = z.infer<typeof listSupplierPaymentsQuerySchema>;
+
 export async function listSupplierPayments(req: Request): Promise<ControllerResult> {
-  const { limit, offset } = getPagination(req);
+  const q = getValidatedQuery<ListSupplierPaymentsQuery>(req);
+  const { limit, offset } = getPaginationFromQuery(q);
   const qb = SupplierPayment.createQueryBuilder('p').leftJoinAndSelect('p.supplier', 's').where('1=1');
-  if (req.query.supplierId) qb.andWhere('p.supplierId = :sid', { sid: req.query.supplierId });
+  if (q.supplierId) qb.andWhere('p.supplierId = :sid', { sid: q.supplierId });
   qb.orderBy('p.paymentDate', 'DESC').addOrderBy('p.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
   return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });

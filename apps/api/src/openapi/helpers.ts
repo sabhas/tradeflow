@@ -3,10 +3,13 @@ import type { ZodOpenApiPathsObject, ZodOpenApiOperationObject } from 'zod-opena
 import { z } from 'zod';
 import {
   apiErrorSchema,
+  asOfQuerySchema,
+  dateRangeQuerySchema,
   deletedResourceResponseSchema,
   entityDataResponse,
   jsonDataResponseSchema,
   listDataResponse,
+  paginationQuerySchema,
   reportDataResponseSchema,
   openApiDocSchema,
   withResourceId,
@@ -122,19 +125,9 @@ export const idPathParams = z.object({
   id: z.string().uuid(),
 });
 
-export const paginationQuery = z.object({
-  limit: z.coerce.number().int().positive().max(500).optional(),
-  offset: z.coerce.number().int().min(0).optional(),
-});
-
-export const dateRangeQuery = z.object({
-  dateFrom: z.string().optional(),
-  dateTo: z.string().optional(),
-});
-
-export const asOfQuery = z.object({
-  asOf: z.string().optional(),
-});
+export const paginationQuery = paginationQuerySchema;
+export const dateRangeQuery = dateRangeQuerySchema;
+export const asOfQuery = asOfQuerySchema;
 
 /** GET /reports/* — tabular `data` rows */
 export function reportRouteSpec(path: string, summary: string, query?: z.ZodType): RouteSpec {
