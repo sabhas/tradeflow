@@ -25,8 +25,7 @@ import {
   requirePermission,
 } from '../../../shared/middleware/auth';
 import { validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { handle } from '../../../shared/utils/handleRoute';
 import * as reportsController from '../controllers/reportsController';
 
 export const reportsRouter = Router();
@@ -36,187 +35,145 @@ reportsRouter.get(
   '/daily-sales',
   requirePermission('sales', 'read'),
   validateQuery(reportDailySalesQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.dailySales(req));
-  })
+  handle(reportsController.dailySales)
 );
 
 reportsRouter.get(
   '/stock-movement',
   requirePermission('inventory', 'read'),
   validateQuery(reportStockMovementQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.stockMovement(req));
-  })
+  handle(reportsController.stockMovement)
 );
 
 reportsRouter.get(
   '/fast-moving',
   requirePermission('sales', 'read'),
   validateQuery(reportFastMovingQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.fastMoving(req));
-  })
+  handle(reportsController.fastMoving)
 );
 
 reportsRouter.get(
   '/expense-analysis',
   requirePermission('accounting', 'read'),
   validateQuery(reportDateRangeOnlyQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.expenseAnalysis(req));
-  })
+  handle(reportsController.expenseAnalysis)
 );
 
 reportsRouter.get(
   '/aging',
   requirePermission('sales', 'read'),
   validateQuery(reportReceivablesAgingQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.receivablesAging(req));
-  })
+  handle(reportsController.receivablesAging)
 );
 
 reportsRouter.get(
   '/receivables-aging',
   requirePermission('sales', 'read'),
   validateQuery(reportReceivablesAgingQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.receivablesAging(req));
-  })
+  handle(reportsController.receivablesAging)
 );
 
 reportsRouter.get(
   '/payables-aging',
   requirePermission('purchases.reports', 'read'),
   validateQuery(reportPayablesAgingQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.payablesAging(req));
-  })
+  handle(reportsController.payablesAging)
 );
 
 reportsRouter.get(
   '/trial-balance',
   requirePermission('accounting', 'read'),
   validateQuery(reportDateRangeOnlyQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.trialBalance(req));
-  })
+  handle(reportsController.trialBalance)
 );
 
 reportsRouter.get(
   '/profit-loss',
   requirePermission('accounting', 'read'),
   validateQuery(reportDateRangeOnlyQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.profitLoss(req));
-  })
+  handle(reportsController.profitLoss)
 );
 
 reportsRouter.get(
   '/balance-sheet',
   requirePermission('accounting', 'read'),
   validateQuery(reportBalanceSheetQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.balanceSheet(req));
-  })
+  handle(reportsController.balanceSheet)
 );
 
 reportsRouter.get(
   '/tax-collected',
   requirePermission('sales', 'read'),
   validateQuery(reportTaxQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.taxCollected(req));
-  })
+  handle(reportsController.taxCollected)
 );
 
 reportsRouter.get(
   '/tax-paid',
   requirePermission('purchases.reports', 'read'),
   validateQuery(reportTaxQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.taxPaid(req));
-  })
+  handle(reportsController.taxPaid)
 );
 
 reportsRouter.get(
   '/tax-summary',
   requireAnyPermission('sales:read', 'purchases.reports:read'),
   validateQuery(reportTaxSummaryQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.taxSummary(req));
-  })
+  handle(reportsController.taxSummary)
 );
 
 reportsRouter.get(
   '/dead-stock',
   requirePermission('inventory', 'read'),
   validateQuery(reportDeadStockQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.deadStock(req));
-  })
+  handle(reportsController.deadStock)
 );
 
 reportsRouter.get(
   '/slow-moving',
   requirePermission('sales', 'read'),
   validateQuery(reportSlowMovingQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.slowMoving(req));
-  })
+  handle(reportsController.slowMoving)
 );
 
 reportsRouter.get(
   '/grn-invoice-reconciliation',
   requireAnyPermission('purchases.reports:read', 'purchases.grn:read'),
   validateQuery(reportGrnInvoiceReconciliationQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.grnInvoiceReconciliation(req));
-  })
+  handle(reportsController.grnInvoiceReconciliation)
 );
 
 reportsRouter.get(
   '/dashboard/kpis',
   requireAnyPermission('sales:read', 'purchases.reports:read', 'purchases.grn:read'),
   validateQuery(reportDashboardKpisQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.dashboardKpis(req));
-  })
+  handle(reportsController.dashboardKpis)
 );
 
 reportsRouter.get(
   '/purchase-vs-sales',
   requirePermission('sales', 'read'),
   validateQuery(reportPurchaseVsSalesQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.purchaseVsSales(req));
-  })
+  handle(reportsController.purchaseVsSales)
 );
 
 reportsRouter.get(
   '/profit-by-product',
   requirePermission('sales', 'read'),
   validateQuery(reportProfitByProductQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.profitByProduct(req));
-  })
+  handle(reportsController.profitByProduct)
 );
 
 reportsRouter.get(
   '/profit-by-customer',
   requirePermission('sales', 'read'),
   validateQuery(reportProfitByCustomerQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.profitByCustomer(req));
-  })
+  handle(reportsController.profitByCustomer)
 );
 
 reportsRouter.get(
   '/cash-flow',
   requirePermission('accounting', 'read'),
   validateQuery(reportCashFlowQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await reportsController.cashFlow(req));
-  })
+  handle(reportsController.cashFlow)
 );

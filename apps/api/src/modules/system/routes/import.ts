@@ -4,7 +4,7 @@ import { authMiddleware, loadUser, requirePermission } from '../../../shared/mid
 import { importUpload } from '../../../shared/middleware/upload';
 import { validateQuery } from '../../../shared/middleware/validate';
 import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { handle } from '../../../shared/utils/handleRoute';
 import * as importController from '../controllers/importController';
 
 export const importRouter = Router();
@@ -50,25 +50,19 @@ importRouter.post(
   '/products',
   requirePermission('masters.products', 'write'),
   importUpload.single('file'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await importController.importProducts(req));
-  })
+  handle(importController.importProducts)
 );
 
 importRouter.post(
   '/customers',
   requirePermission('masters.customers', 'write'),
   importUpload.single('file'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await importController.importCustomers(req));
-  })
+  handle(importController.importCustomers)
 );
 
 importRouter.post(
   '/opening-balances',
   requirePermission('inventory', 'write'),
   importUpload.single('file'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await importController.importOpeningBalances(req));
-  })
+  handle(importController.importOpeningBalances)
 );

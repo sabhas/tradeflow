@@ -8,8 +8,7 @@ import {
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
 import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { handle, handleBody } from '../../../shared/utils/handleRoute';
 import * as companySettingsController from '../controllers/companySettingsController';
 
 export const companySettingsRouter = Router();
@@ -18,9 +17,7 @@ companySettingsRouter.use(authMiddleware, loadUser);
 companySettingsRouter.get(
   '/',
   requirePermission('settings', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await companySettingsController.getGeneral(req));
-  })
+  handle(companySettingsController.getGeneral)
 );
 
 companySettingsRouter.patch(
@@ -28,17 +25,13 @@ companySettingsRouter.patch(
   requirePermission('settings', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
   validateBody(patchGeneralSettingsSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await companySettingsController.patchGeneral(req, getValidatedBody(req)));
-  })
+  handleBody(companySettingsController.patchGeneral)
 );
 
 companySettingsRouter.get(
   '/company',
   requirePermission('settings', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await companySettingsController.getCompanyProfile(req));
-  })
+  handle(companySettingsController.getCompanyProfile)
 );
 
 companySettingsRouter.patch(
@@ -46,29 +39,20 @@ companySettingsRouter.patch(
   requirePermission('settings', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
   validateBody(patchCompanyProfileSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(
-      res,
-      await companySettingsController.patchCompanyProfile(req, getValidatedBody(req))
-    );
-  })
+  handleBody(companySettingsController.patchCompanyProfile)
 );
 
 companySettingsRouter.get(
   '/accounting/period-lock-warnings',
   requirePermission('accounting', 'read'),
   validateQuery(periodLockQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await companySettingsController.getPeriodLockWarnings(req));
-  })
+  handle(companySettingsController.getPeriodLockWarnings)
 );
 
 companySettingsRouter.get(
   '/accounting',
   requirePermission('accounting', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await companySettingsController.getAccounting(req));
-  })
+  handle(companySettingsController.getAccounting)
 );
 
 companySettingsRouter.patch(
@@ -76,7 +60,5 @@ companySettingsRouter.patch(
   requirePermission('accounting', 'write'),
   auditMiddleware({ entity: 'CompanySettings', getNewValue: (req) => req.body }),
   validateBody(patchCompanyAccountingSettingsSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await companySettingsController.patchAccounting(req, getValidatedBody(req)));
-  })
+  handleBody(companySettingsController.patchAccounting)
 );

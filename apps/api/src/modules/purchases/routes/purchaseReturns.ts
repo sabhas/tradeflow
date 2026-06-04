@@ -7,8 +7,7 @@ import {
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
 import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { handle, handleBody } from '../../../shared/utils/handleRoute';
 import * as purchaseReturnsController from '../controllers/purchaseReturnsController';
 
 export const purchaseReturnsRouter = Router();
@@ -18,17 +17,13 @@ purchaseReturnsRouter.get(
   '/',
   requirePermission('purchases.grn', 'read'),
   validateQuery(listPurchaseReturnsQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseReturnsController.listPurchaseReturns(req));
-  })
+  handle(purchaseReturnsController.listPurchaseReturns)
 );
 
 purchaseReturnsRouter.get(
   '/:id',
   requirePermission('purchases.grn', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseReturnsController.getPurchaseReturn(req));
-  })
+  handle(purchaseReturnsController.getPurchaseReturn)
 );
 
 purchaseReturnsRouter.post(
@@ -36,12 +31,7 @@ purchaseReturnsRouter.post(
   requirePermission('purchases.grn', 'write'),
   auditMiddleware({ entity: 'PurchaseReturn', getNewValue: (req) => req.body }),
   validateBody(createPurchaseReturnSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(
-      res,
-      await purchaseReturnsController.createPurchaseReturn(req, getValidatedBody(req))
-    );
-  })
+  handleBody(purchaseReturnsController.createPurchaseReturn)
 );
 
 purchaseReturnsRouter.patch(
@@ -53,12 +43,7 @@ purchaseReturnsRouter.patch(
     getNewValue: (req) => req.body,
   }),
   validateBody(updatePurchaseReturnSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(
-      res,
-      await purchaseReturnsController.updatePurchaseReturn(req, getValidatedBody(req))
-    );
-  })
+  handleBody(purchaseReturnsController.updatePurchaseReturn)
 );
 
 purchaseReturnsRouter.post(
@@ -69,9 +54,7 @@ purchaseReturnsRouter.post(
     getEntityId: (req) => req.params.id,
     getNewValue: () => ({ status: 'posted' }),
   }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseReturnsController.postPurchaseReturn(req));
-  })
+  handle(purchaseReturnsController.postPurchaseReturn)
 );
 
 purchaseReturnsRouter.delete(
@@ -81,7 +64,5 @@ purchaseReturnsRouter.delete(
     entity: 'PurchaseReturn',
     getEntityId: (req) => req.params.id,
   }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseReturnsController.deletePurchaseReturn(req));
-  })
+  handle(purchaseReturnsController.deletePurchaseReturn)
 );

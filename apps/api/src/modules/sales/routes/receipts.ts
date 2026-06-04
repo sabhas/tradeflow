@@ -3,8 +3,7 @@ import { createReceiptSchema, listReceiptsQuerySchema } from '@tradeflow/shared'
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
 import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { handle, handleBody } from '../../../shared/utils/handleRoute';
 import * as receiptsController from '../controllers/receiptsController';
 
 export const receiptsRouter = Router();
@@ -14,25 +13,15 @@ receiptsRouter.get(
   '/',
   requirePermission('sales', 'read'),
   validateQuery(listReceiptsQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await receiptsController.listReceipts(req));
-  })
+  handle(receiptsController.listReceipts)
 );
 
-receiptsRouter.get(
-  '/:id',
-  requirePermission('sales', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await receiptsController.getReceipt(req));
-  })
-);
+receiptsRouter.get('/:id', requirePermission('sales', 'read'), handle(receiptsController.getReceipt));
 
 receiptsRouter.post(
   '/',
   requirePermission('sales', 'post'),
   auditMiddleware({ entity: 'Receipt', getNewValue: (req) => req.body }),
   validateBody(createReceiptSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await receiptsController.createReceipt(req, getValidatedBody(req)));
-  })
+  handleBody(receiptsController.createReceipt)
 );

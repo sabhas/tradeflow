@@ -1,72 +1,33 @@
-import { Router } from 'express';
 import {
   calculateBonusQuerySchema,
   createBonusRuleSchema,
   listBonusRulesQuerySchema,
   updateBonusRuleSchema,
 } from '@tradeflow/shared';
-import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
-import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { requirePermission } from '../../../shared/middleware/auth';
+import { createCrudRouter } from '../../../shared/routing/createCrudRouter';
+import { validateQuery } from '../../../shared/middleware/validate';
+import { handle } from '../../../shared/utils/handleRoute';
 import * as bonusRulesController from '../controllers/bonusRulesController';
 
-export const bonusRulesRouter = Router();
-bonusRulesRouter.use(authMiddleware, loadUser);
+export const bonusRulesRouter = createCrudRouter({
+  permission: { module: 'masters.products', read: 'read', write: 'write' },
+  auditEntity: 'BonusRule',
+  createSchema: createBonusRuleSchema,
+  updateSchema: updateBonusRuleSchema,
+  listQuerySchema: listBonusRulesQuerySchema,
+  controller: {
+    list: bonusRulesController.listBonusRules,
+    create: bonusRulesController.createBonusRule,
+    update: bonusRulesController.updateBonusRule,
+    delete: bonusRulesController.deleteBonusRule,
+    getSnapshotForAudit: bonusRulesController.getBonusRuleSnapshotForAudit,
+  },
+});
 
 bonusRulesRouter.get(
   '/calculate',
   requirePermission('sales', 'read'),
   validateQuery(calculateBonusQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await bonusRulesController.calculateBonusAction(req));
-  })
-);
-
-bonusRulesRouter.get(
-  '/',
-  requirePermission('masters.products', 'read'),
-  validateQuery(listBonusRulesQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await bonusRulesController.listBonusRules(req));
-  })
-);
-
-bonusRulesRouter.post(
-  '/',
-  requirePermission('masters.products', 'write'),
-  auditMiddleware({ entity: 'BonusRule', getNewValue: (req) => req.body }),
-  validateBody(createBonusRuleSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await bonusRulesController.createBonusRule(req, getValidatedBody(req)));
-  })
-);
-
-bonusRulesRouter.patch(
-  '/:id',
-  requirePermission('masters.products', 'write'),
-  auditMiddleware({
-    entity: 'BonusRule',
-    getEntityId: (req) => req.params.id,
-    getOldValue: async (req) => bonusRulesController.getBonusRuleSnapshotForAudit(req.params.id),
-    getNewValue: (req) => req.body,
-  }),
-  validateBody(updateBonusRuleSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await bonusRulesController.updateBonusRule(req, getValidatedBody(req)));
-  })
-);
-
-bonusRulesRouter.delete(
-  '/:id',
-  requirePermission('masters.products', 'write'),
-  auditMiddleware({
-    entity: 'BonusRule',
-    getEntityId: (req) => req.params.id,
-    getOldValue: async (req) => bonusRulesController.getBonusRuleSnapshotForAudit(req.params.id),
-  }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await bonusRulesController.deleteBonusRule(req));
-  })
+  handle(bonusRulesController.calculateBonusAction)
 );

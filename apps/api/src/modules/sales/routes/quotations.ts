@@ -3,8 +3,7 @@ import { createQuotationSchema, listQuotationsQuerySchema, updateQuotationSchema
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
 import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { handle, handleBody } from '../../../shared/utils/handleRoute';
 import * as quotationsController from '../controllers/quotationsController';
 
 export const quotationsRouter = Router();
@@ -14,27 +13,17 @@ quotationsRouter.get(
   '/',
   requirePermission('sales', 'read'),
   validateQuery(listQuotationsQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await quotationsController.listQuotations(req));
-  })
+  handle(quotationsController.listQuotations)
 );
 
-quotationsRouter.get(
-  '/:id',
-  requirePermission('sales', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await quotationsController.getQuotation(req));
-  })
-);
+quotationsRouter.get('/:id', requirePermission('sales', 'read'), handle(quotationsController.getQuotation));
 
 quotationsRouter.post(
   '/',
   requirePermission('sales', 'create'),
   auditMiddleware({ entity: 'Quotation', getNewValue: (req) => req.body }),
   validateBody(createQuotationSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await quotationsController.createQuotation(req, getValidatedBody(req)));
-  })
+  handleBody(quotationsController.createQuotation)
 );
 
 quotationsRouter.patch(
@@ -46,25 +35,19 @@ quotationsRouter.patch(
     getNewValue: (req) => req.body,
   }),
   validateBody(updateQuotationSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await quotationsController.updateQuotation(req, getValidatedBody(req)));
-  })
+  handleBody(quotationsController.updateQuotation)
 );
 
 quotationsRouter.delete(
   '/:id',
   requirePermission('sales', 'update'),
   auditMiddleware({ entity: 'Quotation', getEntityId: (req) => req.params.id }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await quotationsController.deleteQuotation(req));
-  })
+  handle(quotationsController.deleteQuotation)
 );
 
 quotationsRouter.post(
   '/:id/convert-to-order',
   requirePermission('sales', 'update'),
   auditMiddleware({ entity: 'Quotation', getEntityId: (req) => req.params.id }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await quotationsController.convertQuotationToOrder(req));
-  })
+  handle(quotationsController.convertQuotationToOrder)
 );

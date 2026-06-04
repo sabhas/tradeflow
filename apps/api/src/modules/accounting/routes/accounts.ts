@@ -8,8 +8,7 @@ import {
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
 import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { handle, handleBody } from '../../../shared/utils/handleRoute';
 import * as accountsController from '../controllers/accountsController';
 
 export const accountsRouter = Router();
@@ -19,18 +18,14 @@ accountsRouter.get(
   '/',
   requirePermission('accounting', 'read'),
   validateQuery(listAccountsQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await accountsController.listAccounts(req));
-  })
+  handle(accountsController.listAccounts)
 );
 
 accountsRouter.get(
   '/:id/balance',
   requirePermission('accounting', 'read'),
   validateQuery(accountBalanceQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await accountsController.getAccountBalance(req));
-  })
+  handle(accountsController.getAccountBalance)
 );
 
 accountsRouter.post(
@@ -38,9 +33,7 @@ accountsRouter.post(
   requirePermission('accounting', 'write'),
   auditMiddleware({ entity: 'Account', getNewValue: (req) => req.body }),
   validateBody(createAccountSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await accountsController.createAccount(req, getValidatedBody(req)));
-  })
+  handleBody(accountsController.createAccount)
 );
 
 accountsRouter.patch(
@@ -52,7 +45,5 @@ accountsRouter.patch(
     getNewValue: (req) => req.body,
   }),
   validateBody(updateAccountSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await accountsController.updateAccount(req, getValidatedBody(req)));
-  })
+  handleBody(accountsController.updateAccount)
 );

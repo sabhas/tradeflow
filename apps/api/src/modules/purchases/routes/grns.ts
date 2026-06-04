@@ -3,8 +3,7 @@ import { createGrnSchema, listGrnsQuerySchema, updateGrnSchema } from '@tradeflo
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
 import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { handle, handleBody } from '../../../shared/utils/handleRoute';
 import * as grnsController from '../controllers/grnsController';
 
 export const grnsRouter = Router();
@@ -14,35 +13,23 @@ grnsRouter.get(
   '/',
   requirePermission('purchases.grn', 'read'),
   validateQuery(listGrnsQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await grnsController.listGrns(req));
-  })
+  handle(grnsController.listGrns)
 );
 
 grnsRouter.get(
   '/pending-invoice-count',
   requirePermission('purchases.grn', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await grnsController.pendingInvoiceCount(req));
-  })
+  handle(grnsController.pendingInvoiceCount)
 );
 
-grnsRouter.get(
-  '/:id',
-  requirePermission('purchases.grn', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await grnsController.getGrn(req));
-  })
-);
+grnsRouter.get('/:id', requirePermission('purchases.grn', 'read'), handle(grnsController.getGrn));
 
 grnsRouter.post(
   '/',
   requirePermission('purchases.grn', 'write'),
   auditMiddleware({ entity: 'Grn', getNewValue: (req) => req.body }),
   validateBody(createGrnSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await grnsController.createGrn(req, getValidatedBody(req)));
-  })
+  handleBody(grnsController.createGrn)
 );
 
 grnsRouter.patch(
@@ -54,9 +41,7 @@ grnsRouter.patch(
     getNewValue: (req) => req.body,
   }),
   validateBody(updateGrnSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await grnsController.updateGrn(req, getValidatedBody(req)));
-  })
+  handleBody(grnsController.updateGrn)
 );
 
 grnsRouter.post(
@@ -67,9 +52,7 @@ grnsRouter.post(
     getEntityId: (req) => req.params.id,
     getNewValue: () => ({ status: 'posted' }),
   }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await grnsController.postGrn(req));
-  })
+  handle(grnsController.postGrn)
 );
 
 grnsRouter.post(
@@ -80,7 +63,5 @@ grnsRouter.post(
     getEntityId: (req) => req.params.id,
     getNewValue: () => ({ source: 'grn_draft' }),
   }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await grnsController.createSupplierInvoiceDraftFromGrn(req));
-  })
+  handle(grnsController.createSupplierInvoiceDraftFromGrn)
 );

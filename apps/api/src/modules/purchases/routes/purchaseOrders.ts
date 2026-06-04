@@ -7,8 +7,7 @@ import {
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
 import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { handle, handleBody } from '../../../shared/utils/handleRoute';
 import * as purchaseOrdersController from '../controllers/purchaseOrdersController';
 
 export const purchaseOrdersRouter = Router();
@@ -18,25 +17,19 @@ purchaseOrdersRouter.get(
   '/',
   requirePermission('purchases.orders', 'read'),
   validateQuery(listPurchaseOrdersQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseOrdersController.listPurchaseOrders(req));
-  })
+  handle(purchaseOrdersController.listPurchaseOrders)
 );
 
 purchaseOrdersRouter.get(
   '/:id/grn-eligible',
   requirePermission('purchases.orders', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseOrdersController.getPurchaseOrderGrnEligible(req));
-  })
+  handle(purchaseOrdersController.getPurchaseOrderGrnEligible)
 );
 
 purchaseOrdersRouter.get(
   '/:id',
   requirePermission('purchases.orders', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseOrdersController.getPurchaseOrder(req));
-  })
+  handle(purchaseOrdersController.getPurchaseOrder)
 );
 
 purchaseOrdersRouter.post(
@@ -44,9 +37,7 @@ purchaseOrdersRouter.post(
   requirePermission('purchases.orders', 'write'),
   auditMiddleware({ entity: 'PurchaseOrder', getNewValue: (req) => req.body }),
   validateBody(createPurchaseOrderSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseOrdersController.createPurchaseOrder(req, getValidatedBody(req)));
-  })
+  handleBody(purchaseOrdersController.createPurchaseOrder)
 );
 
 purchaseOrdersRouter.patch(
@@ -59,9 +50,7 @@ purchaseOrdersRouter.patch(
     getNewValue: (req) => req.body,
   }),
   validateBody(updatePurchaseOrderSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseOrdersController.updatePurchaseOrder(req, getValidatedBody(req)));
-  })
+  handleBody(purchaseOrdersController.updatePurchaseOrder)
 );
 
 purchaseOrdersRouter.post(
@@ -72,15 +61,11 @@ purchaseOrdersRouter.post(
     getEntityId: (req) => req.params.id,
     getNewValue: () => ({ status: 'sent' }),
   }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseOrdersController.sendPurchaseOrder(req));
-  })
+  handle(purchaseOrdersController.sendPurchaseOrder)
 );
 
 purchaseOrdersRouter.delete(
   '/:id',
   requirePermission('purchases.orders', 'write'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await purchaseOrdersController.deletePurchaseOrder(req));
-  })
+  handle(purchaseOrdersController.deletePurchaseOrder)
 );

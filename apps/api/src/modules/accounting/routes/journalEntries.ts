@@ -7,9 +7,9 @@ import {
 } from '@tradeflow/shared';
 import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { validateBody, validateQuery } from '../../../shared/middleware/validate';
+import { handle, handleBody } from '../../../shared/utils/handleRoute';
+import { withStatus } from '../../../shared/utils/controllerResult';
 import * as journalEntriesController from '../controllers/journalEntriesController';
 
 export const journalEntriesRouter = Router();
@@ -19,17 +19,13 @@ journalEntriesRouter.get(
   '/',
   requirePermission('accounting', 'read'),
   validateQuery(listJournalEntriesQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await journalEntriesController.listJournalEntries(req));
-  })
+  handle(journalEntriesController.listJournalEntries)
 );
 
 journalEntriesRouter.get(
   '/:id',
   requirePermission('accounting', 'read'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await journalEntriesController.getJournalEntry(req));
-  })
+  handle(journalEntriesController.getJournalEntry)
 );
 
 journalEntriesRouter.post(
@@ -37,9 +33,7 @@ journalEntriesRouter.post(
   requirePermission('accounting', 'write'),
   auditMiddleware({ entity: 'JournalEntry', getNewValue: (req) => req.body }),
   validateBody(createJournalEntrySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await journalEntriesController.createJournalEntry(req, getValidatedBody(req)));
-  })
+  handleBody(journalEntriesController.createJournalEntry)
 );
 
 journalEntriesRouter.patch(
@@ -51,9 +45,7 @@ journalEntriesRouter.patch(
     getNewValue: (req) => req.body,
   }),
   validateBody(updateJournalEntrySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await journalEntriesController.updateJournalEntry(req, getValidatedBody(req)));
-  })
+  handleBody(journalEntriesController.updateJournalEntry)
 );
 
 journalEntriesRouter.delete(
@@ -64,17 +56,13 @@ journalEntriesRouter.delete(
     getEntityId: (req) => req.params.id,
     getOldValue: async (req) => journalEntriesController.getJournalEntrySnapshotForAudit(req.params.id),
   }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await journalEntriesController.deleteJournalEntry(req));
-  })
+  handle(journalEntriesController.deleteJournalEntry)
 );
 
 journalEntriesRouter.post(
   '/:id/post',
   requirePermission('accounting', 'write'),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await journalEntriesController.postJournalEntry(req));
-  })
+  handle(journalEntriesController.postJournalEntry)
 );
 
 const reverseJournalBodySchema = z.object({
@@ -84,12 +72,11 @@ const reverseJournalBodySchema = z.object({
 journalEntriesRouter.post(
   '/:id/reverse',
   requirePermission('accounting', 'write'),
-  asyncHandler(async (req, res) => {
+  handle(async (req) => {
     const parsed = reverseJournalBodySchema.safeParse(req.body ?? {});
     if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-      return;
+      return withStatus(400, { error: 'Invalid input', details: parsed.error.flatten() });
     }
-    sendControllerResult(res, await journalEntriesController.reverseJournalEntry(req, parsed.data.entryDate));
+    return journalEntriesController.reverseJournalEntry(req, parsed.data.entryDate);
   })
 );

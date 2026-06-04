@@ -1,72 +1,22 @@
-import { Router } from 'express';
 import {
   createProductCategorySchema,
   listProductCategoriesQuerySchema,
   updateProductCategorySchema,
 } from '@tradeflow/shared';
-import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
-import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { createCrudRouter } from '../../../shared/routing/createCrudRouter';
 import * as productCategoriesController from '../controllers/productCategoriesController';
 
-export const productCategoriesRouter = Router();
-
-productCategoriesRouter.use(authMiddleware, loadUser);
-
-productCategoriesRouter.get(
-  '/',
-  requirePermission('masters.products', 'read'),
-  validateQuery(listProductCategoriesQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await productCategoriesController.listProductCategories(req));
-  })
-);
-
-productCategoriesRouter.post(
-  '/',
-  requirePermission('masters.products', 'write'),
-  auditMiddleware({
-    entity: 'ProductCategory',
-    getNewValue: (req) => req.body,
-  }),
-  validateBody(createProductCategorySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(
-      res,
-      await productCategoriesController.createProductCategory(req, getValidatedBody(req))
-    );
-  })
-);
-
-productCategoriesRouter.patch(
-  '/:id',
-  requirePermission('masters.products', 'write'),
-  auditMiddleware({
-    entity: 'ProductCategory',
-    getEntityId: (req) => req.params.id,
-    getOldValue: async (req) => productCategoriesController.getProductCategorySnapshotForAudit(req.params.id),
-    getNewValue: (req) => req.body,
-  }),
-  validateBody(updateProductCategorySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(
-      res,
-      await productCategoriesController.updateProductCategory(req, getValidatedBody(req))
-    );
-  })
-);
-
-productCategoriesRouter.delete(
-  '/:id',
-  requirePermission('masters.products', 'write'),
-  auditMiddleware({
-    entity: 'ProductCategory',
-    getEntityId: (req) => req.params.id,
-    getOldValue: async (req) => productCategoriesController.getProductCategorySnapshotForAudit(req.params.id),
-  }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await productCategoriesController.deleteProductCategory(req));
-  })
-);
+export const productCategoriesRouter = createCrudRouter({
+  permission: { module: 'masters.products', read: 'read', write: 'write' },
+  auditEntity: 'ProductCategory',
+  createSchema: createProductCategorySchema,
+  updateSchema: updateProductCategorySchema,
+  listQuerySchema: listProductCategoriesQuerySchema,
+  controller: {
+    list: productCategoriesController.listProductCategories,
+    create: productCategoriesController.createProductCategory,
+    update: productCategoriesController.updateProductCategory,
+    delete: productCategoriesController.deleteProductCategory,
+    getSnapshotForAudit: productCategoriesController.getProductCategorySnapshotForAudit,
+  },
+});

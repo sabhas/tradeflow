@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import type { z } from 'zod';
 import { loginSchema, patchAuthMeSchema } from '@tradeflow/shared';
 import { authMiddleware, loadUser } from '../../../shared/middleware/auth';
 import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { validateBody } from '../../../shared/middleware/validate';
+import { handle, handleBody } from '../../../shared/utils/handleRoute';
 import * as authController from '../controllers/authController';
 
 export const authRouter = Router();
@@ -12,19 +12,10 @@ export const authRouter = Router();
 authRouter.post(
   '/login',
   validateBody(loginSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await authController.login(getValidatedBody(req)));
-  })
+  handleBody((_req, body) => authController.login(body as z.infer<typeof loginSchema>))
 );
 
-authRouter.get(
-  '/me',
-  authMiddleware,
-  loadUser,
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await authController.getMe(req));
-  })
-);
+authRouter.get('/me', authMiddleware, loadUser, handle(authController.getMe));
 
 authRouter.patch(
   '/me',
@@ -37,7 +28,5 @@ authRouter.patch(
     getNewValue: (req) => req.body,
   }),
   validateBody(patchAuthMeSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await authController.patchMe(req, getValidatedBody(req)));
-  })
+  handleBody(authController.patchMe)
 );

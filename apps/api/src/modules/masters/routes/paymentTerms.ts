@@ -1,58 +1,18 @@
-import { Router } from 'express';
-import { paginationQuerySchema, createPaymentTermsSchema, updatePaymentTermsSchema } from '@tradeflow/shared';
-import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
-import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { createPaymentTermsSchema, paginationQuerySchema, updatePaymentTermsSchema } from '@tradeflow/shared';
+import { createCrudRouter } from '../../../shared/routing/createCrudRouter';
 import * as paymentTermsController from '../controllers/paymentTermsController';
 
-export const paymentTermsRouter = Router();
-paymentTermsRouter.use(authMiddleware, loadUser);
-
-paymentTermsRouter.get(
-  '/',
-  requirePermission('masters.payment_terms', 'read'),
-  validateQuery(paginationQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await paymentTermsController.listPaymentTerms(req));
-  })
-);
-
-paymentTermsRouter.post(
-  '/',
-  requirePermission('masters.payment_terms', 'write'),
-  auditMiddleware({ entity: 'PaymentTerms', getNewValue: (req) => req.body }),
-  validateBody(createPaymentTermsSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await paymentTermsController.createPaymentTerms(req, getValidatedBody(req)));
-  })
-);
-
-paymentTermsRouter.patch(
-  '/:id',
-  requirePermission('masters.payment_terms', 'write'),
-  auditMiddleware({
-    entity: 'PaymentTerms',
-    getEntityId: (req) => req.params.id,
-    getOldValue: async (req) => paymentTermsController.getPaymentTermsSnapshotForAudit(req.params.id),
-    getNewValue: (req) => req.body,
-  }),
-  validateBody(updatePaymentTermsSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await paymentTermsController.updatePaymentTerms(req, getValidatedBody(req)));
-  })
-);
-
-paymentTermsRouter.delete(
-  '/:id',
-  requirePermission('masters.payment_terms', 'write'),
-  auditMiddleware({
-    entity: 'PaymentTerms',
-    getEntityId: (req) => req.params.id,
-    getOldValue: async (req) => paymentTermsController.getPaymentTermsSnapshotForAudit(req.params.id),
-  }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await paymentTermsController.deletePaymentTerms(req));
-  })
-);
+export const paymentTermsRouter = createCrudRouter({
+  permission: { module: 'masters.payment_terms', read: 'read', write: 'write' },
+  auditEntity: 'PaymentTerms',
+  createSchema: createPaymentTermsSchema,
+  updateSchema: updatePaymentTermsSchema,
+  listQuerySchema: paginationQuerySchema,
+  controller: {
+    list: paymentTermsController.listPaymentTerms,
+    create: paymentTermsController.createPaymentTerms,
+    update: paymentTermsController.updatePaymentTerms,
+    delete: paymentTermsController.deletePaymentTerms,
+    getSnapshotForAudit: paymentTermsController.getPaymentTermsSnapshotForAudit,
+  },
+});

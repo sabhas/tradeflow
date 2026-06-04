@@ -1,58 +1,18 @@
-import { Router } from 'express';
-import { paginationQuerySchema, createAreaSchema, updateAreaSchema } from '@tradeflow/shared';
-import { authMiddleware, loadUser, requirePermission } from '../../../shared/middleware/auth';
-import { auditMiddleware } from '../../../shared/middleware/audit';
-import { getValidatedBody, validateBody, validateQuery } from '../../../shared/middleware/validate';
-import { asyncHandler } from '../../../shared/utils/asyncHandler';
-import { sendControllerResult } from '../../../shared/utils/controllerResult';
+import { createAreaSchema, paginationQuerySchema, updateAreaSchema } from '@tradeflow/shared';
+import { createCrudRouter } from '../../../shared/routing/createCrudRouter';
 import * as areasController from '../controllers/areasController';
 
-export const areasRouter = Router();
-areasRouter.use(authMiddleware, loadUser);
-
-areasRouter.get(
-  '/',
-  requirePermission('masters.customers', 'read'),
-  validateQuery(paginationQuerySchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await areasController.listAreas(req));
-  })
-);
-
-areasRouter.post(
-  '/',
-  requirePermission('masters.customers', 'write'),
-  auditMiddleware({ entity: 'Area', getNewValue: (req) => req.body }),
-  validateBody(createAreaSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await areasController.createArea(req, getValidatedBody(req)));
-  })
-);
-
-areasRouter.patch(
-  '/:id',
-  requirePermission('masters.customers', 'write'),
-  auditMiddleware({
-    entity: 'Area',
-    getEntityId: (req) => req.params.id,
-    getOldValue: async (req) => areasController.getAreaSnapshotForAudit(req.params.id),
-    getNewValue: (req) => req.body,
-  }),
-  validateBody(updateAreaSchema),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await areasController.updateArea(req, getValidatedBody(req)));
-  })
-);
-
-areasRouter.delete(
-  '/:id',
-  requirePermission('masters.customers', 'write'),
-  auditMiddleware({
-    entity: 'Area',
-    getEntityId: (req) => req.params.id,
-    getOldValue: async (req) => areasController.getAreaSnapshotForAudit(req.params.id),
-  }),
-  asyncHandler(async (req, res) => {
-    sendControllerResult(res, await areasController.deleteArea(req));
-  })
-);
+export const areasRouter = createCrudRouter({
+  permission: { module: 'masters.customers', read: 'read', write: 'write' },
+  auditEntity: 'Area',
+  createSchema: createAreaSchema,
+  updateSchema: updateAreaSchema,
+  listQuerySchema: paginationQuerySchema,
+  controller: {
+    list: areasController.listAreas,
+    create: areasController.createArea,
+    update: areasController.updateArea,
+    delete: areasController.deleteArea,
+    getSnapshotForAudit: areasController.getAreaSnapshotForAudit,
+  },
+});
