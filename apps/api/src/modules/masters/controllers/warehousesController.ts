@@ -4,20 +4,10 @@ import { createWarehouseSchema, updateWarehouseSchema } from '@tradeflow/shared'
 import { Warehouse } from '@tradeflow/db';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeWarehouse } from '../serializers/warehouse.serializer';
 
 type CreateWarehouseInput = z.infer<typeof createWarehouseSchema>;
 type UpdateWarehouseInput = z.infer<typeof updateWarehouseSchema>;
-
-export function serializeWarehouse(w: Warehouse) {
-  return {
-    id: w.id,
-    name: w.name,
-    code: w.code,
-    isDefault: w.isDefault,
-    createdAt: w.createdAt,
-    updatedAt: w.updatedAt,
-  };
-}
 
 async function ensureDefaultWarehouse() {
   const repo = Warehouse.getRepository();

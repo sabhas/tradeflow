@@ -4,24 +4,15 @@ import { createInvoiceTemplateSchema, updateInvoiceTemplateSchema } from '@trade
 import { InvoiceTemplate } from '@tradeflow/db';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeInvoiceTemplate } from '../serializers/invoiceTemplate.serializer';
 
 type CreateInvoiceTemplateInput = z.infer<typeof createInvoiceTemplateSchema>;
 type UpdateInvoiceTemplateInput = z.infer<typeof updateInvoiceTemplateSchema>;
 
-function serialize(t: InvoiceTemplate) {
-  return {
-    id: t.id,
-    name: t.name,
-    config: t.config,
-    createdAt: t.createdAt,
-    updatedAt: t.updatedAt,
-  };
-}
-
 export async function listInvoiceTemplates(req: Request): Promise<ControllerResult> {
   const qb = InvoiceTemplate.createQueryBuilder('t').orderBy('t.name', 'ASC');
   const rows = await qb.getMany();
-  return ok({ data: rows.map(serialize) });
+  return ok({ data: rows.map(serializeInvoiceTemplate) });
 }
 
 export async function getInvoiceTemplate(req: Request): Promise<ControllerResult> {
@@ -29,7 +20,7 @@ export async function getInvoiceTemplate(req: Request): Promise<ControllerResult
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  return ok({ data: serialize(row) });
+  return ok({ data: serializeInvoiceTemplate(row) });
 }
 
 export async function createInvoiceTemplate(
@@ -41,7 +32,7 @@ export async function createInvoiceTemplate(
     config: body.config,
   });
   await InvoiceTemplate.save(row);
-  return created({ data: serialize(row) });
+  return created({ data: serializeInvoiceTemplate(row) });
 }
 
 export async function updateInvoiceTemplate(
@@ -55,5 +46,5 @@ export async function updateInvoiceTemplate(
   if (body.name !== undefined) row.name = body.name.trim();
   if (body.config !== undefined) row.config = { ...row.config, ...body.config };
   await InvoiceTemplate.save(row);
-  return ok({ data: serialize(row) });
+  return ok({ data: serializeInvoiceTemplate(row) });
 }

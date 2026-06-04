@@ -9,10 +9,10 @@ import {
   periodLockQuerySchema,
 } from '@tradeflow/shared';
 import { getValidatedQuery } from '../../../shared/middleware/validate';
-import { computeFinancialYearLabel } from '../../../shared/utils/financialYear';
 import { getUnsettledGrnsForPeriodLock } from '../../purchases/services/grnInvoiceSettlement';
 import { ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serialize, serializeGeneral } from '../serializers/companySettings.serializer';
 
 type PatchGeneralInput = z.infer<typeof patchGeneralSettingsSchema>;
 type PatchCompanyProfileInput = z.infer<typeof patchCompanyProfileSchema>;
@@ -29,51 +29,6 @@ async function getSingletonCompanySettings(
     ...(relations ? { relations } : {}),
   });
   return rows[0] ?? null;
-}
-
-function serializeGeneral(cs: CompanySettings) {
-  return {
-    id: cs.id,
-    companyName: cs.companyName,
-    legalName: cs.legalName ?? null,
-    addressLine1: cs.addressLine1 ?? null,
-    addressLine2: cs.addressLine2 ?? null,
-    city: cs.city ?? null,
-    state: cs.state ?? null,
-    postalCode: cs.postalCode ?? null,
-    country: cs.country ?? null,
-    phone: cs.phone ?? null,
-    email: cs.email ?? null,
-    taxRegistrationNumber: cs.taxRegistrationNumber ?? null,
-    logoUrl: cs.logoUrl ?? null,
-    financialYearStartMonth: cs.financialYearStartMonth,
-    financialYearLabelOverride: cs.financialYearLabelOverride ?? null,
-    currentFinancialYearLabel: computeFinancialYearLabel(
-      new Date(),
-      cs.financialYearStartMonth,
-      cs.financialYearLabelOverride
-    ),
-    currencyCode: cs.currencyCode,
-    moneyDecimals: cs.moneyDecimals,
-    quantityDecimals: cs.quantityDecimals,
-    roundingMode: cs.roundingMode,
-    inventoryCostingMethod: cs.inventoryCostingMethod ?? 'fifo',
-    defaultInvoiceTemplateId: cs.defaultInvoiceTemplateId ?? null,
-    defaultCashAccountId: cs.defaultCashAccountId,
-    defaultBankAccountId: cs.defaultBankAccountId,
-    updatedAt: cs.updatedAt,
-  };
-}
-
-function serialize(cs: CompanySettings) {
-  return {
-    id: cs.id,
-    defaultCashAccountId: cs.defaultCashAccountId,
-    defaultBankAccountId: cs.defaultBankAccountId,
-    periodLockedThrough: cs.periodLockedThrough ?? null,
-    journalApprovalThreshold: cs.journalApprovalThreshold ?? null,
-    updatedAt: cs.updatedAt,
-  };
 }
 
 export async function getGeneral(_req: Request): Promise<ControllerResult> {

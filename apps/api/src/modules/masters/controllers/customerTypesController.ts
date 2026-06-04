@@ -5,19 +5,10 @@ import { IsNull } from 'typeorm';
 import { createCustomerTypeSchema, updateCustomerTypeSchema } from '@tradeflow/shared';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeCustomerType } from '../serializers/customerType.serializer';
 
 type CreateCustomerTypeInput = z.infer<typeof createCustomerTypeSchema>;
 type UpdateCustomerTypeInput = z.infer<typeof updateCustomerTypeSchema>;
-
-export function serializeCustomerType(row: CustomerType) {
-  return {
-    id: row.id,
-    name: row.name,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    deletedAt: row.deletedAt,
-  };
-}
 
 export async function listCustomerTypes(req: Request): Promise<ControllerResult> {
   const rows = await CustomerType.createQueryBuilder('ct')

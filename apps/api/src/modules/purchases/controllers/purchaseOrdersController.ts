@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { PurchaseOrder, PurchaseOrderLine } from '@tradeflow/db';
+import { PurchaseOrder } from '@tradeflow/db';
 import {
   createPurchaseOrderSchema,
   listPurchaseOrdersQuerySchema,
@@ -14,41 +14,10 @@ import {
   createPurchaseOrder as createPurchaseOrderService,
   updatePurchaseOrder as updatePurchaseOrderService,
 } from '../services/purchaseOrderService';
+import { serializePurchaseOrder } from '../serializers/purchaseOrder.serializer';
 
 type CreatePurchaseOrderInput = z.infer<typeof createPurchaseOrderSchema>;
 type UpdatePurchaseOrderInput = z.infer<typeof updatePurchaseOrderSchema>;
-
-export function serializePurchaseOrder(po: PurchaseOrder, lines?: PurchaseOrderLine[]) {
-  return {
-    id: po.id,
-    supplierId: po.supplierId,
-    orderDate: po.orderDate,
-    expectedDate: po.expectedDate ?? null,
-    status: po.status,
-    warehouseId: po.warehouseId,
-    subtotal: po.subtotal,
-    taxAmount: po.taxAmount,
-    discountAmount: po.discountAmount,
-    total: po.total,
-    notes: po.notes ?? null,
-    createdBy: po.createdBy ?? null,
-    createdAt: po.createdAt,
-    updatedAt: po.updatedAt,
-    supplier: po.supplier ? { id: po.supplier.id, name: po.supplier.name } : undefined,
-    warehouse: po.warehouse ? { id: po.warehouse.id, name: po.warehouse.name } : undefined,
-    lines:
-      lines?.map((l) => ({
-        id: l.id,
-        productId: l.productId,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-        taxAmount: l.taxAmount,
-        discountAmount: l.discountAmount,
-        receivedQuantity: l.receivedQuantity,
-        taxProfileId: l.taxProfileId ?? null,
-      })) ?? undefined,
-  };
-}
 
 export async function getPurchaseOrderSnapshotForAudit(id: string) {
   const po = await PurchaseOrder.findOne({ where: { id } });

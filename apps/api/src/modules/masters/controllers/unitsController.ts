@@ -5,19 +5,10 @@ import { createUnitSchema, updateUnitSchema } from '@tradeflow/shared';
 import { UnitOfMeasure } from '@tradeflow/db';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeUnit } from '../serializers/unit.serializer';
 
 type CreateUnitInput = z.infer<typeof createUnitSchema>;
 type UpdateUnitInput = z.infer<typeof updateUnitSchema>;
-
-export function serializeUnit(u: UnitOfMeasure) {
-  return {
-    id: u.id,
-    code: u.code,
-    name: u.name,
-    createdAt: u.createdAt,
-    updatedAt: u.updatedAt,
-  };
-}
 
 export async function listUnits(req: Request): Promise<ControllerResult> {
   const rows = await UnitOfMeasure.find({

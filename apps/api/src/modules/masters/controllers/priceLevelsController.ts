@@ -5,24 +5,16 @@ import { createPriceLevelSchema, updatePriceLevelSchema } from '@tradeflow/share
 import { PriceLevel } from '@tradeflow/db';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializePriceLevel } from '../serializers/priceLevel.serializer';
 
 type CreatePriceLevelInput = z.infer<typeof createPriceLevelSchema>;
 type UpdatePriceLevelInput = z.infer<typeof updatePriceLevelSchema>;
-
-function serialize(p: PriceLevel) {
-  return {
-    id: p.id,
-    name: p.name,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-  };
-}
 
 export async function listPriceLevels(req: Request): Promise<ControllerResult> {
   const rows = await PriceLevel.find({
     order: { name: 'ASC' },
   });
-  return ok({ data: rows.map(serialize) });
+  return ok({ data: rows.map(serializePriceLevel) });
 }
 
 export async function createPriceLevel(req: Request, body: CreatePriceLevelInput): Promise<ControllerResult> {
@@ -31,7 +23,7 @@ export async function createPriceLevel(req: Request, body: CreatePriceLevelInput
     name: body.name,
   });
   await repo.save(row);
-  return created({ data: serialize(row) });
+  return created({ data: serializePriceLevel(row) });
 }
 
 export async function updatePriceLevel(req: Request, body: UpdatePriceLevelInput): Promise<ControllerResult> {
@@ -42,10 +34,10 @@ export async function updatePriceLevel(req: Request, body: UpdatePriceLevelInput
   }
   if (body.name !== undefined) row.name = body.name;
   await repo.save(row);
-  return ok({ data: serialize(row) });
+  return ok({ data: serializePriceLevel(row) });
 }
 
 export async function getPriceLevelSnapshotForAudit(id: string) {
   const p = await PriceLevel.findOne({ where: { id } });
-  return p ? serialize(p) : undefined;
+  return p ? serializePriceLevel(p) : undefined;
 }

@@ -9,34 +9,9 @@ import { postStockTransferTx } from '../services/stockTransferPosting';
 import { parseDecimalStrict } from '../../../shared/utils/decimal';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeStockTransfer } from '../serializers/stockTransfer.serializer';
 
 type CreateStockTransferInput = z.infer<typeof createStockTransferSchema>;
-
-function serialize(t: StockTransfer, lines?: StockTransferLine[]) {
-  return {
-    id: t.id,
-    fromWarehouseId: t.fromWarehouseId,
-    toWarehouseId: t.toWarehouseId,
-    transferDate: t.transferDate,
-    status: t.status,
-    notes: t.notes ?? null,
-    createdBy: t.createdBy ?? null,
-    createdAt: t.createdAt,
-    fromWarehouse: t.fromWarehouse
-      ? { id: t.fromWarehouse.id, name: t.fromWarehouse.name, code: t.fromWarehouse.code }
-      : undefined,
-    toWarehouse: t.toWarehouse
-      ? { id: t.toWarehouse.id, name: t.toWarehouse.name, code: t.toWarehouse.code }
-      : undefined,
-    lines:
-      lines?.map((l) => ({
-        id: l.id,
-        productId: l.productId,
-        quantity: l.quantity,
-        product: l.product ? { id: l.product.id, sku: l.product.sku, name: l.product.name } : undefined,
-      })) ?? undefined,
-  };
-}
 
 export async function listStockTransfers(req: Request): Promise<ControllerResult> {
   const q = getValidatedQuery<z.infer<typeof listStockTransfersQuerySchema>>(req);
@@ -47,7 +22,7 @@ export async function listStockTransfers(req: Request): Promise<ControllerResult
   if (q.status) qb.andWhere('t.status = :st', { st: q.status });
   qb.orderBy('t.transfer_date', 'DESC').addOrderBy('t.created_at', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
-  return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
+  return ok({ data: rows.map((r) => serializeStockTransfer(r)), meta: { total, limit, offset } });
 }
 
 export async function getStockTransfer(req: Request): Promise<ControllerResult> {
@@ -58,7 +33,7 @@ export async function getStockTransfer(req: Request): Promise<ControllerResult> 
   if (!t) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  return ok({ data: serialize(t, t.lines) });
+  return ok({ data: serializeStockTransfer(t, t.lines) });
 }
 
 export async function createStockTransfer(
@@ -100,7 +75,7 @@ export async function createStockTransfer(
       relations: ['lines', 'lines.product', 'fromWarehouse', 'toWarehouse'],
     });
   });
-  return created({ data: serialize(row, row.lines) });
+  return created({ data: serializeStockTransfer(row, row.lines) });
 }
 
 export async function postStockTransfer(req: Request): Promise<ControllerResult> {
@@ -122,5 +97,5 @@ export async function postStockTransfer(req: Request): Promise<ControllerResult>
       relations: ['lines', 'lines.product', 'fromWarehouse', 'toWarehouse'],
     });
   });
-  return ok({ data: serialize(row, row.lines) });
+  return ok({ data: serializeStockTransfer(row, row.lines) });
 }

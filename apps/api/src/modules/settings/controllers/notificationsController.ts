@@ -7,17 +7,7 @@ import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
-
-function serialize(n: UserNotification) {
-  return {
-    id: n.id,
-    type: n.type,
-    title: n.title,
-    body: n.body ?? null,
-    readAt: n.readAt ?? null,
-    createdAt: n.createdAt,
-  };
-}
+import { serializeNotification } from '../serializers/notification.serializer';
 
 export async function listNotifications(req: Request): Promise<ControllerResult> {
   if (!req.auth?.userId) {
@@ -35,7 +25,7 @@ export async function listNotifications(req: Request): Promise<ControllerResult>
     where: { userId: req.auth.userId, readAt: IsNull() },
   });
   return ok({
-    data: rows.map(serialize),
+    data: rows.map(serializeNotification),
     meta: { total, limit, offset, unread },
   });
 }
@@ -52,7 +42,7 @@ export async function markNotificationRead(req: Request): Promise<ControllerResu
   }
   row.readAt = new Date();
   await UserNotification.save(row);
-  return ok({ data: serialize(row) });
+  return ok({ data: serializeNotification(row) });
 }
 
 export async function markAllNotificationsRead(req: Request): Promise<ControllerResult> {

@@ -5,25 +5,16 @@ import { createSalespersonSchema, updateSalespersonSchema } from '@tradeflow/sha
 import { Salesperson } from '@tradeflow/db';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeSalesperson } from '../serializers/salesperson.serializer';
 
 type CreateSalespersonInput = z.infer<typeof createSalespersonSchema>;
 type UpdateSalespersonInput = z.infer<typeof updateSalespersonSchema>;
-
-function serialize(s: Salesperson) {
-  return {
-    id: s.id,
-    name: s.name,
-    code: s.code,
-    createdAt: s.createdAt,
-    updatedAt: s.updatedAt,
-  };
-}
 
 export async function listSalespersons(req: Request): Promise<ControllerResult> {
   const rows = await Salesperson.find({
     order: { name: 'ASC' },
   });
-  return ok({ data: rows.map(serialize) });
+  return ok({ data: rows.map(serializeSalesperson) });
 }
 
 export async function createSalesperson(
@@ -36,7 +27,7 @@ export async function createSalesperson(
     code: body.code,
   });
   await repo.save(row);
-  return created({ data: serialize(row) });
+  return created({ data: serializeSalesperson(row) });
 }
 
 export async function updateSalesperson(
@@ -51,7 +42,7 @@ export async function updateSalesperson(
   if (body.name !== undefined) row.name = body.name;
   if (body.code !== undefined) row.code = body.code;
   await repo.save(row);
-  return ok({ data: serialize(row) });
+  return ok({ data: serializeSalesperson(row) });
 }
 
 export async function deleteSalesperson(req: Request): Promise<ControllerResult> {
@@ -66,5 +57,5 @@ export async function deleteSalesperson(req: Request): Promise<ControllerResult>
 
 export async function getSalespersonSnapshotForAudit(id: string) {
   const s = await Salesperson.findOne({ where: { id } });
-  return s ? serialize(s) : undefined;
+  return s ? serializeSalesperson(s) : undefined;
 }

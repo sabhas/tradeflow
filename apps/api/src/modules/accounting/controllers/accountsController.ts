@@ -13,19 +13,7 @@ type CreateAccountInput = z.infer<typeof createAccountSchema>;
 type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
-
-function serialize(a: Account) {
-  return {
-    id: a.id,
-    code: a.code,
-    name: a.name,
-    type: a.type,
-    parentId: a.parentId ?? null,
-    isSystem: a.isSystem,
-    createdAt: a.createdAt,
-    updatedAt: a.updatedAt,
-  };
-}
+import { serializeAccount } from '../serializers/account.serializer';
 
 async function accountHasPostedLines(accountId: string): Promise<boolean> {
   const n = await JournalLine.createQueryBuilder('jl')
@@ -54,14 +42,14 @@ export async function listAccounts(req: Request): Promise<ControllerResult> {
     }
     function build(pid: string | null): unknown[] {
       return (byParent.get(pid) ?? []).map((a) => ({
-        ...serialize(a),
+        ...serializeAccount(a),
         children: build(a.id),
       }));
     }
     return ok({ data: build(null) });
   }
 
-  return ok({ data: rows.map(serialize) });
+  return ok({ data: rows.map(serializeAccount) });
 }
 
 export async function getAccountBalance(req: Request): Promise<ControllerResult> {
@@ -123,7 +111,7 @@ export async function createAccount(req: Request, body: CreateAccountInput): Pro
     isSystem: false,
   });
   const saved = await Account.save(a);
-  return created({ data: serialize(saved) });
+  return created({ data: serializeAccount(saved) });
 }
 
 export async function updateAccount(req: Request, body: UpdateAccountInput): Promise<ControllerResult> {
@@ -144,5 +132,5 @@ export async function updateAccount(req: Request, body: UpdateAccountInput): Pro
   if (body.parentId !== undefined) acc.parentId = body.parentId ?? undefined;
 
   const saved = await Account.save(acc);
-  return ok({ data: serialize(saved) });
+  return ok({ data: serializeAccount(saved) });
 }

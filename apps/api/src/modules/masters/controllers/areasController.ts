@@ -5,19 +5,10 @@ import { createAreaSchema, updateAreaSchema } from '@tradeflow/shared';
 import { IsNull } from 'typeorm';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeArea } from '../serializers/area.serializer';
 
 type CreateAreaInput = z.infer<typeof createAreaSchema>;
 type UpdateAreaInput = z.infer<typeof updateAreaSchema>;
-
-export function serializeArea(a: Area) {
-  return {
-    id: a.id,
-    name: a.name,
-    createdAt: a.createdAt,
-    updatedAt: a.updatedAt,
-    deletedAt: a.deletedAt,
-  };
-}
 
 export async function listAreas(req: Request): Promise<ControllerResult> {
   const qb = Area.createQueryBuilder('a').where('a.deleted_at IS NULL');

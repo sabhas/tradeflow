@@ -6,21 +6,10 @@ import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { IsNull } from 'typeorm';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeTown } from '../serializers/town.serializer';
 
 type CreateTownInput = z.infer<typeof createTownSchema>;
 type UpdateTownInput = z.infer<typeof updateTownSchema>;
-
-export function serializeTown(t: Town) {
-  return {
-    id: t.id,
-    name: t.name,
-    areaId: t.areaId,
-    area: t.area ? { id: t.area.id, name: t.area.name } : null,
-    createdAt: t.createdAt,
-    updatedAt: t.updatedAt,
-    deletedAt: t.deletedAt,
-  };
-}
 
 export async function listTowns(req: Request): Promise<ControllerResult> {
   const q = getValidatedQuery<z.infer<typeof listTownsQuerySchema>>(req);

@@ -14,28 +14,10 @@ import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeSupplier } from '../serializers/supplier.serializer';
 
 type CreateSupplierInput = z.infer<typeof createSupplierSchema>;
 type UpdateSupplierInput = z.infer<typeof updateSupplierSchema>;
-
-export function serializeSupplier(s: Supplier) {
-  return {
-    id: s.id,
-    name: s.name,
-    address: s.address,
-    city: s.city,
-    telephone: s.telephone,
-    mobileNo: s.mobileNo,
-    email: s.email,
-    website: s.website,
-    contact: s.contact,
-    ntn: s.ntn,
-    stn: s.stn,
-    createdAt: s.createdAt,
-    updatedAt: s.updatedAt,
-    deletedAt: s.deletedAt,
-  };
-}
 
 type ListSuppliersQuery = z.infer<typeof listSuppliersQuerySchema>;
 

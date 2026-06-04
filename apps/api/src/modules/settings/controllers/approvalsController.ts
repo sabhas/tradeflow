@@ -6,24 +6,11 @@ import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { getPagination } from '../../../shared/utils/pagination';
 import { ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeApprovalRequest } from '../serializers/approval.serializer';
 
 export type ReviewBody = {
   note?: string;
 };
-
-function serialize(a: ApprovalRequest) {
-  return {
-    id: a.id,
-    entityType: a.entityType,
-    entityId: a.entityId,
-    status: a.status,
-    requestedBy: a.requestedBy ?? null,
-    reviewedBy: a.reviewedBy ?? null,
-    reviewNote: a.reviewNote ?? null,
-    createdAt: a.createdAt,
-    reviewedAt: a.reviewedAt ?? null,
-  };
-}
 
 export async function listApprovalRequests(req: Request): Promise<ControllerResult> {
   const q = getValidatedQuery<z.infer<typeof listApprovalsQuerySchema>>(req);
@@ -38,7 +25,7 @@ export async function listApprovalRequests(req: Request): Promise<ControllerResu
   qb.andWhere('a.status = :st', { st: status });
 
   const [rows, total] = await qb.getManyAndCount();
-  return ok({ data: rows.map(serialize), meta: { total, limit, offset } });
+  return ok({ data: rows.map(serializeApprovalRequest), meta: { total, limit, offset } });
 }
 
 export async function approveApprovalRequest(req: Request, body: ReviewBody): Promise<ControllerResult> {
@@ -56,7 +43,7 @@ export async function approveApprovalRequest(req: Request, body: ReviewBody): Pr
   row.reviewNote = body.note ?? undefined;
   row.reviewedAt = new Date();
   await ApprovalRequest.save(row);
-  return ok({ data: serialize(row) });
+  return ok({ data: serializeApprovalRequest(row) });
 }
 
 export async function rejectApprovalRequest(req: Request, body: ReviewBody): Promise<ControllerResult> {
@@ -74,5 +61,5 @@ export async function rejectApprovalRequest(req: Request, body: ReviewBody): Pro
   row.reviewNote = body.note ?? undefined;
   row.reviewedAt = new Date();
   await ApprovalRequest.save(row);
-  return ok({ data: serialize(row) });
+  return ok({ data: serializeApprovalRequest(row) });
 }

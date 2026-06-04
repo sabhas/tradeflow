@@ -12,6 +12,7 @@ import { assertDateNotPeriodLocked } from '../../accounting/services/periodLock'
 import { parseDecimalStrict } from '../../../shared/utils/decimal';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeSupplierPayment } from '../serializers/supplierPayment.serializer';
 
 type CreateSupplierPaymentInput = z.infer<typeof createSupplierPaymentSchema> & { useDebitAmount?: string };
 
@@ -87,26 +88,6 @@ async function getAvailableLiquidBalance(paymentMethod: string, paymentDate: str
   return parseFloat(rows[0]?.available ?? '0');
 }
 
-function serialize(p: SupplierPayment, allocations?: SupplierPaymentAllocation[]) {
-  return {
-    id: p.id,
-    supplierId: p.supplierId,
-    paymentDate: p.paymentDate,
-    amount: p.amount,
-    paymentMethod: p.paymentMethod,
-    reference: p.reference ?? null,
-    createdBy: p.createdBy ?? null,
-    createdAt: p.createdAt,
-    supplier: p.supplier ? { id: p.supplier.id, name: p.supplier.name } : undefined,
-    allocations:
-      allocations?.map((a) => ({
-        id: a.id,
-        supplierInvoiceId: a.supplierInvoiceId,
-        amount: a.amount,
-      })) ?? undefined,
-  };
-}
-
 type ListSupplierPaymentsQuery = z.infer<typeof listSupplierPaymentsQuerySchema>;
 
 export async function listSupplierPayments(req: Request): Promise<ControllerResult> {
@@ -116,7 +97,7 @@ export async function listSupplierPayments(req: Request): Promise<ControllerResu
   if (q.supplierId) qb.andWhere('p.supplierId = :sid', { sid: q.supplierId });
   qb.orderBy('p.paymentDate', 'DESC').addOrderBy('p.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
-  return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
+  return ok({ data: rows.map((r) => serializeSupplierPayment(r)), meta: { total, limit, offset } });
 }
 
 export async function getSupplierPayment(req: Request): Promise<ControllerResult> {
@@ -127,7 +108,7 @@ export async function getSupplierPayment(req: Request): Promise<ControllerResult
   if (!p) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  return ok({ data: serialize(p, p.allocations) });
+  return ok({ data: serializeSupplierPayment(p, p.allocations) });
 }
 
 export async function createSupplierPayment(
@@ -207,5 +188,5 @@ export async function createSupplierPayment(
       relations: ['allocations', 'supplier'],
     });
   });
-  return created({ data: serialize(row, row.allocations) });
+  return created({ data: serializeSupplierPayment(row, row.allocations) });
 }

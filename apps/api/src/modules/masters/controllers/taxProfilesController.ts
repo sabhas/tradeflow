@@ -5,27 +5,16 @@ import { createTaxProfileSchema, updateTaxProfileSchema } from '@tradeflow/share
 import { TaxProfile } from '@tradeflow/db';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeTaxProfile } from '../serializers/taxProfile.serializer';
 
 type CreateTaxProfileInput = z.infer<typeof createTaxProfileSchema>;
 type UpdateTaxProfileInput = z.infer<typeof updateTaxProfileSchema>;
-
-function serialize(t: TaxProfile) {
-  return {
-    id: t.id,
-    name: t.name,
-    rate: t.rate,
-    isInclusive: t.isInclusive,
-    region: t.region,
-    createdAt: t.createdAt,
-    updatedAt: t.updatedAt,
-  };
-}
 
 export async function listTaxProfiles(req: Request): Promise<ControllerResult> {
   const rows = await TaxProfile.find({
     order: { name: 'ASC' },
   });
-  return ok({ data: rows.map(serialize) });
+  return ok({ data: rows.map(serializeTaxProfile) });
 }
 
 export async function createTaxProfile(req: Request, body: CreateTaxProfileInput): Promise<ControllerResult> {
@@ -37,7 +26,7 @@ export async function createTaxProfile(req: Request, body: CreateTaxProfileInput
     region: body.region ?? undefined,
   });
   await repo.save(row);
-  return created({ data: serialize(row) });
+  return created({ data: serializeTaxProfile(row) });
 }
 
 export async function updateTaxProfile(req: Request, body: UpdateTaxProfileInput): Promise<ControllerResult> {
@@ -51,7 +40,7 @@ export async function updateTaxProfile(req: Request, body: UpdateTaxProfileInput
   if (body.isInclusive !== undefined) row.isInclusive = body.isInclusive;
   if (body.region !== undefined) row.region = body.region ?? undefined;
   await repo.save(row);
-  return ok({ data: serialize(row) });
+  return ok({ data: serializeTaxProfile(row) });
 }
 
 export async function deleteTaxProfile(req: Request): Promise<ControllerResult> {
@@ -66,5 +55,5 @@ export async function deleteTaxProfile(req: Request): Promise<ControllerResult> 
 
 export async function getTaxProfileSnapshotForAudit(id: string) {
   const t = await TaxProfile.findOne({ where: { id } });
-  return t ? serialize(t) : undefined;
+  return t ? serializeTaxProfile(t) : undefined;
 }

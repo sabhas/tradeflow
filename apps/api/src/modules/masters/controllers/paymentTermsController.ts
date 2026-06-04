@@ -5,25 +5,16 @@ import { createPaymentTermsSchema, updatePaymentTermsSchema } from '@tradeflow/s
 import { PaymentTerms } from '@tradeflow/db';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializePaymentTerms } from '../serializers/paymentTerms.serializer';
 
 type CreatePaymentTermsInput = z.infer<typeof createPaymentTermsSchema>;
 type UpdatePaymentTermsInput = z.infer<typeof updatePaymentTermsSchema>;
-
-function serialize(p: PaymentTerms) {
-  return {
-    id: p.id,
-    name: p.name,
-    netDays: p.netDays,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-  };
-}
 
 export async function listPaymentTerms(req: Request): Promise<ControllerResult> {
   const rows = await PaymentTerms.find({
     order: { name: 'ASC' },
   });
-  return ok({ data: rows.map(serialize) });
+  return ok({ data: rows.map(serializePaymentTerms) });
 }
 
 export async function createPaymentTerms(
@@ -36,7 +27,7 @@ export async function createPaymentTerms(
     netDays: body.netDays ?? 0,
   });
   await repo.save(row);
-  return created({ data: serialize(row) });
+  return created({ data: serializePaymentTerms(row) });
 }
 
 export async function updatePaymentTerms(
@@ -51,7 +42,7 @@ export async function updatePaymentTerms(
   if (body.name !== undefined) row.name = body.name;
   if (body.netDays !== undefined) row.netDays = body.netDays;
   await repo.save(row);
-  return ok({ data: serialize(row) });
+  return ok({ data: serializePaymentTerms(row) });
 }
 
 export async function deletePaymentTerms(req: Request): Promise<ControllerResult> {
@@ -66,5 +57,5 @@ export async function deletePaymentTerms(req: Request): Promise<ControllerResult
 
 export async function getPaymentTermsSnapshotForAudit(id: string) {
   const p = await PaymentTerms.findOne({ where: { id } });
-  return p ? serialize(p) : undefined;
+  return p ? serializePaymentTerms(p) : undefined;
 }

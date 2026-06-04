@@ -1,14 +1,11 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { Grn, GrnLine } from '@tradeflow/db';
+import { Grn } from '@tradeflow/db';
 import { createGrnSchema, listGrnsQuerySchema, updateGrnSchema } from '@tradeflow/shared';
 import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { getPaginationFromQuery } from '../../../shared/utils/pagination';
-import {
-  loadLinkedInvoicesByGrnIds,
-  settlementFields,
-  type LinkedSupplierInvoice,
-} from '../services/grnInvoiceSettlement';
+import { loadLinkedInvoicesByGrnIds } from '../services/grnInvoiceSettlement';
+import { serializeGrn } from '../serializers/grn.serializer';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 import {
@@ -21,35 +18,6 @@ import {
 
 type CreateGrnInput = z.infer<typeof createGrnSchema>;
 type UpdateGrnInput = z.infer<typeof updateGrnSchema>;
-
-function serializeGrn(g: Grn, lines?: GrnLine[], linked?: LinkedSupplierInvoice | null) {
-  return {
-    id: g.id,
-    purchaseOrderId: g.purchaseOrderId ?? null,
-    supplierId: g.supplierId,
-    grnDate: g.grnDate,
-    warehouseId: g.warehouseId,
-    status: g.status,
-    createdBy: g.createdBy ?? null,
-    createdAt: g.createdAt,
-    ...settlementFields(g.status, linked),
-    supplier: g.supplier ? { id: g.supplier.id, name: g.supplier.name } : undefined,
-    warehouse: g.warehouse ? { id: g.warehouse.id, name: g.warehouse.name } : undefined,
-    lines:
-      lines?.map((l) => ({
-        id: l.id,
-        productId: l.productId,
-        quantity: l.quantity,
-        bonusQuantity: l.bonusQuantity ?? '0',
-        unitPrice: l.unitPrice,
-        tradePrice: l.tradePrice ?? null,
-        retailPrice: l.retailPrice ?? null,
-        purchaseOrderLineId: l.purchaseOrderLineId ?? null,
-        batchCode: l.batchCode ?? null,
-        expiryDate: l.expiryDate ? String(l.expiryDate).slice(0, 10) : null,
-      })) ?? undefined,
-  };
-}
 
 type ListGrnsQuery = z.infer<typeof listGrnsQuerySchema>;
 

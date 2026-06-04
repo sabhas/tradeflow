@@ -14,6 +14,7 @@ import { runInTransaction } from '../../inventory/services/inventoryService';
 import { assertDateNotPeriodLocked } from '../services/periodLock';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeJournalEntry } from '../serializers/journalEntry.serializer';
 
 type CreateJournalEntryInput = z.infer<typeof createJournalEntrySchema>;
 type UpdateJournalEntryInput = z.infer<typeof updateJournalEntrySchema>;
@@ -26,33 +27,6 @@ function assertBalanced(lines: Array<{ debit: string; credit: string }>): void {
     c += parseFloat(l.credit || '0');
   }
   if (Math.abs(d - c) > 0.0001) throw new Error('Journal must balance (sum debits = sum credits)');
-}
-
-export function serializeJournalEntry(e: JournalEntry, lines?: JournalLine[]) {
-  return {
-    id: e.id,
-    entryDate: e.entryDate,
-    reference: e.reference ?? null,
-    description: e.description ?? null,
-    status: e.status,
-    sourceType: e.sourceType ?? null,
-    sourceId: e.sourceId ?? null,
-    createdBy: e.createdBy ?? null,
-    createdAt: e.createdAt,
-    updatedAt: e.updatedAt,
-    deletedAt: e.deletedAt ?? null,
-    lines:
-      lines?.map((l) => {
-        const acc = (l as JournalLine & { account?: Account }).account;
-        return {
-          id: l.id,
-          accountId: l.accountId,
-          debit: l.debit,
-          credit: l.credit,
-          account: acc ? { code: acc.code, name: acc.name } : undefined,
-        };
-      }) ?? undefined,
-  };
 }
 
 async function replaceLines(

@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
-import { Product, SalesOrder, SalesOrderLine, Invoice } from '@tradeflow/db';
+import { SalesOrder, SalesOrderLine, Invoice } from '@tradeflow/db';
 import {
   bulkSalesOrdersSchema,
   createSalesOrderSchema,
@@ -15,53 +15,12 @@ import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import * as salesOrderService from '../services/salesOrderService';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeSalesOrder } from '../serializers/salesOrder.serializer';
 
 type CreateSalesOrderInput = z.infer<typeof createSalesOrderSchema>;
 type UpdateSalesOrderInput = z.infer<typeof updateSalesOrderSchema>;
 type ConvertOrderToInvoiceInput = z.infer<typeof convertOrderToInvoiceSchema>;
 type BulkSalesOrdersInput = z.infer<typeof bulkSalesOrdersSchema>;
-
-export function serializeSalesOrder(
-  o: SalesOrder,
-  lines?: Array<SalesOrderLine & { product?: Product }>,
-  opts?: { hasInvoice?: boolean; lineCount?: number }
-) {
-  const lineCount = opts?.lineCount !== undefined ? opts.lineCount : (lines?.length ?? 0);
-  return {
-    id: o.id,
-    customerId: o.customerId,
-    customerName: o.customer?.name ?? null,
-    orderDate: o.orderDate,
-    status: o.status,
-    hasInvoice: opts?.hasInvoice ?? false,
-    warehouseId: o.warehouseId,
-    warehouseName: o.warehouse?.name ?? null,
-    salespersonName: o.salesperson?.name ?? null,
-    lineCount,
-    subtotal: o.subtotal,
-    taxAmount: o.taxAmount,
-    discountAmount: o.discountAmount,
-    total: o.total,
-    notes: o.notes,
-    salespersonId: o.salespersonId,
-    createdBy: o.createdBy,
-    createdAt: o.createdAt,
-    updatedAt: o.updatedAt,
-    lines:
-      lines?.map((l) => ({
-        id: l.id,
-        productId: l.productId,
-        quantity: l.quantity,
-        bonusQuantity: l.bonusQuantity ?? '0',
-        unitPrice: l.unitPrice,
-        taxAmount: l.taxAmount,
-        discountAmount: l.discountAmount,
-        deliveredQuantity: l.deliveredQuantity,
-        taxProfileId: l.taxProfileId,
-        product: l.product ? { sku: l.product.sku, name: l.product.name } : undefined,
-      })) ?? undefined,
-  };
-}
 
 type ListSalesOrdersQuery = z.infer<typeof listSalesOrdersQuerySchema>;
 

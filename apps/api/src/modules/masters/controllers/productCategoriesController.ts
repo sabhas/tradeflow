@@ -10,21 +10,10 @@ import { ProductCategory } from '@tradeflow/db';
 import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeCategory } from '../serializers/productCategory.serializer';
 
 type CreateProductCategoryInput = z.infer<typeof createProductCategorySchema>;
 type UpdateProductCategoryInput = z.infer<typeof updateProductCategorySchema>;
-
-export function serializeCategory(c: ProductCategory) {
-  return {
-    id: c.id,
-    parentId: c.parentId,
-    name: c.name,
-    code: c.code,
-    createdAt: c.createdAt,
-    updatedAt: c.updatedAt,
-    deletedAt: c.deletedAt,
-  };
-}
 
 function buildTree(flat: ProductCategory[], parentId: string | null | undefined): unknown[] {
   return flat

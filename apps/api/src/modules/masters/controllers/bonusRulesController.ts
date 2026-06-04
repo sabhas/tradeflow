@@ -16,23 +16,10 @@ import { parseDecimalStrict } from '../../../shared/utils/decimal';
 import { HttpError } from '../../../shared/utils/httpError';
 import { calculateBonus } from '../../sales/services/bonusService';
 import { runInTransaction } from '../../inventory/services/inventoryService';
+import { serializeBonusRule } from '../serializers/bonusRule.serializer';
 
 type CreateBonusRuleInput = z.infer<typeof createBonusRuleSchema>;
 type UpdateBonusRuleInput = z.infer<typeof updateBonusRuleSchema>;
-
-function serialize(rule: BonusRule, product?: Product) {
-  return {
-    id: rule.id,
-    productId: rule.productId,
-    productName: product?.name ?? rule.product?.name ?? null,
-    productSku: product?.sku ?? rule.product?.sku ?? null,
-    minQuantity: rule.minQuantity,
-    bonusQuantity: rule.bonusQuantity,
-    isActive: rule.isActive,
-    createdAt: rule.createdAt,
-    updatedAt: rule.updatedAt,
-  };
-}
 
 type ListBonusRulesQuery = z.infer<typeof listBonusRulesQuerySchema>;
 
@@ -54,7 +41,7 @@ export async function listBonusRules(req: Request): Promise<ControllerResult> {
 
   const [rows, total] = await qb.getManyAndCount();
   return ok({
-    data: rows.map((r) => serialize(r, r.product)),
+    data: rows.map((r) => serializeBonusRule(r, r.product)),
     meta: { total, limit, offset },
   });
 }
@@ -75,7 +62,7 @@ export async function createBonusRule(req: Request, body: CreateBonusRuleInput):
     isActive: body.isActive ?? true,
   });
   await row.save();
-  return created({ data: serialize(row, product) });
+  return created({ data: serializeBonusRule(row, product) });
 }
 
 export async function updateBonusRule(req: Request, body: UpdateBonusRuleInput): Promise<ControllerResult> {
@@ -105,7 +92,7 @@ export async function updateBonusRule(req: Request, body: UpdateBonusRuleInput):
 
   await row.save();
   const product = await Product.findOne({ where: { id: row.productId, deletedAt: IsNull() } });
-  return ok({ data: serialize(row, product ?? undefined) });
+  return ok({ data: serializeBonusRule(row, product ?? undefined) });
 }
 
 export async function deleteBonusRule(req: Request): Promise<ControllerResult> {
@@ -138,5 +125,5 @@ export async function calculateBonusAction(req: Request): Promise<ControllerResu
 
 export async function getBonusRuleSnapshotForAudit(id: string) {
   const row = await BonusRule.findOne({ where: { id }, relations: ['product'] });
-  return row ? serialize(row, row.product) : undefined;
+  return row ? serializeBonusRule(row, row.product) : undefined;
 }

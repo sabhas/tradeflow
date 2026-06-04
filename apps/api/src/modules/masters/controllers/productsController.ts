@@ -20,69 +20,11 @@ import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializeProduct } from '../serializers/product.serializer';
 
 type CreateProductInput = z.infer<typeof createProductSchema>;
 type UpdateProductInput = z.infer<typeof updateProductSchema>;
 type ReplaceProductPricesInput = z.infer<typeof replaceProductPricesSchema>;
-
-function serializeProduct(p: Product, prices?: ProductPrice[]) {
-  return {
-    id: p.id,
-    supplierId: p.supplierId,
-    supplier: p.supplier ? { id: p.supplier.id, name: p.supplier.name } : undefined,
-    categoryId: p.categoryId,
-    sku: p.sku,
-    barcode: p.barcode,
-    name: p.name,
-    unitId: p.unitId,
-    costPrice: p.costPrice,
-    sellingPrice: p.sellingPrice,
-    batchTracked: p.batchTracked,
-    expiryTracked: p.expiryTracked,
-    costingMethod: p.costingMethod ?? null,
-    minStock: p.minStock,
-    reorderLevel: p.reorderLevel,
-    manufacturerCode: p.manufacturerCode ?? null,
-    shortName: p.shortName ?? null,
-    genericName: p.genericName ?? null,
-    packing: p.packing ?? null,
-    hsCode: p.hsCode ?? null,
-    retailPrice: p.retailPrice,
-    purchaseDiscountPct: p.purchaseDiscountPct ?? null,
-    salesDiscountPct: p.salesDiscountPct ?? null,
-    purchaseSalesTaxPct: p.purchaseSalesTaxPct ?? null,
-    purchaseWithholdingTaxPct: p.purchaseWithholdingTaxPct ?? null,
-    purchaseFurtherTaxPct: p.purchaseFurtherTaxPct ?? null,
-    salesSalesTaxPct: p.salesSalesTaxPct ?? null,
-    salesWithholdingTaxPct: p.salesWithholdingTaxPct ?? null,
-    salesFurtherTaxPct: p.salesFurtherTaxPct ?? null,
-    saleType: p.saleType ?? null,
-    saleRatePct: p.saleRatePct ?? null,
-    sroSchedule: p.sroSchedule ?? null,
-    sroItemSerial: p.sroItemSerial ?? null,
-    isHerbal: p.isHerbal,
-    isNarcotic: p.isNarcotic,
-    isFridged: p.isFridged,
-    isSurgical: p.isSurgical,
-    staxBeforeDiscount: p.staxBeforeDiscount,
-    staxOnRetail: p.staxOnRetail,
-    staxOnBonusSale: p.staxOnBonusSale,
-    staxOnBonusPurchase: p.staxOnBonusPurchase,
-    tradePriceAllBatches: p.tradePriceAllBatches,
-    autoPriceFromRetail: p.autoPriceFromRetail,
-    printNetPriceOnInvoice: p.printNetPriceOnInvoice,
-    isActive: p.isActive,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-    deletedAt: p.deletedAt,
-    prices:
-      prices?.map((pp) => ({
-        id: pp.id,
-        priceLevelId: pp.priceLevelId,
-        price: pp.price,
-      })) ?? undefined,
-  };
-}
 
 async function loadProductPrices(productId: string) {
   return ProductPrice.find({

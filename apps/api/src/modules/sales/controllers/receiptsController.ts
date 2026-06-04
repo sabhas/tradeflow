@@ -7,27 +7,9 @@ import { getPaginationFromQuery } from '../../../shared/utils/pagination';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
 import { createReceipt as createReceiptService } from '../services/receiptService';
+import { serializeReceipt } from '../serializers/receipt.serializer';
 
 type CreateReceiptInput = z.infer<typeof createReceiptSchema>;
-
-function serialize(r: Receipt, allocations?: ReceiptAllocation[]) {
-  return {
-    id: r.id,
-    customerId: r.customerId,
-    receiptDate: r.receiptDate,
-    amount: r.amount,
-    paymentMethod: r.paymentMethod,
-    reference: r.reference,
-    createdBy: r.createdBy,
-    createdAt: r.createdAt,
-    allocations:
-      allocations?.map((a) => ({
-        id: a.id,
-        invoiceId: a.invoiceId,
-        amount: a.amount,
-      })) ?? undefined,
-  };
-}
 
 type ListReceiptsQuery = z.infer<typeof listReceiptsQuerySchema>;
 
@@ -39,7 +21,7 @@ export async function listReceipts(req: Request): Promise<ControllerResult> {
   if (q.dateFrom) qb.andWhere('r.receipt_date >= :df', { df: q.dateFrom });
   if (q.dateTo) qb.andWhere('r.receipt_date <= :dt', { dt: q.dateTo });
   const [rows, total] = await qb.getManyAndCount();
-  return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
+  return ok({ data: rows.map((r) => serializeReceipt(r)), meta: { total, limit, offset } });
 }
 
 export async function getReceipt(req: Request): Promise<ControllerResult> {
@@ -50,7 +32,7 @@ export async function getReceipt(req: Request): Promise<ControllerResult> {
   if (!row) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  return ok({ data: serialize(row, row.allocations) });
+  return ok({ data: serializeReceipt(row, row.allocations) });
 }
 
 export async function createReceipt(req: Request, body: CreateReceiptInput): Promise<ControllerResult> {
@@ -60,5 +42,5 @@ export async function createReceipt(req: Request, body: CreateReceiptInput): Pro
     throw new HttpError(400, { error: 'Allocations must sum to receipt amount' });
   }
   const saved = await createReceiptService(body, req.auth?.userId);
-  return created({ data: serialize(saved, saved.allocations) });
+  return created({ data: serializeReceipt(saved, saved.allocations) });
 }

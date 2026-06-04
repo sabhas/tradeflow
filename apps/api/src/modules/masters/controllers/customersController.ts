@@ -17,47 +17,10 @@ import {
   updateCustomer as updateCustomerService,
   getCustomerStatement as getCustomerStatementService,
 } from '../services/customerService';
+import { serializeCustomer } from '../serializers/customer.serializer';
 
 type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
 type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
-
-function formatLicenseDate(value: string | Date | null | undefined): string | null {
-  if (value == null) return null;
-  if (value instanceof Date) {
-    return value.toISOString().slice(0, 10);
-  }
-  return typeof value === 'string' ? value.slice(0, 10) : null;
-}
-
-export function serializeCustomer(c: Customer) {
-  return {
-    id: c.id,
-    name: c.name,
-    longName: c.longName ?? null,
-    type: c.type,
-    address: c.address ?? null,
-    townId: c.townId ?? null,
-    areaId: c.areaId ?? null,
-    town: c.town ? { id: c.town.id, name: c.town.name } : null,
-    area: c.area ? { id: c.area.id, name: c.area.name } : null,
-    telephone: c.telephone ?? null,
-    mobile: c.mobile ?? null,
-    contactPerson: c.contactPerson ?? null,
-    ntn: c.ntn ?? null,
-    stn: c.stn ?? null,
-    salesTaxStatus: c.salesTaxStatus,
-    isFiler: c.isFiler,
-    licenseNo: c.licenseNo ?? null,
-    licenseExpiryDate: formatLicenseDate(c.licenseExpiryDate ?? null),
-    contact: c.contact,
-    creditLimit: c.creditLimit,
-    paymentTermsId: c.paymentTermsId,
-    taxProfileId: c.taxProfileId,
-    createdAt: c.createdAt,
-    updatedAt: c.updatedAt,
-    deletedAt: c.deletedAt,
-  };
-}
 
 type ListCustomersQuery = z.infer<typeof listCustomersQuerySchema>;
 

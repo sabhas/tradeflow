@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import type { z } from 'zod';
-import { SupplierInvoice, type SupplierInvoiceLine } from '@tradeflow/db';
+import { SupplierInvoice } from '@tradeflow/db';
 import {
   createSupplierInvoiceSchema,
   listOpenSupplierInvoicesQuerySchema,
@@ -17,43 +17,10 @@ import {
   postSupplierInvoice as postSupplierInvoiceService,
   updateSupplierInvoice as updateSupplierInvoiceService,
 } from '../services/supplierInvoiceService';
+import { serializeSupplierInvoice } from '../serializers/supplierInvoice.serializer';
 
 type CreateSupplierInvoiceInput = z.infer<typeof createSupplierInvoiceSchema>;
 type UpdateSupplierInvoiceInput = z.infer<typeof updateSupplierInvoiceSchema>;
-
-function serialize(inv: SupplierInvoice, lines?: SupplierInvoiceLine[]) {
-  return {
-    id: inv.id,
-    supplierId: inv.supplierId,
-    invoiceNumber: inv.invoiceNumber,
-    invoiceDate: inv.invoiceDate,
-    dueDate: inv.dueDate,
-    purchaseOrderId: inv.purchaseOrderId ?? null,
-    grnId: inv.grnId ?? null,
-    status: inv.status,
-    subtotal: inv.subtotal,
-    taxAmount: inv.taxAmount,
-    discountAmount: inv.discountAmount,
-    total: inv.total,
-    notes: inv.notes ?? null,
-    createdBy: inv.createdBy ?? null,
-    createdAt: inv.createdAt,
-    updatedAt: inv.updatedAt,
-    supplier: inv.supplier ? { id: inv.supplier.id, name: inv.supplier.name } : undefined,
-    lines:
-      lines?.map((l) => ({
-        id: l.id,
-        productId: l.productId,
-        quantity: l.quantity,
-        bonusQuantity: l.bonusQuantity ?? '0',
-        unitPrice: l.unitPrice,
-        taxAmount: l.taxAmount,
-        discountAmount: l.discountAmount,
-        grnLineId: l.grnLineId ?? null,
-        taxProfileId: l.taxProfileId ?? null,
-      })) ?? undefined,
-  };
-}
 
 type ListSupplierInvoicesQuery = z.infer<typeof listSupplierInvoicesQuerySchema>;
 
@@ -65,7 +32,7 @@ export async function listSupplierInvoices(req: Request): Promise<ControllerResu
   if (q.status) qb.andWhere('si.status = :st', { st: q.status });
   qb.orderBy('si.invoiceDate', 'DESC').addOrderBy('si.createdAt', 'DESC').take(limit).skip(offset);
   const [rows, total] = await qb.getManyAndCount();
-  return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
+  return ok({ data: rows.map((r) => serializeSupplierInvoice(r)), meta: { total, limit, offset } });
 }
 
 type ListOpenSupplierInvoicesQuery = z.infer<typeof listOpenSupplierInvoicesQuerySchema>;
@@ -87,7 +54,7 @@ export async function getSupplierInvoice(req: Request): Promise<ControllerResult
   if (!inv) {
     throw new HttpError(404, { error: 'Not found' });
   }
-  return ok({ data: serialize(inv, inv.lines) });
+  return ok({ data: serializeSupplierInvoice(inv, inv.lines) });
 }
 
 export async function createSupplierInvoice(
@@ -95,7 +62,7 @@ export async function createSupplierInvoice(
   body: CreateSupplierInvoiceInput
 ): Promise<ControllerResult> {
   const row = await createSupplierInvoiceService(body, req.auth?.userId);
-  return created({ data: serialize(row, row.lines) });
+  return created({ data: serializeSupplierInvoice(row, row.lines) });
 }
 
 export async function updateSupplierInvoice(
@@ -103,7 +70,7 @@ export async function updateSupplierInvoice(
   body: UpdateSupplierInvoiceInput
 ): Promise<ControllerResult> {
   const row = await updateSupplierInvoiceService(req.params.id, body);
-  return ok({ data: serialize(row, row.lines) });
+  return ok({ data: serializeSupplierInvoice(row, row.lines) });
 }
 
 export async function postSupplierInvoice(req: Request): Promise<ControllerResult> {
@@ -112,7 +79,7 @@ export async function postSupplierInvoice(req: Request): Promise<ControllerResul
     where: { id: req.params.id },
     relations: ['lines', 'supplier'],
   });
-  return ok({ data: serialize(inv!, inv!.lines) });
+  return ok({ data: serializeSupplierInvoice(inv!, inv!.lines) });
 }
 
 export async function deleteSupplierInvoice(req: Request): Promise<ControllerResult> {

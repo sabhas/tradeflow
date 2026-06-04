@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { IsNull } from 'typeorm';
 import type { z } from 'zod';
-import { Invoice, type InvoiceLine } from '@tradeflow/db';
+import { Invoice } from '@tradeflow/db';
 import { listInvoicesQuerySchema, printInvoicesBatchSchema } from '@tradeflow/shared';
 import { getValidatedQuery } from '../../../shared/middleware/validate';
 import { getPaginationFromQuery } from '../../../shared/utils/pagination';
@@ -9,50 +9,8 @@ import { postInvoice } from '../services/invoicePosting';
 import { buildInvoicePrintHtml } from '../services/invoiceHtml';
 import * as invoiceService from '../services/invoiceService';
 import { created, htmlOk, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
-import { toIsoDateString } from '../../../shared/utils/date';
 import { HttpError } from '../../../shared/utils/httpError';
-
-export function serializeInvoice(inv: Invoice, lines?: InvoiceLine[]) {
-  return {
-    id: inv.id,
-    customerId: inv.customerId,
-    customerName: inv.customer?.name ?? null,
-    invoiceDate: inv.invoiceDate,
-    dueDate: inv.dueDate,
-    status: inv.status,
-    paymentType: inv.paymentType,
-    documentKind: inv.documentKind ?? 'invoice',
-    originalInvoiceId: inv.originalInvoiceId ?? null,
-    warehouseId: inv.warehouseId,
-    salesOrderId: inv.salesOrderId,
-    salespersonId: inv.salespersonId,
-    subtotal: inv.subtotal,
-    taxAmount: inv.taxAmount,
-    discountAmount: inv.discountAmount,
-    total: inv.total,
-    notes: inv.notes,
-    invoiceTemplateId: inv.invoiceTemplateId ?? null,
-    createdBy: inv.createdBy,
-    createdAt: inv.createdAt,
-    updatedAt: inv.updatedAt,
-    deletedAt: inv.deletedAt ?? null,
-    lines:
-      lines?.map((l) => ({
-        id: l.id,
-        productId: l.productId,
-        salesOrderLineId: l.salesOrderLineId,
-        originalInvoiceLineId: l.originalInvoiceLineId ?? null,
-        quantity: l.quantity,
-        bonusQuantity: l.bonusQuantity ?? '0',
-        unitPrice: l.unitPrice,
-        taxAmount: l.taxAmount,
-        discountAmount: l.discountAmount,
-        taxProfileId: l.taxProfileId,
-        batchCode: l.batchCode ?? null,
-        expiryDate: toIsoDateString(l.expiryDate) ?? null,
-      })) ?? undefined,
-  };
-}
+import { serializeInvoice } from '../serializers/invoice.serializer';
 
 type ListInvoicesQuery = z.infer<typeof listInvoicesQuerySchema>;
 

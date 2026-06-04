@@ -22,40 +22,10 @@ import { parseDecimalStrict } from '../../../shared/utils/decimal';
 import { moneySub } from '../../../shared/utils/money';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { serializePurchaseReturn } from '../serializers/purchaseReturn.serializer';
 
 type CreatePurchaseReturnInput = z.infer<typeof createPurchaseReturnSchema>;
 type UpdatePurchaseReturnInput = z.infer<typeof updatePurchaseReturnSchema>;
-
-function serialize(row: PurchaseReturn, lines?: PurchaseReturnLine[]) {
-  return {
-    id: row.id,
-    supplierId: row.supplierId,
-    returnDate: row.returnDate,
-    warehouseId: row.warehouseId,
-    status: row.status,
-    subtotal: row.subtotal,
-    taxAmount: row.taxAmount,
-    discountAmount: row.discountAmount,
-    total: row.total,
-    notes: row.notes ?? null,
-    grnId: row.grnId ?? null,
-    createdBy: row.createdBy ?? null,
-    createdAt: row.createdAt,
-    supplier: row.supplier ? { id: row.supplier.id, name: row.supplier.name } : undefined,
-    warehouse: row.warehouse ? { id: row.warehouse.id, name: row.warehouse.name } : undefined,
-    lines:
-      lines?.map((l) => ({
-        id: l.id,
-        productId: l.productId,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-        taxAmount: l.taxAmount,
-        discountAmount: l.discountAmount,
-        taxProfileId: l.taxProfileId ?? null,
-        grnLineId: l.grnLineId ?? null,
-      })) ?? undefined,
-  };
-}
 
 async function assertGrnMatchesIfPresent(
   manager: EntityManager,
@@ -85,7 +55,7 @@ export async function listPurchaseReturns(req: Request): Promise<ControllerResul
   if (q.supplierId) qb.andWhere('r.supplierId = :sid', { sid: q.supplierId });
   if (q.status) qb.andWhere('r.status = :st', { st: q.status });
   const [rows, total] = await qb.getManyAndCount();
-  return ok({ data: rows.map((r) => serialize(r)), meta: { total, limit, offset } });
+  return ok({ data: rows.map((r) => serializePurchaseReturn(r)), meta: { total, limit, offset } });
 }
 
 export async function getPurchaseReturn(req: Request): Promise<ControllerResult> {
@@ -94,7 +64,7 @@ export async function getPurchaseReturn(req: Request): Promise<ControllerResult>
     relations: ['lines', 'supplier', 'warehouse'],
   });
   if (!row) throw new HttpError(404, { error: 'Not found' });
-  return ok({ data: serialize(row, row.lines) });
+  return ok({ data: serializePurchaseReturn(row, row.lines) });
 }
 
 export async function createPurchaseReturn(
@@ -160,7 +130,7 @@ export async function createPurchaseReturn(
       relations: ['lines', 'supplier', 'warehouse'],
     });
   });
-  return created({ data: serialize(row, row.lines) });
+  return created({ data: serializePurchaseReturn(row, row.lines) });
 }
 
 export async function updatePurchaseReturn(
@@ -260,7 +230,7 @@ export async function updatePurchaseReturn(
       relations: ['lines', 'supplier', 'warehouse'],
     });
   });
-  return ok({ data: serialize(row, row.lines) });
+  return ok({ data: serializePurchaseReturn(row, row.lines) });
 }
 
 export async function postPurchaseReturn(req: Request): Promise<ControllerResult> {
@@ -338,7 +308,7 @@ export async function postPurchaseReturn(req: Request): Promise<ControllerResult
     where: { id: req.params.id },
     relations: ['lines', 'supplier', 'warehouse'],
   });
-  return ok({ data: serialize(row!, row!.lines) });
+  return ok({ data: serializePurchaseReturn(row!, row!.lines) });
 }
 
 export async function deletePurchaseReturn(req: Request): Promise<ControllerResult> {
