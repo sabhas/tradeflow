@@ -1,12 +1,12 @@
-import type { Request } from 'express';
 import { dataSource } from '@tradeflow/db';
-import { ok, type ControllerResult } from '../../../../shared/utils/controllerResult';
 
-export async function dailySales(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const customerId = (req.query.customerId as string)?.trim() || null;
-  const warehouseId = (req.query.warehouseId as string)?.trim() || null;
+export async function dailySales(params: {
+  dateFrom: string;
+  dateTo: string;
+  customerId?: string | null;
+  warehouseId?: string | null;
+}) {
+  const { dateFrom, dateTo, customerId = null, warehouseId = null } = params;
 
   const rows = await dataSource.query(
     `
@@ -36,20 +36,19 @@ export async function dailySales(req: Request): Promise<ControllerResult> {
     invoiceCount += Number(r.count);
   }
 
-  return ok({
+  return {
     data: rows,
     meta: { dateFrom, dateTo, customerId, warehouseId, grandTotal: grandTotal.toFixed(4), invoiceCount },
-  });
+  };
 }
 
-/** Inventory movements in period with optional product / warehouse filters. */
-
-export async function fastMoving(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const rawLimit = parseInt(String(req.query.limit || '50'), 10);
-  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 50;
-  const sortBy = (req.query.sortBy as string) === 'value' ? 'value' : 'quantity';
+export async function fastMoving(params: {
+  dateFrom: string;
+  dateTo: string;
+  limit: number;
+  sortBy: 'value' | 'quantity';
+}) {
+  const { dateFrom, dateTo, limit, sortBy } = params;
 
   const orderSql =
     sortBy === 'value'
@@ -85,13 +84,11 @@ export async function fastMoving(req: Request): Promise<ControllerResult> {
     [dateFrom, dateTo, limit]
   );
 
-  return ok({ data: rows, meta: { dateFrom, dateTo, limit, sortBy } });
+  return { data: rows, meta: { dateFrom, dateTo, limit, sortBy } };
 }
 
-/** Expense accounts with period activity (P&amp;L expense slice). */
-
-export async function receivablesAging(req: Request): Promise<ControllerResult> {
-  const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function receivablesAging(params: { asOf: string }) {
+  const { asOf } = params;
   const rows = await dataSource.query(
     `
     SELECT
@@ -158,14 +155,11 @@ export async function receivablesAging(req: Request): Promise<ControllerResult> 
     buckets: v.buckets,
   }));
 
-  return ok({ data, meta: { asOf } });
+  return { data, meta: { asOf } };
 }
 
-/** Payables aging by supplier (posted supplier invoices with open balance). */
-
-export async function profitByProduct(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function profitByProduct(params: { dateFrom: string; dateTo: string }) {
+  const { dateFrom, dateTo } = params;
   const rows = await dataSource.query(
     `
     WITH rev AS (
@@ -202,14 +196,11 @@ export async function profitByProduct(req: Request): Promise<ControllerResult> {
     [dateFrom, dateTo]
   );
 
-  return ok({ data: rows, meta: { dateFrom, dateTo } });
+  return { data: rows, meta: { dateFrom, dateTo } };
 }
 
-/** Layer COGS vs revenue by customer. */
-
-export async function profitByCustomer(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function profitByCustomer(params: { dateFrom: string; dateTo: string }) {
+  const { dateFrom, dateTo } = params;
   const rows = await dataSource.query(
     `
     WITH rev AS (
@@ -247,7 +238,5 @@ export async function profitByCustomer(req: Request): Promise<ControllerResult> 
     [dateFrom, dateTo]
   );
 
-  return ok({ data: rows, meta: { dateFrom, dateTo } });
+  return { data: rows, meta: { dateFrom, dateTo } };
 }
-
-/** Net change on default cash & bank GL accounts (posted journals). */

@@ -1,11 +1,9 @@
-import type { Request } from 'express';
 import { dataSource } from '@tradeflow/db';
 import { getCompanyAccountingSettings } from '../../../settings/services/companySettings';
-import { ok, type ControllerResult } from '../../../../shared/utils/controllerResult';
+import { hasPerm } from './helpers';
 
-export async function expenseAnalysis(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function expenseAnalysis(params: { dateFrom: string; dateTo: string }) {
+  const { dateFrom, dateTo } = params;
 
   const rows = await dataSource.query(
     `
@@ -36,15 +34,14 @@ export async function expenseAnalysis(req: Request): Promise<ControllerResult> {
     totalNet += parseFloat(r.netExpense);
   }
 
-  return ok({
+  return {
     data: rows,
     meta: { dateFrom, dateTo, totalNetExpense: totalNet.toFixed(4) },
-  });
+  };
 }
 
-export async function trialBalance(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function trialBalance(params: { dateFrom: string; dateTo: string }) {
+  const { dateFrom, dateTo } = params;
 
   const rows = await dataSource.query(
     `
@@ -76,17 +73,14 @@ export async function trialBalance(req: Request): Promise<ControllerResult> {
     totalCredit += parseFloat(r.credit);
   }
 
-  return ok({
+  return {
     data: rows,
     meta: { dateFrom, dateTo, totalDebit: totalDebit.toFixed(4), totalCredit: totalCredit.toFixed(4) },
-  });
+  };
 }
 
-/** Profit & loss: income and expense accounts for period. */
-
-export async function profitLoss(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function profitLoss(params: { dateFrom: string; dateTo: string }) {
+  const { dateFrom, dateTo } = params;
 
   const rows = await dataSource.query(
     `
@@ -122,7 +116,7 @@ export async function profitLoss(req: Request): Promise<ControllerResult> {
   }
   const netProfit = incomeNet - expenseNet;
 
-  return ok({
+  return {
     data: rows,
     meta: {
       dateFrom,
@@ -131,13 +125,11 @@ export async function profitLoss(req: Request): Promise<ControllerResult> {
       expenseNet: expenseNet.toFixed(4),
       netProfit: netProfit.toFixed(4),
     },
-  });
+  };
 }
 
-/** Balance sheet: assets, liabilities, equity as of date (cumulative posted journals). */
-
-export async function balanceSheet(req: Request): Promise<ControllerResult> {
-  const asOfDate = ((req.query.asOfDate as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function balanceSheet(params: { asOfDate: string }) {
+  const { asOfDate } = params;
 
   const rows = await dataSource.query(
     `
@@ -173,7 +165,7 @@ export async function balanceSheet(req: Request): Promise<ControllerResult> {
     else equity += c - d;
   }
 
-  return ok({
+  return {
     data: rows,
     meta: {
       asOfDate,
@@ -182,15 +174,15 @@ export async function balanceSheet(req: Request): Promise<ControllerResult> {
       totalEquity: equity.toFixed(4),
       liabilitiesPlusEquity: (liabilities + equity).toFixed(4),
     },
-  });
+  };
 }
 
-/** Posted sales invoice lines with tax (audit trail). */
-
-export async function taxCollected(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const taxProfileId = (req.query.taxProfileId as string)?.trim() || null;
+export async function taxCollected(params: {
+  dateFrom: string;
+  dateTo: string;
+  taxProfileId?: string | null;
+}) {
+  const { dateFrom, dateTo, taxProfileId = null } = params;
 
   const rows = await dataSource.query(
     `
@@ -231,18 +223,14 @@ export async function taxCollected(req: Request): Promise<ControllerResult> {
     totalTax += parseFloat(r.taxAmount);
   }
 
-  return ok({
+  return {
     data: rows,
     meta: { dateFrom, dateTo, taxProfileId, totalTax: totalTax.toFixed(4) },
-  });
+  };
 }
 
-/** Posted supplier invoice lines with tax (audit trail). */
-
-export async function taxPaid(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const taxProfileId = (req.query.taxProfileId as string)?.trim() || null;
+export async function taxPaid(params: { dateFrom: string; dateTo: string; taxProfileId?: string | null }) {
+  const { dateFrom, dateTo, taxProfileId = null } = params;
 
   const rows = await dataSource.query(
     `
@@ -284,21 +272,16 @@ export async function taxPaid(req: Request): Promise<ControllerResult> {
     totalTax += parseFloat(r.taxAmount);
   }
 
-  return ok({
+  return {
     data: rows,
     meta: { dateFrom, dateTo, taxProfileId, totalTax: totalTax.toFixed(4) },
-  });
+  };
 }
 
-/** Collected vs paid tax by tax profile (respects caller permissions per side). */
-
-export async function taxSummary(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = (req.query.dateTo as string) || new Date().toISOString().slice(0, 10);
-  const p = req.auth?.permissions ?? [];
-  const all = p.includes('*');
-  const canSales = all || p.includes('sales:read');
-  const canPurch = all || p.includes('purchases.reports:read');
+export async function taxSummary(params: { dateFrom: string; dateTo: string; permissions: string[] }) {
+  const { dateFrom, dateTo, permissions } = params;
+  const canSales = hasPerm(permissions, 'sales:read');
+  const canPurch = hasPerm(permissions, 'purchases.reports:read');
 
   type AggRow = {
     taxProfileId: string | null;
@@ -432,7 +415,7 @@ export async function taxSummary(req: Request): Promise<ControllerResult> {
     paidInvoiceCount = cnt[0]?.c ?? '0';
   }
 
-  return ok({
+  return {
     data: {
       byProfile,
       breakdown: { collectedInvoiceCount, paidInvoiceCount },
@@ -445,14 +428,11 @@ export async function taxSummary(req: Request): Promise<ControllerResult> {
       netTax: (totalCollected - totalPaid).toFixed(4),
       partial: { collected: !canSales, paid: !canPurch },
     },
-  });
+  };
 }
 
-/** On-hand stock with no sales in the lookback window (dead stock). */
-
-export async function cashFlow(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function cashFlow(params: { dateFrom: string; dateTo: string }) {
+  const { dateFrom, dateTo } = params;
   const { cashId, bankId } = await getCompanyAccountingSettings(dataSource.manager);
 
   const byDay = await dataSource.query(
@@ -487,8 +467,8 @@ export async function cashFlow(req: Request): Promise<ControllerResult> {
     [dateFrom, dateTo, [cashId, bankId]]
   );
 
-  return ok({
+  return {
     data: { byDay, totalNetLiquid: total[0]?.t ?? '0' },
     meta: { dateFrom, dateTo, accountIds: { cashId, bankId } },
-  });
+  };
 }

@@ -1,12 +1,12 @@
-import type { Request } from 'express';
 import { dataSource } from '@tradeflow/db';
-import { ok, type ControllerResult } from '../../../../shared/utils/controllerResult';
 
-export async function stockMovement(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const productId = (req.query.productId as string)?.trim() || null;
-  const warehouseId = (req.query.warehouseId as string)?.trim() || null;
+export async function stockMovement(params: {
+  dateFrom: string;
+  dateTo: string;
+  productId?: string | null;
+  warehouseId?: string | null;
+}) {
+  const { dateFrom, dateTo, productId = null, warehouseId = null } = params;
 
   const rows = await dataSource.query(
     `
@@ -34,15 +34,11 @@ export async function stockMovement(req: Request): Promise<ControllerResult> {
     [dateFrom, dateTo, productId, warehouseId]
   );
 
-  return ok({ data: rows, meta: { dateFrom, dateTo, productId, warehouseId, rowCount: rows.length } });
+  return { data: rows, meta: { dateFrom, dateTo, productId, warehouseId, rowCount: rows.length } };
 }
 
-/** Products ranked by quantity or line value sold in period (posted invoices). */
-
-export async function deadStock(req: Request): Promise<ControllerResult> {
-  const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const rawDays = parseInt(String(req.query.daysWithoutSale || '90'), 10);
-  const days = Number.isFinite(rawDays) ? Math.min(Math.max(rawDays, 1), 3650) : 90;
+export async function deadStock(params: { asOf: string; daysWithoutSale: number }) {
+  const { asOf, daysWithoutSale: days } = params;
   const fromDate = new Date(asOf + 'T12:00:00Z');
   fromDate.setUTCDate(fromDate.getUTCDate() - days);
   const fromStr = fromDate.toISOString().slice(0, 10);
@@ -74,19 +70,14 @@ export async function deadStock(req: Request): Promise<ControllerResult> {
     [null, fromStr, asOf]
   );
 
-  return ok({
+  return {
     data: rows,
     meta: { asOf, daysWithoutSale: days, lookbackFrom: fromStr, rowCount: rows.length },
-  });
+  };
 }
 
-/** Lowest quantity sold in period (slow movers). */
-
-export async function slowMoving(req: Request): Promise<ControllerResult> {
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
-  const rawLimit = parseInt(String(req.query.limit || '50'), 10);
-  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 50;
+export async function slowMoving(params: { dateFrom: string; dateTo: string; limit: number }) {
+  const { dateFrom, dateTo, limit } = params;
 
   const rows = await dataSource.query(
     `
@@ -110,7 +101,5 @@ export async function slowMoving(req: Request): Promise<ControllerResult> {
     [dateFrom, dateTo, limit]
   );
 
-  return ok({ data: rows, meta: { dateFrom, dateTo, limit } });
+  return { data: rows, meta: { dateFrom, dateTo, limit } };
 }
-
-/** Posted GRNs without a posted supplier invoice, or with invoice total mismatch (audit / follow-up). */

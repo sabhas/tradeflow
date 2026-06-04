@@ -1,24 +1,20 @@
-import type { Request } from 'express';
-import { getEffectivePermissions } from '../../../../shared/middleware/auth';
-
-export function hasPerm(req: Request, code: string): boolean {
-  const perms = getEffectivePermissions(req);
-  return perms.includes('*') || perms.includes(code);
+export function hasPerm(permissions: string[], code: string): boolean {
+  return permissions.includes('*') || permissions.includes(code);
 }
 
-export function queryDateFrom(req: Request, fallback = '1970-01-01'): string {
-  return ((req.query.dateFrom as string) || fallback).slice(0, 10);
+export function dateFromOrDefault(value: unknown, fallback = '1970-01-01'): string {
+  return String(value || fallback).slice(0, 10);
 }
 
-export function queryDateTo(req: Request): string {
-  return ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export function dateToOrDefault(value: unknown): string {
+  return String(value || new Date().toISOString().slice(0, 10)).slice(0, 10);
 }
 
-export function queryAsOf(req: Request): string {
-  return ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export function asOfOrDefault(value: unknown): string {
+  return String(value || new Date().toISOString().slice(0, 10)).slice(0, 10);
 }
 
-export function parseLimit(req: Request, defaultLimit = 50, max = 500): number {
-  const rawLimit = parseInt(String(req.query.limit || String(defaultLimit)), 10);
+export function parseLimitParam(value: unknown, defaultLimit = 50, max = 500): number {
+  const rawLimit = parseInt(String(value ?? defaultLimit), 10);
   return Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), max) : defaultLimit;
 }

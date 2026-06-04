@@ -1,12 +1,10 @@
-import type { Request } from 'express';
 import { dataSource } from '@tradeflow/db';
 import { GL_ACCOUNT_CODES } from '../../../../shared/constants/glAccounts';
-import { ok, type ControllerResult } from '../../../../shared/utils/controllerResult';
 import { HttpError } from '../../../../shared/utils/httpError';
 import { hasPerm } from './helpers';
 
-export async function payablesAging(req: Request): Promise<ControllerResult> {
-  const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function payablesAging(params: { asOf: string }) {
+  const { asOf } = params;
   const rows = await dataSource.query(
     `
     SELECT
@@ -71,19 +69,17 @@ export async function payablesAging(req: Request): Promise<ControllerResult> {
     buckets: v.buckets,
   }));
 
-  return ok({ data, meta: { asOf } });
+  return { data, meta: { asOf } };
 }
 
-/** Posted journal activity by account for date range (trial balance). */
-
-export async function grnInvoiceReconciliation(req: Request): Promise<ControllerResult> {
-  if (!hasPerm(req, 'purchases.reports:read') && !hasPerm(req, 'purchases.grn:read')) {
+export async function grnInvoiceReconciliation(params: { asOf: string; permissions: string[] }) {
+  const { asOf, permissions } = params;
+  if (!hasPerm(permissions, 'purchases.reports:read') && !hasPerm(permissions, 'purchases.grn:read')) {
     throw new HttpError(403, {
       error: 'Forbidden',
       message: 'purchases.reports:read or purchases.grn:read required',
     });
   }
-  const asOf = ((req.query.asOf as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
 
   const rows = await dataSource.query(
     `
@@ -154,15 +150,14 @@ export async function grnInvoiceReconciliation(req: Request): Promise<Controller
     [asOf, GL_ACCOUNT_CODES.ACCRUED_PURCHASES]
   );
 
-  return ok({ data: rows, meta: { asOf } });
+  return { data: rows, meta: { asOf } };
 }
 
-/** Today / MTD sales & purchases, AR/AP open, quick aging totals (branch-scoped). */
-
-export async function dashboardKpis(req: Request): Promise<ControllerResult> {
-  const canSales = hasPerm(req, 'sales:read');
-  const canPurch = hasPerm(req, 'purchases.reports:read');
-  const canGrn = hasPerm(req, 'purchases.grn:read');
+export async function dashboardKpis(params: { permissions: string[] }) {
+  const { permissions } = params;
+  const canSales = hasPerm(permissions, 'sales:read');
+  const canPurch = hasPerm(permissions, 'purchases.reports:read');
+  const canGrn = hasPerm(permissions, 'purchases.grn:read');
   if (!canSales && !canPurch && !canGrn) {
     throw new HttpError(403, {
       error: 'Forbidden',
@@ -315,7 +310,7 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
     apOpen = ap[0]?.t ?? '0';
   }
 
-  return ok({
+  return {
     data: {
       asOfDate: today,
       monthStart,
@@ -332,15 +327,12 @@ export async function dashboardKpis(req: Request): Promise<ControllerResult> {
     meta: {
       partial: { sales: !canSales, purchases: !canPurch && !canGrn },
     },
-  });
+  };
 }
 
-/** Posted supplier purchases vs posted sales totals for a range. */
-
-export async function purchaseVsSales(req: Request): Promise<ControllerResult> {
-  const canPurch = hasPerm(req, 'purchases.reports:read');
-  const dateFrom = ((req.query.dateFrom as string) || '1970-01-01').slice(0, 10);
-  const dateTo = ((req.query.dateTo as string) || new Date().toISOString().slice(0, 10)).slice(0, 10);
+export async function purchaseVsSales(params: { dateFrom: string; dateTo: string; permissions: string[] }) {
+  const { dateFrom, dateTo, permissions } = params;
+  const canPurch = hasPerm(permissions, 'purchases.reports:read');
   const sales = await dataSource.query(
     `
     SELECT COALESCE(SUM(i.total::numeric), 0)::text AS t, COUNT(*)::int AS c
@@ -367,7 +359,7 @@ export async function purchaseVsSales(req: Request): Promise<ControllerResult> {
     purchaseCount = Number(p[0]?.c ?? 0);
   }
 
-  return ok({
+  return {
     data: {
       salesTotal: sales[0]?.t ?? '0',
       salesInvoiceCount: Number(sales[0]?.c ?? 0),
@@ -376,7 +368,5 @@ export async function purchaseVsSales(req: Request): Promise<ControllerResult> {
       netSalesMinusPurchases: (parseFloat(sales[0]?.t ?? '0') - parseFloat(purchasesTotal)).toFixed(4),
     },
     meta: { dateFrom, dateTo, purchasesHidden: !canPurch },
-  });
+  };
 }
-
-/** Layer COGS vs line revenue by product (posted sales in range). */

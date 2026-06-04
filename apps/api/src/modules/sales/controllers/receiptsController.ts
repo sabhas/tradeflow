@@ -3,12 +3,9 @@ import type { z } from 'zod';
 import { createReceiptSchema } from '@tradeflow/shared';
 import { Receipt, ReceiptAllocation } from '@tradeflow/db';
 import { getPagination } from '../../../shared/utils/pagination';
-import { runInTransaction } from '../../inventory/services/inventoryService';
-import { validateReceiptAllocations } from '../services/invoicePosting';
-import { postReceiptJournal } from '../../accounting/services/accountingPosting';
-import { assertDateNotPeriodLocked } from '../../accounting/services/periodLock';
 import { created, ok, type ControllerResult } from '../../../shared/utils/controllerResult';
 import { HttpError } from '../../../shared/utils/httpError';
+import { createReceipt as createReceiptService } from '../services/receiptService';
 
 type CreateReceiptInput = z.infer<typeof createReceiptSchema>;
 
@@ -58,36 +55,6 @@ export async function createReceipt(req: Request, body: CreateReceiptInput): Pro
   if (Math.abs(allocSum - parseFloat(body.amount)) > 0.0001) {
     throw new HttpError(400, { error: 'Allocations must sum to receipt amount' });
   }
-  const saved = await runInTransaction(async (manager) => {
-    await validateReceiptAllocations(manager, body.customerId, body.allocations);
-    const rec = manager.create(Receipt, {
-      customerId: body.customerId,
-      receiptDate: body.receiptDate.slice(0, 10),
-      amount: body.amount,
-      paymentMethod: body.paymentMethod,
-      reference: body.reference ?? undefined,
-      createdBy: req.auth?.userId,
-    });
-    await manager.save(rec);
-    for (const a of body.allocations) {
-      await manager.save(
-        manager.create(ReceiptAllocation, {
-          receiptId: rec.id,
-          invoiceId: a.invoiceId,
-          amount: a.amount,
-        })
-      );
-    }
-    await assertDateNotPeriodLocked(manager, rec.receiptDate);
-    await postReceiptJournal(manager, {
-      entryDate: rec.receiptDate,
-      reference: `RCPT-${rec.id.slice(0, 8)}`,
-      userId: req.auth?.userId,
-      receiptId: rec.id,
-      amount: rec.amount,
-      paymentMethod: rec.paymentMethod,
-    });
-    return manager.findOneOrFail(Receipt, { where: { id: rec.id }, relations: ['allocations'] });
-  });
+  const saved = await createReceiptService(body, req.auth?.userId);
   return created({ data: serialize(saved, saved.allocations) });
 }
