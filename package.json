@@ -13,7 +13,11 @@
     "prepare": "husky",
     "db:migrate": "pnpm --filter @tradeflow/db migrate",
     "db:migrate:revert": "pnpm --filter @tradeflow/db migrate:revert",
-    "db:seed": "pnpm --filter @tradeflow/db seed"
+    "db:seed": "pnpm --filter @tradeflow/db seed",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:reset": "docker compose down -v"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

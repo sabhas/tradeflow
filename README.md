@@ -82,6 +82,46 @@ Default admin credentials:
 - **Email:** admin@tradeflow.local
 - **Password:** admin123
 
+## Docker (API + database)
+
+Run PostgreSQL, migrations, seed, and the API in containers:
+
+```bash
+cp .env.docker.example .env   # optional; compose has sensible defaults
+# Edit JWT_SECRET in .env before any non-local use
+pnpm docker:up
+```
+
+| Service    | URL                            |
+| ---------- | ------------------------------ |
+| API        | http://localhost:3001          |
+| Swagger    | http://localhost:3001/api-docs |
+| PostgreSQL | localhost:5432                 |
+
+Default admin (after seed): `admin@tradeflow.local` / `admin123`
+
+Stop and remove containers:
+
+```bash
+pnpm docker:down
+```
+
+Remove containers and database volume:
+
+```bash
+pnpm docker:reset
+```
+
+After the first successful start, set `RUN_SEED=false` in `.env` so rebuilds do not re-run the full seed.
+
+Run the **Electron desktop app** on the host against the containerized API:
+
+```env
+VITE_API_URL=http://localhost:3001
+```
+
+Then `pnpm dev:desktop` in a separate terminal while `pnpm docker:up` is running.
+
 ## Development
 
 ### Run API
@@ -110,13 +150,13 @@ curl http://localhost:3001/health
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /health | API and DB status |
-| POST | /auth/login | Login (email, password) → JWT + user + permissions |
-| GET | /auth/me | Current user + permissions (protected) |
-| PATCH | /auth/me | Update profile (protected, audited) |
-| GET | /audit-logs | List audit logs (Admin only) |
+| Method | Path        | Description                                        |
+| ------ | ----------- | -------------------------------------------------- |
+| GET    | /health     | API and DB status                                  |
+| POST   | /auth/login | Login (email, password) → JWT + user + permissions |
+| GET    | /auth/me    | Current user + permissions (protected)             |
+| PATCH  | /auth/me    | Update profile (protected, audited)                |
+| GET    | /audit-logs | List audit logs (Admin only)                       |
 
 ## Optional: Cloud Sync Design (future)
 
